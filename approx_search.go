@@ -94,7 +94,6 @@ func (S Search) FindLCS(read []byte, p int) (int, int, []int, bool) {
     var rev_result, result []int
 
     rev_s_pos = p
-    //rev_s_pos = 54 //fail to align correctly with this position (on reverse read, ~ 66 on original read)
     rev_result = S.REV_FMI.BackwardSearch(rev_read, rev_s_pos)
     _, _, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
     //fmt.Println(rev_ep - rev_sp + 1, rev_e_pos, rev_s_pos, rev_s_pos - rev_e_pos, string(rev_read[rev_e_pos : rev_s_pos + 1]))
@@ -204,12 +203,13 @@ func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
     var v []byte
 
     var p int
+    s_pos, e_pos, match_pos, hasExactMatches := -1, -1, []int{}, false
     loop_num := 1
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
     for loop_num <= ITER_NUM {
         p = r.Intn(len(read) - 1) + 1
         //Call FindLCS to determine seed
-        s_pos, e_pos, match_pos, hasExactMatches := S.FindLCS(read, p)
+        s_pos, e_pos, match_pos, hasExactMatches = S.FindLCS(read, p)
         if hasExactMatches {
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
@@ -230,6 +230,7 @@ func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
             if (len(snp_profile)) > 0 {
                 return snp_profile, true
             }
+            break
         }
         loop_num++
     }
