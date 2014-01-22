@@ -1,6 +1,7 @@
 //----------------------------------------------------------------------------------------
 // Copyright 2013 Nam S. Vo
-// Approximate searching of reads on multigenomes based on FM index and Edit distance
+// Approximate searching of reads on multigenomes based on FM index and a modified-version
+// of edit distance for read-multigenome alignment
 //----------------------------------------------------------------------------------------
 
 package randalx
@@ -115,6 +116,7 @@ func (S Search) FindLCS(read []byte) (int, int, []int, bool) {
     for p := sp; p <= ep; p++ {
         match_pos = append(match_pos, S.FMI.SA[p])
     }
+    //fmt.Println(e_pos, s_pos, match_pos, string(read[e_pos:s_pos+1]))
     return s_pos, e_pos, match_pos, true
 }
 

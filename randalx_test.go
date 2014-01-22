@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------------------
 // Copyright 2013 Nam S. Vo
-// Test for Approximate searching package
+// Test for randalx
 //----------------------------------------------------------------------------------------
 
 package randalx_test
@@ -199,8 +199,8 @@ func TestApproxSearch_4M(t *testing.T) {
     fmt.Println("snp_aligned_read_num: ", snp_aligned_read_num)
 
     fmt.Println("@@@-Construct SNP profiles -------------------------")
-    SNP_Calling := snpcaller.CallSNP()
+    SNP_Calling, SNP_Prob := snpcaller.CallSNP()
     fmt.Println("@@@-SNP Calling ------------------------------------")
-    snpcaller.SNPCall_tofile(SNP_Calling, "../data-test-4M/snp_calling.txt")
+    snpcaller.SNPCall_tofile(SNP_Calling, SNP_Prob, "../data-test-4M/snp_calling.txt")
     fmt.Println("@@@-Finish ----------------------------------------")
 }
