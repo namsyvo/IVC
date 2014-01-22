@@ -34,7 +34,6 @@ type Search struct {
 var (
     DIST_THRES int //threshold for distances between reads and multigenomes
     ITER_NUM int //number of random iterations to find proper seeds
-    MIN_LCS int // minimum length of seeds
     MAXIMUM_MATCH int //maximum of number of matches
 )
 
@@ -71,13 +70,11 @@ func (S *Search) Init_para(re float32, k, A int, read_len int) {
     DIST_THRES = int(math.Ceil(float64(re) * float64(read_len) +
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
     ITER_NUM = A * (DIST_THRES + 1)
-    MIN_LCS = int(math.Ceil(float64(read_len) / float64(DIST_THRES + 1)))
     MAXIMUM_MATCH = 32
     distance.Init(DIST_THRES, S.SNP_PROFILE, S.SAME_LEN_SNP)
     
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
-    fmt.Println("MIN_LCS: ", MIN_LCS)
     fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
     
 }
@@ -86,8 +83,7 @@ func (S *Search) Init_para(re float32, k, A int, read_len int) {
 // FindLCS function returns positions and distances of LCS between reads and multi-genomes.
 // It will use both BackwardSearch and ForwardSearch on multi-genomes
 //-----------------------------------------------------------------------------------------------------
-func (S Search) FindLCS(read []byte) (int, int, []int, bool) {
-    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+func (S Search) FindLCS(read []byte, p int) (int, int, []int, bool) {
     read_len := len(read)
     rev_read := make([]byte, read_len)
     for i := 0; i < read_len; i++ {
@@ -96,28 +92,27 @@ func (S Search) FindLCS(read []byte) (int, int, []int, bool) {
     var sp, ep int = 0, MAXIMUM_MATCH
     var rev_s_pos, rev_e_pos, s_pos, e_pos int
     var rev_result, result []int
-    var count int = 0
 
-    //re-find exact matches if number of match (= ep - sp + 1) > MAXIMUM_MATCH
-    for (ep - sp + 1 > MAXIMUM_MATCH) || (s_pos - e_pos + 1 < MIN_LCS) {
-        rev_s_pos = r.Intn(read_len - 1) + 1
-        rev_result = S.REV_FMI.BackwardSearch(rev_read, rev_s_pos)
-        _, _, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
-        //convert rev_e_pos in forward search to s_pos in backward search
-        s_pos = read_len - rev_e_pos - 1
-        result = S.FMI.BackwardSearch(read, s_pos)
-        sp, ep, e_pos = result[0], result[1], result[2]
-        count++
-        if count > ITER_NUM {
-            return -1, -1, []int{}, false
+    rev_s_pos = p
+    //rev_s_pos = 54 //fail to align correctly with this position (on reverse read, ~ 66 on original read)
+    rev_result = S.REV_FMI.BackwardSearch(rev_read, rev_s_pos)
+    _, _, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
+    //fmt.Println(rev_ep - rev_sp + 1, rev_e_pos, rev_s_pos, rev_s_pos - rev_e_pos, string(rev_read[rev_e_pos : rev_s_pos + 1]))
+
+    //convert rev_e_pos in forward search to s_pos in backward search
+    s_pos = read_len - rev_e_pos - 1
+    result = S.FMI.BackwardSearch(read, s_pos)
+    sp, ep, e_pos = result[0], result[1], result[2]
+
+    if ep - sp + 1 <= MAXIMUM_MATCH {
+        match_pos := make([]int, 0, MAXIMUM_MATCH)
+        for p := sp; p <= ep; p++ {
+            match_pos = append(match_pos, S.FMI.SA[p])
         }
+        //fmt.Println(ep - sp + 1, e_pos, s_pos, s_pos - e_pos, string(read[e_pos : s_pos + 1]), match_pos)
+        return s_pos, e_pos, match_pos, true
     }
-    match_pos := make([]int, 0, MAXIMUM_MATCH)
-    for p := sp; p <= ep; p++ {
-        match_pos = append(match_pos, S.FMI.SA[p])
-    }
-    //fmt.Println(e_pos, s_pos, match_pos, string(read[e_pos:s_pos+1]))
-    return s_pos, e_pos, match_pos, true
+    return -1, -1, []int{}, false
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -186,16 +181,16 @@ func (S Search) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int
 
     right_d, right_D, right_m, right_n, right_S, right_T :=
      distance.ForwardDistanceMulti(read_right_flank, ref_right_flank, match_pos + lcs_len)
-
-    if left_d + right_d + left_D + right_D <= DIST_THRES {
+    dis := left_d + right_d + left_D + right_D
+    //fmt.Println("distance: ", dis)
+    if dis <= DIST_THRES {
         left_snp := distance.BackwardTraceBack(read_left_flank, ref_left_flank,
          left_m, left_n, left_S, left_T, left_most_pos)
         right_snp := distance.ForwardTraceBack(read_right_flank, ref_right_flank,
          right_m, right_n, right_S, right_T, match_pos + lcs_len)
-        return left_d + right_d + left_D + right_D, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, left_snp, right_snp, true
+        return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, left_snp, right_snp, true
     }
-    return left_d + right_d + left_D + right_D, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank,
-     map[int][]byte{}, map[int][]byte{}, false
+    return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, map[int][]byte{}, map[int][]byte{}, false
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -203,45 +198,40 @@ func (S Search) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int
 // and alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
 func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
+
     snp_profile := make(map[int][][]byte)
-    //Call FindLCS to determine seed
-    s_pos, e_pos, match_pos, hasExactMatches := S.FindLCS(read)
-    if !hasExactMatches {
-        return snp_profile, false
-    }
     var k int
     var v []byte
-    for _, pos := range match_pos {
-        //Call IntervalHasSNP to determine whether extension is needed
-        if S.IntervalHasSNP(S.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
-            //Call ApproxSearch to determine extension
-            _, _, _, _, _, left_snp, right_snp, isExtended := S.FindExtension(read, s_pos, e_pos, pos)
-            if isExtended {
-                //Determine SNP profile
-                for k, v = range left_snp {
-                    snp_profile[k] = append(snp_profile[k], v)
-                }
-                for k, v = range right_snp {
-                    snp_profile[k] = append(snp_profile[k], v)
+
+    var p int
+    loop_num := 1
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+    for loop_num <= ITER_NUM {
+        p = r.Intn(len(read) - 1) + 1
+        //Call FindLCS to determine seed
+        s_pos, e_pos, match_pos, hasExactMatches := S.FindLCS(read, p)
+        if hasExactMatches {
+            for _, pos := range match_pos {
+                //Call IntervalHasSNP to determine whether extension is needed
+                if S.IntervalHasSNP(S.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
+                    //Call ApproxSearch to determine extension
+                    _, _, _, _, _, left_snp, right_snp, isExtended := S.FindExtension(read, s_pos, e_pos, pos)
+                    if isExtended {
+                        //Determine SNP profile
+                        for k, v = range left_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                        for k, v = range right_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                    }
                 }
             }
+            if (len(snp_profile)) > 0 {
+                return snp_profile, true
+            }
         }
+        loop_num++
     }
-    if (len(snp_profile)) > 0 {
-        return snp_profile, true
-    }
-    /*
-    fmt.Println("Start------------------------------")
-    fmt.Println("read, e_pos, s_pos, match_pos, seed ", string(read), e_pos, s_pos, match_pos, string(read[e_pos: s_pos+1]))
-    for _, pos := range match_pos {
-        dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, _, _, _ := S.FindExtension(read, s_pos, e_pos, pos)
-        fmt.Println("dis ", dis)
-        fmt.Println("left read ", string(read_left_flank))
-        fmt.Println("left ref  ", string(ref_left_flank))
-        fmt.Println("right read ", string(read_right_flank))
-        fmt.Println("right ref  ", string(ref_right_flank))
-    }
-    fmt.Println("End------------------------------")
-    */
     return snp_profile, false
 }
