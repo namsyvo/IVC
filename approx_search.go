@@ -65,7 +65,7 @@ func (S *Search) Init_seq(genome_file, snp_file, index_file, rev_index_file stri
     
 }
 
-func (S *Search) Init_para(re float32, k, A int, read_len int) {
+func (S *Search) Init_para(read_len int, re float32, k, A int) {
     //Const for computing distance
     DIST_THRES = int(math.Ceil(float64(re) * float64(read_len) +
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
