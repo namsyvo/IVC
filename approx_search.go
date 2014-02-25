@@ -73,7 +73,7 @@ func (S *Search) Init_para(read_len int, re float32, k, A int) {
     MAXIMUM_MATCH = 32
     distance.Init(DIST_THRES, S.SNP_PROFILE, S.SAME_LEN_SNP)
     
-    DIST_THRES = 11 // for testing
+    //DIST_THRES = 11 // for testing
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
     fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
