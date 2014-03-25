@@ -40,6 +40,7 @@ var (
 //-----------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Search object
 //-----------------------------------------------------------------------------------------------------
+
 func (S *Search) Init_seq(genome_file, snp_file, index_file, rev_index_file string) {
     S.SEQ = multigenome2.LoadMulti(genome_file)
     S.SNP_PROFILE, S.SAME_LEN_SNP = multigenome2.LoadSNPLocation(snp_file)
@@ -71,8 +72,9 @@ func (S *Search) Init_para(read_len int, re float32, k, A int) {
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
     ITER_NUM = A * (DIST_THRES + 1)
     MAXIMUM_MATCH = 32
-    distance.Init(DIST_THRES, S.SNP_PROFILE, S.SAME_LEN_SNP)
+    distance.Init(DIST_THRES, S.SNP_PROFILE, S.SAME_LEN_SNP, read_len)
     
+    //ITER_NUM = 5 // for testing
     //DIST_THRES = 11 // for testing
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
@@ -176,18 +178,25 @@ func (S Search) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int
         ref_right_flank = S.SEQ[match_pos + lcs_len : len(S.SEQ)]
     }
 
-    left_d, left_D, left_m, left_n, left_S, left_T :=
+    left_d, left_D, left_m, left_n, left_S, left_T, _ :=
      distance.BackwardDistanceMulti(read_left_flank, ref_left_flank, left_most_pos)
-
-    right_d, right_D, right_m, right_n, right_S, right_T :=
+	//if isEdit && left_m != 0 {
+	//	fmt.Print(left_m, "\t", left_n, "\t", string(read_left_flank), "\t", string(ref_left_flank), "\t")
+	//}
+    right_d, right_D, right_m, right_n, right_S, right_T, _ :=
      distance.ForwardDistanceMulti(read_right_flank, ref_right_flank, match_pos + lcs_len)
+	//if isEdit && right_m != 0{
+	//	fmt.Println(right_m, "\t", right_n, "\t", string(read_right_flank), "\t", string(ref_right_flank))
+	//}
+
     dis := left_d + right_d + left_D + right_D
-    //fmt.Println("distance: ", dis)
     if dis <= DIST_THRES {
         left_snp := distance.BackwardTraceBack(read_left_flank, ref_left_flank,
          left_m, left_n, left_S, left_T, left_most_pos)
+		//fmt.Print(left_m, "\t", left_n, "\t")
         right_snp := distance.ForwardTraceBack(read_right_flank, ref_right_flank,
          right_m, right_n, right_S, right_T, match_pos + lcs_len)
+		//fmt.Println(right_m, "\t", right_n)
         return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, left_snp, right_snp, true
     }
     return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, map[int][]byte{}, map[int][]byte{}, false
@@ -214,7 +223,7 @@ func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
         if hasExactMatches {
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
-                if S.IntervalHasSNP(S.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
+                //if S.IntervalHasSNP(S.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
                     //Call ApproxSearch to determine extension
                     _, _, _, _, _, left_snp, right_snp, isExtended := S.FindExtension(read, s_pos, e_pos, pos)
                     if isExtended {
@@ -226,13 +235,18 @@ func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
                             snp_profile[k] = append(snp_profile[k], v)
                         }
                     }
-                }
+                //}
             }
-            if (len(snp_profile)) > 0 {
+            if len(snp_profile) > 0 {
+				//fmt.Println()
                 return snp_profile, true
             }
+			//fmt.Println(string(read))
+			//fmt.Println(string(read[e_pos : s_pos + 1]), "\t", e_pos, "\t", s_pos, "\t", match_pos)
         }
         loop_num++
     }
+
+	//fmt.Println()
     return snp_profile, false
 }
