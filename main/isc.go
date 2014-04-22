@@ -25,9 +25,9 @@ func main() {
     //var workers = flag.Int("w", 1, "number of workers")
     //flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
     flag.Parse()
-	
-    fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
-	
+
+	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
+
     fmt.Println("Initializing indexes and parameters...")
     var snpcaller isc.SNPCaller
     snpcaller.Init(*genome_file, *snp_file, *index_file, *rev_index_file,
@@ -35,7 +35,7 @@ func main() {
 	
     fmt.Println("Aligning reads to the mutigenome...")
     var read []byte
-    var isSNPCalled bool
+    var has_SNP_call bool
     var read_num int = 0
     var snp_aligned_read_num int = 0
 	
@@ -56,8 +56,8 @@ func main() {
             if len(line) > 1 {
 	        	read_num++
                 read = line[0 : *read_len]
-				isSNPCalled = snpcaller.UpdateSNPProfile(read)
-				if isSNPCalled {
+				has_SNP_call = snpcaller.UpdateSNPProfile(read)
+				if has_SNP_call {
 	        	    snp_aligned_read_num++
 		        }
             }
@@ -73,8 +73,8 @@ func main() {
 	        if len(line) > 1 {
 				read_num++
 				read = line[0 : *read_len]
-				isSNPCalled = snpcaller.UpdateSNPProfile(read)
-				if isSNPCalled {
+				has_SNP_call = snpcaller.UpdateSNPProfile(read)
+				if has_SNP_call {
     	       	    snp_aligned_read_num++
     	        }
 			}
@@ -86,5 +86,5 @@ func main() {
     fmt.Println("Calling SNPs from alignment results...")
     snpcaller.CallSNP()
     snpcaller.SNPCall_tofile(*snp_call_file)
-    fmt.Println("Finish, read the file ", *snp_call_file, " to check results")
+    fmt.Println("Finish, check the file ", *snp_call_file, " for results")
 }
