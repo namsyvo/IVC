@@ -1,12 +1,11 @@
 //----------------------------------------------------------------------------------------
-// Copyright 2013 Nam S. Vo
-// Test for randalx
+// Copyright 2013 Nam Sy Vo
+// Test for alignment module
 //----------------------------------------------------------------------------------------
 
-package randalx_test
+package isc
 
 import (
-	"randalx"
 	"fmt"
 	"os"
     "bufio"
@@ -37,26 +36,21 @@ type TestCase struct {
 	result bool
 }
 
-func TestApproxSearch_4M(t *testing.T) {
+func TestAlignment_4M(t *testing.T) {
 	defer __(o_())
 
     fmt.Println("@@@-Read-MultiGenome Alignment ----------------------")
 
-    var genome_file = "../data-test-4M/genome_starred.txt"
-    var snp_file = "../data-test-4M/SNPlocation.txt"
-    var index_file = "../data-test-4M/genome_starred.txt.index"
-    var rev_index_file = "../data-test-4M/genome_starred_rev.txt.index"
+    var genome_file = "data-test-4M/genome_starred.txt"
+    var snp_file = "data-test-4M/SNPlocation.txt"
+    var index_file = "data-test-4M/genome_starred.txt.index"
+    var rev_index_file = "data-test-4M/genome_starred_rev.txt.index"
 
-    var search randalx.Search
-    search.Init_seq(genome_file, snp_file, index_file, rev_index_file)
-    search.Init_para(0.02, 4, 1, 100)
+    var snpcaller SNPCaller
+    snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)
 
-    var snpcaller randalx.SNPCaller
-    snpcaller.Init()
-
-    var queries_file = "../data-test-4M/reads-test1.txt"
+    var queries_file = "data-test-4M/reads/reads-test1.txt"
     var read []byte
-	var snp_profile map[int][][]byte
 	var isSNPCalled bool
 	var read_num int = 0
 	var snp_aligned_read_num int = 0
@@ -77,19 +71,17 @@ func TestApproxSearch_4M(t *testing.T) {
             read = line[0:100]
             //pos_mate = line[30:len(line) - 1]
             //fmt.Println("\nread to search, pos: ", string(read), string(pos_mate))
-            snp_profile, isSNPCalled = search.FindSNPProfile_read(read)
-            if isSNPCalled {
-            	snpcaller.UpdateSNPProfile(snp_profile)
-            	snp_aligned_read_num++
-            }
+			isSNPCalled = snpcaller.UpdateSNPProfile(read)
+			if isSNPCalled {
+	       	    snp_aligned_read_num++
+	        }
         }
     }
     fmt.Println("read_num: ", read_num)
     fmt.Println("snp_aligned_read_num: ", snp_aligned_read_num)
 
-    fmt.Println("@@@-Construct SNP profiles -------------------------")
-    SNP_Calling, SNP_Prob := snpcaller.CallSNP()
     fmt.Println("@@@-SNP Calling ------------------------------------")
-    snpcaller.SNPCall_tofile(SNP_Calling, SNP_Prob, "../data-test-4M/snp_calling_test.txt")
+    snpcaller.CallSNP()
+    snpcaller.SNPCall_tofile("data-test-4M/results/snp_calling_test.txt")
     fmt.Println("@@@-Finish ----------------------------------------")
 }
