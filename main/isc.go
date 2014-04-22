@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------------------
-// Copyright 2014 Nam Sy Vo
 // ISC - main program
+// Copyright 2014 Nam Sy Vo
 //----------------------------------------------------------------------------------------
 
 package main
@@ -10,6 +10,7 @@ import (
     "os"
     "bufio"
     "flag"
+    "github.com/namsyvo/ISC"
 )
 
 func main() {
@@ -27,9 +28,10 @@ func main() {
 	
     fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
 	
-    fmt.Println("Initializing indexes...")
-    var snpcaller SNPCaller
-    snpcaller.Init(*genome_file, *snp_file, *index_file, *rev_index_file, *read_len, float32(*seq_err), 4, 1, 32)
+    fmt.Println("Initializing indexes and parameters...")
+    var snpcaller isc.SNPCaller
+    snpcaller.Init(*genome_file, *snp_file, *index_file, *rev_index_file,
+					 *read_len, float32(*seq_err), 4, 1, 32)
 	
     fmt.Println("Aligning reads to the mutigenome...")
     var read []byte
@@ -40,13 +42,13 @@ func main() {
     var q_file string = *query_file
     f, err := os.Open(q_file)
     if err != nil {
-        panic("error opening file " + q_file)
+        panic("Error opening file " + q_file)
     }
     data := bufio.NewReader(f)
     var line []byte
     if q_file[len(q_file)-3:] == ".fq" {
 		for {
-			data.ReadBytes('\n') //ignore 1st line
+			data.ReadBytes('\n') //ignore 1st line in input FASTQ file
 			line, err = data.ReadBytes('\n')
 			if err != nil {
 				break
@@ -59,10 +61,10 @@ func main() {
 	        	    snp_aligned_read_num++
 		        }
             }
-            data.ReadBytes('\n') //ignore 3rd line
-            data.ReadBytes('\n') //ignore 4th line
+            data.ReadBytes('\n') //ignore 3rd line in input FASTQ file
+            data.ReadBytes('\n') //ignore 4th line in input FASTQ file
         }
-    } else {
+    } else { // for simple tab-delimited format
 		for {
 			line, err = data.ReadBytes('\n')
 			if err != nil {
@@ -82,7 +84,7 @@ func main() {
     fmt.Println("\tNumber of aligned reads: ", snp_aligned_read_num)
 	
     fmt.Println("Calling SNPs from alignment results...")
-    SNP_Calling, SNP_Prob := snpcaller.CallSNP()
-    snpcaller.SNPCall_tofile(SNP_Calling, SNP_Prob, *snp_call_file)
+    snpcaller.CallSNP()
+    snpcaller.SNPCall_tofile(*snp_call_file)
     fmt.Println("Finish, read the file ", *snp_call_file, " to check results")
 }
