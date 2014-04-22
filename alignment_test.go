@@ -41,15 +41,15 @@ func TestAlignment_4M(t *testing.T) {
 
     fmt.Println("@@@-Read-MultiGenome Alignment ----------------------")
 
-    var genome_file = "data-test-4M/genome_starred.txt"
-    var snp_file = "data-test-4M/SNPlocation.txt"
-    var index_file = "data-test-4M/genome_starred.txt.index"
-    var rev_index_file = "data-test-4M/genome_starred_rev.txt.index"
+    var genome_file = "data-test/genome_starred.txt"
+    var snp_file = "data-test/SNPlocation.txt"
+    var index_file = "data-test/genome_starred.txt.index"
+    var rev_index_file = "data-test/genome_starred_rev.txt.index"
 
     var snpcaller SNPCaller
     snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)
 
-    var queries_file = "data-test-4M/reads/reads-test1.txt"
+    var queries_file = "data-test/reads/reads_test1.txt"
     var read []byte
 	var isSNPCalled bool
 	var read_num int = 0
@@ -82,6 +82,6 @@ func TestAlignment_4M(t *testing.T) {
 
     fmt.Println("@@@-SNP Calling ------------------------------------")
     snpcaller.CallSNP()
-    snpcaller.SNPCall_tofile("data-test-4M/results/snp_calling_test.txt")
+    snpcaller.SNPCall_tofile("data-test/results/snpcalling_test1.txt")
     fmt.Println("@@@-Finish ----------------------------------------")
 }
