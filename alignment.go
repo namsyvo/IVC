@@ -1,10 +1,9 @@
-//----------------------------------------------------------------------------------------
-// Copyright 2013 Nam S. Vo
-// Approximate searching of reads on multigenomes based on FM index and a modified-version
-// of edit distance for read-multigenome alignment
-//----------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+// Aligning reads to multigenomes by extending exact matches based on read-multigenome edit distance.
+// Copyright 2014 Nam Sy Vo
+//--------------------------------------------------------------------------------------------------
 
-package randalx
+package isc
 
 import (
     "fmt"
@@ -12,137 +11,54 @@ import (
     "math/rand"
     "time"
     "sort"
-
-    //user-defined package
-    "distance2"
-    "multigenome"
-    "fmi"
+    "github.com/namsyvo/multigenome"
+    "github.com/namsyvo/distance"
 )
 
-// Search object with Parameters
-type Search struct {
+//Global variables
+var (
+    search Search //to find exact matches (seeds) between reads and multigenomes
+    DIST_THRES int //threshold for distances between reads and multigenomes
+    ITER_NUM int //number of random iterations to find proper seeds
+)
+
+type Aligner struct {
     SEQ []byte //multigenomes
     SNP_PROFILE map[int][][]byte //hash table of SNP profile (position, values)
     SAME_LEN_SNP map[int]int //hash table to indicate if SNPs has same length
     SORTED_SNP_POS []int //sorted array of SNP positions
-
-    FMI fmi.Index //FM-index of multigenomes
-    REV_FMI fmi.Index //FM-index of multigenomes
 }
 
-//Global variables
-var (
-    DIST_THRES int //threshold for distances between reads and multigenomes
-    ITER_NUM int //number of random iterations to find proper seeds
-    MAXIMUM_MATCH int //maximum of number of matches
-)
-
-//-----------------------------------------------------------------------------------------------------
-// Init function sets initial values for global variables and parameters for Search object
-//-----------------------------------------------------------------------------------------------------
-
-func (S *Search) Init_seq(genome_file, snp_file, index_file, rev_index_file string) {
-    S.SEQ = multigenome2.LoadMulti(genome_file)
-    S.SNP_PROFILE, S.SAME_LEN_SNP = multigenome2.LoadSNPLocation(snp_file)
-    S.SORTED_SNP_POS = make([]int, 0, len(S.SNP_PROFILE))
-    for k := range S.SNP_PROFILE {
-        S.SORTED_SNP_POS = append(S.SORTED_SNP_POS, k)
+//--------------------------------------------------------------------------------------------------
+// Init function sets initial values for global variables and parameters for Aligner object
+//--------------------------------------------------------------------------------------------------
+func (A *Aligner) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int, re float32, k, a, n int) {
+    A.SEQ = multigenome2.LoadMulti(genome_file)
+    A.SNP_PROFILE, A.SAME_LEN_SNP = multigenome2.LoadSNPLocation(snp_file)
+    A.SORTED_SNP_POS = make([]int, 0, len(A.SNP_PROFILE))
+    for k := range A.SNP_PROFILE {
+        A.SORTED_SNP_POS = append(A.SORTED_SNP_POS, k)
     }
-    sort.Sort(sort.IntSlice(S.SORTED_SNP_POS))
-    S.FMI = *fmi.Load(index_file)
-    S.REV_FMI = *fmi.Load(rev_index_file)
+    sort.Sort(sort.IntSlice(A.SORTED_SNP_POS))
 
-    /*
-    fmt.Println("SEQ: ", string(S.SEQ))
-    for _, value := range S.SNP_PROFILE {
-        for _, snp := range value {
-            fmt.Print(string(snp), "\t")
-        }
-        fmt.Println()
-    }
-    fmt.Println("SAME_LEN_SNP: ", S.SAME_LEN_SNP)
-    fmt.Println("SORTED_SNP_POS: ", S.SORTED_SNP_POS)
-    */
-    
-}
-
-func (S *Search) Init_para(read_len int, re float32, k, A int) {
     //Const for computing distance
     DIST_THRES = int(math.Ceil(float64(re) * float64(read_len) +
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
-    ITER_NUM = A * (DIST_THRES + 1)
-    MAXIMUM_MATCH = 32
-    distance.Init(DIST_THRES, S.SNP_PROFILE, S.SAME_LEN_SNP, read_len)
-    
-    //ITER_NUM = 5 // for testing
-    //DIST_THRES = 11 // for testing
+    ITER_NUM = a * (DIST_THRES + 1)
+    distance2.Init(DIST_THRES, A.SNP_PROFILE, A.SAME_LEN_SNP, read_len)
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
-    fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
-    
-}
 
-//-----------------------------------------------------------------------------------------------------
-// FindLCS function returns positions and distances of LCS between reads and multi-genomes.
-// It will use both BackwardSearch and ForwardSearch on multi-genomes
-//-----------------------------------------------------------------------------------------------------
-func (S Search) FindLCS(read []byte, p int) (int, int, []int, bool) {
-    read_len := len(read)
-    rev_read := make([]byte, read_len)
-    for i := 0; i < read_len; i++ {
-        rev_read[i] = read[read_len - i - 1]
-    }
-    var sp, ep int = 0, MAXIMUM_MATCH
-    var rev_s_pos, rev_e_pos, s_pos, e_pos int
-    var rev_result, result []int
-
-    rev_s_pos = p
-    rev_result = S.REV_FMI.BackwardSearch(rev_read, rev_s_pos)
-    _, _, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
-    //fmt.Println(rev_ep - rev_sp + 1, rev_e_pos, rev_s_pos, rev_s_pos - rev_e_pos, string(rev_read[rev_e_pos : rev_s_pos + 1]))
-
-    //convert rev_e_pos in forward search to s_pos in backward search
-    s_pos = read_len - rev_e_pos - 1
-    result = S.FMI.BackwardSearch(read, s_pos)
-    sp, ep, e_pos = result[0], result[1], result[2]
-
-    if ep - sp + 1 <= MAXIMUM_MATCH {
-        match_pos := make([]int, 0, MAXIMUM_MATCH)
-        for p := sp; p <= ep; p++ {
-            match_pos = append(match_pos, S.FMI.SA[p])
-        }
-        //fmt.Println(ep - sp + 1, e_pos, s_pos, s_pos - e_pos, string(read[e_pos : s_pos + 1]), match_pos)
-        return s_pos, e_pos, match_pos, true
-    }
-    return -1, -1, []int{}, false
-}
-
-//-----------------------------------------------------------------------------------------------------
-// IntervalHasSNP function determins whether [i, j] contains SNP positions which are stores in array A.
-// Implement interpolation search. A must be sorted in increasing order.
-//-----------------------------------------------------------------------------------------------------
-func (S Search) IntervalHasSNP(A []int, i, j int) bool {
-    L := 0
-    R := len(A) - 1
-    var m int
-	for A[L] <= i && i <= A[R] && A[L] != A[R] {
-		m = L + (R - L) * ((i - A[L]) / (A[R] - A[L]))  //out of range is possible here		
-		if (A[m] < i) {
-			L = m + 1;
-		} else if A[m] > i {
-			R = m - 1
-		} else {
-			return i <= j
-		}
-	}
-	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
+    search.Init(index_file, rev_index_file, n)
 }
 
 //-----------------------------------------------------------------------------------------------------
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (S Search) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int, []byte, []byte, []byte, []byte, map[int][]byte, map[int][]byte, bool) {
+func (A Aligner) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int, []byte, []byte,
+	 []byte, []byte, map[int][]byte, map[int][]byte, bool) {
+
     var ref_left_flank, ref_right_flank []byte
     read_left_flank := read[ : e_pos]
     read_right_flank := read[s_pos + 1 : ]
@@ -152,61 +68,55 @@ func (S Search) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int
     left_ext_add_len, right_ext_add_len := 0, 0
     i := 0
     for i = match_pos - e_pos; i < match_pos; i++ {
-        _, isSNP = S.SNP_PROFILE[i]
-        _, isSameLenSNP = S.SAME_LEN_SNP[i]
+        _, isSNP = A.SNP_PROFILE[i]
+        _, isSameLenSNP = A.SAME_LEN_SNP[i]
         if isSNP && !isSameLenSNP {
             left_ext_add_len++
         }
     }
     for i = match_pos + lcs_len; i < (match_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
-        _, isSNP = S.SNP_PROFILE[i]
-        _, isSameLenSNP = S.SAME_LEN_SNP[i]
+        _, isSNP = A.SNP_PROFILE[i]
+        _, isSameLenSNP = A.SAME_LEN_SNP[i]
         if isSNP && !isSameLenSNP {
             right_ext_add_len++
         }
     }
     left_most_pos := match_pos - e_pos - left_ext_add_len
     if left_most_pos >= 0 {
-        ref_left_flank = S.SEQ[left_most_pos : match_pos]
+        ref_left_flank = A.SEQ[left_most_pos : match_pos]
     } else {
-        ref_left_flank = S.SEQ[0 : match_pos]
+        ref_left_flank = A.SEQ[0 : match_pos]
     }
     right_most_pos := (match_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
-    if  right_most_pos <= len(S.SEQ) {
-        ref_right_flank = S.SEQ[match_pos + lcs_len : right_most_pos]
+    if  right_most_pos <= len(A.SEQ) {
+        ref_right_flank = A.SEQ[match_pos + lcs_len : right_most_pos]
     } else {
-        ref_right_flank = S.SEQ[match_pos + lcs_len : len(S.SEQ)]
+        ref_right_flank = A.SEQ[match_pos + lcs_len : len(A.SEQ)]
     }
 
-    left_d, left_D, left_m, left_n, left_S, left_T, _ :=
-     distance.BackwardDistanceMulti(read_left_flank, ref_left_flank, left_most_pos)
-	//if isEdit && left_m != 0 {
-	//	fmt.Print(left_m, "\t", left_n, "\t", string(read_left_flank), "\t", string(ref_left_flank), "\t")
-	//}
-    right_d, right_D, right_m, right_n, right_S, right_T, _ :=
-     distance.ForwardDistanceMulti(read_right_flank, ref_right_flank, match_pos + lcs_len)
-	//if isEdit && right_m != 0{
-	//	fmt.Println(right_m, "\t", right_n, "\t", string(read_right_flank), "\t", string(ref_right_flank))
-	//}
+    left_d, left_D, left_m, left_n, left_A, left_T, _ :=
+     distance2.BackwardDistanceMulti(read_left_flank, ref_left_flank, left_most_pos)
+    right_d, right_D, right_m, right_n, right_A, right_T, _ :=
+     distance2.ForwardDistanceMulti(read_right_flank, ref_right_flank, match_pos + lcs_len)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
-        left_snp := distance.BackwardTraceBack(read_left_flank, ref_left_flank,
-         left_m, left_n, left_S, left_T, left_most_pos)
-		//fmt.Print(left_m, "\t", left_n, "\t")
-        right_snp := distance.ForwardTraceBack(read_right_flank, ref_right_flank,
-         right_m, right_n, right_S, right_T, match_pos + lcs_len)
-		//fmt.Println(right_m, "\t", right_n)
-        return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, left_snp, right_snp, true
+        left_snp := distance2.BackwardTraceBack(read_left_flank, ref_left_flank,
+         left_m, left_n, left_A, left_T, left_most_pos)
+        right_snp := distance2.ForwardTraceBack(read_right_flank, ref_right_flank,
+         right_m, right_n, right_A, right_T, match_pos + lcs_len)
+        return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank,
+		left_snp, right_snp, true
     }
-    return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank, map[int][]byte{}, map[int][]byte{}, false
+    return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank,
+	map[int][]byte{}, map[int][]byte{}, false
 }
 
 //-----------------------------------------------------------------------------------------------------
 // FindSNPProfile_read returns SNP profile of new genome based on SNP profile of reference multi-genomes
 // and alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
-func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
+func (A *Aligner) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
 
     snp_profile := make(map[int][][]byte)
     var k int
@@ -219,13 +129,13 @@ func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
     for loop_num <= ITER_NUM {
         p = r.Intn(len(read) - 1) + 1
         //Call FindLCS to determine seed
-        s_pos, e_pos, match_pos, hasExactMatches = S.FindLCS(read, p)
+        s_pos, e_pos, match_pos, hasExactMatches = search.FindLCS(read, p)
         if hasExactMatches {
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
-                //if S.IntervalHasSNP(S.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
+                //if search.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
                     //Call ApproxSearch to determine extension
-                    _, _, _, _, _, left_snp, right_snp, isExtended := S.FindExtension(read, s_pos, e_pos, pos)
+                    _, _, _, _, _, left_snp, right_snp, isExtended := A.FindExtension(read, s_pos, e_pos, pos)
                     if isExtended {
                         //Determine SNP profile
                         for k, v = range left_snp {
@@ -238,15 +148,10 @@ func (S *Search) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
                 //}
             }
             if len(snp_profile) > 0 {
-				//fmt.Println()
                 return snp_profile, true
             }
-			//fmt.Println(string(read))
-			//fmt.Println(string(read[e_pos : s_pos + 1]), "\t", e_pos, "\t", s_pos, "\t", match_pos)
         }
         loop_num++
     }
-
-	//fmt.Println()
     return snp_profile, false
 }
