@@ -12,7 +12,6 @@ import (
     "time"
     "sort"
     "github.com/namsyvo/multigenome"
-    "github.com/namsyvo/distance"
 )
 
 //Global variables
@@ -33,8 +32,8 @@ type Aligner struct {
 // Init function sets initial values for global variables and parameters for Aligner object
 //--------------------------------------------------------------------------------------------------
 func (A *Aligner) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int, re float32, k, a, n int) {
-    A.SEQ = multigenome2.LoadMulti(genome_file)
-    A.SNP_PROFILE, A.SAME_LEN_SNP = multigenome2.LoadSNPLocation(snp_file)
+    A.SEQ = multigenome.LoadMulti(genome_file)
+    A.SNP_PROFILE, A.SAME_LEN_SNP = multigenome.LoadSNPLocation(snp_file)
     A.SORTED_SNP_POS = make([]int, 0, len(A.SNP_PROFILE))
     for k := range A.SNP_PROFILE {
         A.SORTED_SNP_POS = append(A.SORTED_SNP_POS, k)
@@ -45,7 +44,7 @@ func (A *Aligner) Init(genome_file, snp_file, index_file, rev_index_file string,
     DIST_THRES = int(math.Ceil(float64(re) * float64(read_len) +
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
     ITER_NUM = a * (DIST_THRES + 1)
-    distance2.Init(DIST_THRES, A.SNP_PROFILE, A.SAME_LEN_SNP, read_len)
+    multigenome.Init(DIST_THRES, A.SNP_PROFILE, A.SAME_LEN_SNP, read_len)
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
 
@@ -95,15 +94,15 @@ func (A Aligner) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (in
     }
 
     left_d, left_D, left_m, left_n, left_A, left_T, _ :=
-     distance2.BackwardDistanceMulti(read_left_flank, ref_left_flank, left_most_pos)
+     multigenome.BackwardDistanceMulti(read_left_flank, ref_left_flank, left_most_pos)
     right_d, right_D, right_m, right_n, right_A, right_T, _ :=
-     distance2.ForwardDistanceMulti(read_right_flank, ref_right_flank, match_pos + lcs_len)
+     multigenome.ForwardDistanceMulti(read_right_flank, ref_right_flank, match_pos + lcs_len)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
-        left_snp := distance2.BackwardTraceBack(read_left_flank, ref_left_flank,
+        left_snp := multigenome.BackwardTraceBack(read_left_flank, ref_left_flank,
          left_m, left_n, left_A, left_T, left_most_pos)
-        right_snp := distance2.ForwardTraceBack(read_right_flank, ref_right_flank,
+        right_snp := multigenome.ForwardTraceBack(read_right_flank, ref_right_flank,
          right_m, right_n, right_A, right_T, match_pos + lcs_len)
         return dis, read_left_flank, read_right_flank, ref_left_flank, ref_right_flank,
 		left_snp, right_snp, true

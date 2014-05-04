@@ -32,7 +32,7 @@ func main() {
     var snpcaller isc.SNPCaller
     snpcaller.Init(*genome_file, *snp_file, *index_file, *rev_index_file,
 					 *read_len, float32(*seq_err), 4, 1, 32)
-	
+
     fmt.Println("Aligning reads to the mutigenome...")
     var read []byte
     var has_SNP_call bool
@@ -46,14 +46,14 @@ func main() {
     }
     data := bufio.NewReader(f)
     var line []byte
-    if q_file[len(q_file)-3:] == ".fq" {
+    if q_file[len(q_file)-3:] == ".fq" || q_file[len(q_file)-6:] == ".fastq"  {
 		for {
 			data.ReadBytes('\n') //ignore 1st line in input FASTQ file
 			line, err = data.ReadBytes('\n')
 			if err != nil {
 				break
             }
-            if len(line) > 1 {
+            if len(line) >= *read_len {
 	        	read_num++
                 read = line[0 : *read_len]
 				has_SNP_call = snpcaller.UpdateSNPProfile(read)
@@ -70,7 +70,7 @@ func main() {
 			if err != nil {
 				break
 	        }
-	        if len(line) > 1 {
+	        if len(line) >= *read_len {
 				read_num++
 				read = line[0 : *read_len]
 				has_SNP_call = snpcaller.UpdateSNPProfile(read)
@@ -86,5 +86,5 @@ func main() {
     fmt.Println("Calling SNPs from alignment results...")
     snpcaller.CallSNP()
     snpcaller.SNPCall_tofile(*snp_call_file)
-    fmt.Println("Finish, check the file ", *snp_call_file, " for results")
+    fmt.Println("Finish, check the file", *snp_call_file, "for results")
 }
