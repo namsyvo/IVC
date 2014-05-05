@@ -30,7 +30,7 @@ func __(name string) {
 	fmt.Println()
 }
 
-func ISC_test_NC007194(t *testing.T) {
+func TestISC_NC007194(t *testing.T) {
 	defer __(o_())
 
     fmt.Println("@@@-Read-MultiGenome Alignment ----------------------")
@@ -43,7 +43,7 @@ func ISC_test_NC007194(t *testing.T) {
     var snpcaller SNPCaller
     snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)
 
-    var queries_file = "test_data/reads/reads_test1.txt"
+    var queries_file = "test_data/reads/test_reads.txt"
     var read []byte
 	var isSNPCalled bool
 	var read_num int = 0
@@ -76,6 +76,6 @@ func ISC_test_NC007194(t *testing.T) {
 
     fmt.Println("@@@-SNP Calling ------------------------------------")
     snpcaller.CallSNP()
-    snpcaller.SNPCall_tofile("test_data/results/called_snp_test1.txt")
+    snpcaller.SNPCall_tofile("test_data/results/test_called_snps.txt")
     fmt.Println("@@@-Finish ----------------------------------------")
 }
