@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------------------
 // Copyright 2013 Nam Sy Vo
-// Test for alignment module
+// Test for ISC
 //----------------------------------------------------------------------------------------
 
 package isc
@@ -8,7 +8,7 @@ package isc
 import (
 	"fmt"
 	"os"
-    "bufio"
+	"bufio"
 	"runtime"
 	"strings"
 	"testing"
@@ -30,13 +30,7 @@ func __(name string) {
 	fmt.Println()
 }
 
-type TestCase struct {
-	A []int
-	i, j int
-	result bool
-}
-
-func TestAlignment_4M(t *testing.T) {
+func ISC_test_NC007194(t *testing.T) {
 	defer __(o_())
 
     fmt.Println("@@@-Read-MultiGenome Alignment ----------------------")
