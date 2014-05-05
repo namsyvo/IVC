@@ -1,35 +1,53 @@
 ISC - An Integrated SNP Caller
-==============================
+===
 
-1. Install ISC
----------------
+
+1. Overview
+-----------
+
+
+2. Install ISC
+--------------
+Pre-requirement: GO environment is already set up properly.
+
 ```
 go get github.com/namsyvo/ISC
-```
-2. Usage
---------
-
-### 2.1 Istall ISC
-```
 cd $GOPATH/github.com/namsyvo/ISC
 ```
 
-### 2.2 Commands
+3. Usage
+--------
 
-2.2.1. Creating and indexing a reference multi-genome:
+### 3.1 Example command
+
+3.1.1. Creating and indexing a reference multi-genome
+
 ```
-go run main/index.go -g test\_data/refs/genome.txt -s test\_data/refs/ref\_dbSNP.vcf -i test\_data/indexes/genomestar.txt.index -r test\_data/indexes/genomestar_rev.txt.index
+go run main/index.go
+ -g test_data/refs/genome.txt -s test_data/refs/ref_dbSNP.vcf
+ -i test_data/indexes/genomestar.txt.index -r test_data/indexes/genomestar_rev.txt.index
 ```
 
-2.2.3. Calling SNPs from reads and the reference:
+3.1.2. Calling SNPs from reads and the reference
+
 ```
-go run main/isc.go -g test\_test/refs/multigenome.txt -s data-test/refs/SNPLocation.txt -i data-test/indexes/genomestar.txt.index -r data-test/indexes/genomestar_rev.txt.index -q data-test/reads/reads\_test1.fastq -c data-test/results/called\_snp\_test1.vcf
+go run main/isc.go
+ -g test_data/refs/multigenome.txt -s test_data/refs/SNPLocation.txt
+ -i test_data/indexes/genomestar.txt.index -r test_data/indexes/genomestar_rev.txt.index
+  -q test_data/reads/test_reads.fastq -c test_data/results/test_called_snps.vcf
 ```
 
-### 2.3 Parameters:
+### 3.2 Commands and options
 
 
-3. Data and other problems:
+### 3.3 Parameters
+
+
+### 3.4 Data-related problems
+
+
+3. Notes
+--------
 
 
 4. Contact
