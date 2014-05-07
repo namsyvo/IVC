@@ -43,32 +43,50 @@ func TestISC_NC007194(t *testing.T) {
     var snpcaller SNPCaller
     snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)
 
-    var queries_file = "test_data/reads/test_reads.txt"
-    var read []byte
-	var isSNPCalled bool
+    var q_file_1 = "test_data/reads/test_reads_1.fq"
+    var q_file_2 = "test_data/reads/test_reads_2.fq"
+    var read1, read2 []byte
 	var read_num int = 0
 	var snp_aligned_read_num int = 0
+    var read_len int = 100
+    var has_SNP_call bool
 
-    f, err := os.Open(queries_file)
-    if err != nil {
-        panic("error opening file " + queries_file)
+    f1, err1 := os.Open(q_file_1)
+    if err1 != nil {
+        panic("Error opening file " + q_file_1)
     }
-    data := bufio.NewReader(f)
-    fmt.Println("@@@-Aligning reads to mutigenome -------------------")
-    for {
-        line, err := data.ReadBytes('\n')
-        if err != nil {
-            break
-        }
-        if len(line) > 1 {
-        	read_num++
-            read = line[0:100]
-            //pos_mate = line[30:len(line) - 1]
-            //fmt.Println("\nread to search, pos: ", string(read), string(pos_mate))
-			isSNPCalled = snpcaller.UpdateSNPProfile(read)
-			if isSNPCalled {
-	       	    snp_aligned_read_num++
-	        }
+    f2, err2 := os.Open(q_file_2)
+    if err2 != nil {
+        panic("Error opening file " + q_file_2)
+    }
+    data1 := bufio.NewReader(f1)
+    data2 := bufio.NewReader(f2)
+    var line_f1, line_f2 []byte
+    if q_file_1[len(q_file_1)-3:] == ".fq" || q_file_1[len(q_file_1)-6:] == ".fastq"  {
+        for {
+            data1.ReadBytes('\n') //ignore 1st line in input FASTQ file
+            data2.ReadBytes('\n') //ignore 1st line in input FASTQ file
+            line_f1, err1 = data1.ReadBytes('\n')
+            line_f2, err2 = data2.ReadBytes('\n')
+            if err1 != nil {
+                break
+            }
+            if err2 != nil {
+                break
+            }
+            if len(line_f1) >= read_len && len(line_f2) >= read_len{
+                read_num++
+                read1 = line_f1[0 : read_len]
+                read2 = line_f2[0 : read_len]
+                has_SNP_call = snpcaller.UpdateSNPProfile(read1, read2)
+                if has_SNP_call {
+                    snp_aligned_read_num++
+                }
+            }
+            data1.ReadBytes('\n') //ignore 3rd line in input FASTQ file
+            data1.ReadBytes('\n') //ignore 4th line in input FASTQ file
+            data2.ReadBytes('\n') //ignore 3rd line in input FASTQ file
+            data2.ReadBytes('\n') //ignore 4th line in input FASTQ file
         }
     }
     fmt.Println("read_num: ", read_num)

@@ -14,12 +14,13 @@ import (
 )
 
 func main() {
-    var genome_file = flag.String("g", "", "multi-genome file")
-    var snp_file = flag.String("s", "", "snp profile file")
-    var index_file = flag.String("i", "", "index file of multigenome")
-    var rev_index_file = flag.String("r", "", "index file of reverse of multigenome")
-    var query_file = flag.String("q", "", "query file")
-    var snp_call_file = flag.String("c", "", "snp calling file")
+    var genome_file = flag.String("g", "../test_data/indexes/genome_starred.txt", "multi-genome file")
+    var snp_file = flag.String("s", "../test_data/indexes/SNPlocation.txt", "snp profile file")
+    var index_file = flag.String("i", "../test_data/indexes/genome_starred.txt.index", "index file of multigenome")
+    var rev_index_file = flag.String("r", "../test_data/indexes/genome_starred_rev.txt.index", "index file of reverse of multigenome")
+    var query_file_1 = flag.String("1", "../test_data/reads/test_reads_1.fq", "pairend read file, first end")
+    var query_file_2 = flag.String("2", "../test_data/reads/test_reads_2.fq", "pairend read file, second end")
+    var snp_call_file = flag.String("c", "../test_data/results/test_called_snps.txt", "snp calling file")
     var read_len = flag.Int("l", 100, "read length")
     var seq_err = flag.Float64("e", 0.01, "sequencing error")
     //var workers = flag.Int("w", 1, "number of workers")
@@ -34,46 +35,60 @@ func main() {
 					 *read_len, float32(*seq_err), 4, 1, 32)
 
     fmt.Println("Aligning reads to the mutigenome...")
-    var read []byte
+    var read1, read2 []byte
     var has_SNP_call bool
     var read_num int = 0
     var snp_aligned_read_num int = 0
 	
-    var q_file string = *query_file
-    f, err := os.Open(q_file)
-    if err != nil {
-        panic("Error opening file " + q_file)
+    var q_file_1 string = *query_file_1
+    var q_file_2 string = *query_file_2
+    f1, err1 := os.Open(q_file_1)
+    if err1 != nil {
+        panic("Error opening file " + q_file_1)
     }
-    data := bufio.NewReader(f)
-    var line []byte
-    if q_file[len(q_file)-3:] == ".fq" || q_file[len(q_file)-6:] == ".fastq"  {
+    f2, err2 := os.Open(q_file_2)
+    if err2 != nil {
+        panic("Error opening file " + q_file_2)
+    }
+    data1 := bufio.NewReader(f1)
+    data2 := bufio.NewReader(f2)
+    var line_f1, line_f2 []byte
+    if q_file_1[len(q_file_1)-3:] == ".fq" || q_file_1[len(q_file_1)-6:] == ".fastq"  {
 		for {
-			data.ReadBytes('\n') //ignore 1st line in input FASTQ file
-			line, err = data.ReadBytes('\n')
-			if err != nil {
+			data1.ReadBytes('\n') //ignore 1st line in input FASTQ file
+			data2.ReadBytes('\n') //ignore 1st line in input FASTQ file
+			line_f1, err1 = data1.ReadBytes('\n')
+			line_f2, err2 = data2.ReadBytes('\n')
+			if err1 != nil {
 				break
             }
-            if len(line) >= *read_len {
+			if err2 != nil {
+				break
+            }
+            if len(line_f1) >= *read_len && len(line_f2) >= *read_len{
 	        	read_num++
-                read = line[0 : *read_len]
-				has_SNP_call = snpcaller.UpdateSNPProfile(read)
+                read1 = line_f1[0 : *read_len]
+                read2 = line_f2[0 : *read_len]
+				has_SNP_call = snpcaller.UpdateSNPProfile(read1, read2)
 				if has_SNP_call {
 	        	    snp_aligned_read_num++
 		        }
             }
-            data.ReadBytes('\n') //ignore 3rd line in input FASTQ file
-            data.ReadBytes('\n') //ignore 4th line in input FASTQ file
+            data1.ReadBytes('\n') //ignore 3rd line in input FASTQ file
+            data1.ReadBytes('\n') //ignore 4th line in input FASTQ file
+            data2.ReadBytes('\n') //ignore 3rd line in input FASTQ file
+            data2.ReadBytes('\n') //ignore 4th line in input FASTQ file
         }
-    } else { // for simple tab-delimited format
+    } else { // for isc format, each read is in one line
 		for {
-			line, err = data.ReadBytes('\n')
-			if err != nil {
+			line_f1, err1 = data1.ReadBytes('\n')
+			if err1 != nil {
 				break
 	        }
-	        if len(line) >= *read_len {
+	        if len(line_f1) >= *read_len {
 				read_num++
-				read = line[0 : *read_len]
-				has_SNP_call = snpcaller.UpdateSNPProfile(read)
+				read1 = line_f1[0 : *read_len]
+				has_SNP_call = snpcaller.UpdateSNPProfile(read1, read2)
 				if has_SNP_call {
     	       	    snp_aligned_read_num++
     	        }

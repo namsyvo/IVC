@@ -37,8 +37,8 @@ func (S *SNPCaller) Init(genome_file, snp_file, index_file, rev_index_file strin
 //---------------------------------------------------------------------------------------------------
 // UpdateSNPProfile updates SNP profile found from alignment between reads and multi-genomes.
 //---------------------------------------------------------------------------------------------------
-func (S *SNPCaller) UpdateSNPProfile(read []byte) bool {
-	snp_prof, has_SNP_call := aligner.FindSNPProfile_read(read)
+func (S *SNPCaller) UpdateSNPProfile(read1, read2 []byte) bool {
+	snp_prof, has_SNP_call := aligner.FindSNPProfile_read(read1, read2)
 	if has_SNP_call {
 	    for snp_pos, snp_prof := range snp_prof {
 	        S.SNP_Prof[snp_pos] = append(S.SNP_Prof[snp_pos], snp_prof...)

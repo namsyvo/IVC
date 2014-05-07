@@ -115,26 +115,39 @@ func (A Aligner) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (in
 // FindSNPProfile_read returns SNP profile of new genome based on SNP profile of reference multi-genomes
 // and alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
-func (A *Aligner) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
+func (A *Aligner) FindSNPProfile_read(read1, read2 []byte) (map[int][][]byte, bool) {
 
     snp_profile := make(map[int][][]byte)
     var k int
     var v []byte
 
+    //Consider reverse complement of reads.
+    rev_read1 := reverse_complement(read1)
+    rev_read2 := reverse_complement(read2)
+    /*
+    fmt.Println("read1", string(read1))
+    fmt.Println("rev_read1", string(rev_read1))
+    fmt.Println("read2", string(read2))
+    fmt.Println("rev_read2", string(rev_read2))
+    */
+    //Find SNPs for pairend reads, treat each end separately and independently.
     var p int
     s_pos, e_pos, match_pos, hasExactMatches := -1, -1, []int{}, false
     loop_num := 1
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+    //Find SNPs for the first end
     for loop_num <= ITER_NUM {
-        p = r.Intn(len(read) - 1) + 1
+        //fmt.Println(loop_num, "read1", string(read1))
+        p = r.Intn(len(read1) - 1) + 1
         //Call FindLCS to determine seed
-        s_pos, e_pos, match_pos, hasExactMatches = search.FindLCS(read, p)
+        s_pos, e_pos, match_pos, hasExactMatches = search.FindLCS(read1, p)
         if hasExactMatches {
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
-                //if search.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read)) {
+                //if search.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
                     //Call ApproxSearch to determine extension
-                    _, _, _, _, _, left_snp, right_snp, isExtended := A.FindExtension(read, s_pos, e_pos, pos)
+                    _, _, _, _, _, left_snp, right_snp, isExtended := A.FindExtension(read1, s_pos, e_pos, pos)
                     if isExtended {
                         //Determine SNP profile
                         for k, v = range left_snp {
@@ -147,10 +160,134 @@ func (A *Aligner) FindSNPProfile_read(read []byte) (map[int][][]byte, bool) {
                 //}
             }
             if len(snp_profile) > 0 {
+                break
+            }
+        }
+        loop_num++
+    }
+
+    if (len(snp_profile) == 0) {
+        //Find SNPs for the reverse complement of first end
+        for loop_num <= ITER_NUM {
+            //fmt.Println(loop_num, "rev_read1", string(rev_read1))
+            p = r.Intn(len(rev_read1) - 1) + 1
+            //Call FindLCS to determine seed
+            s_pos, e_pos, match_pos, hasExactMatches = search.FindLCS(rev_read1, p)
+            if hasExactMatches {
+                for _, pos := range match_pos {
+                    //Call IntervalHasSNP to determine whether extension is needed
+                    //if search.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
+                        //Call ApproxSearch to determine extension
+                        _, _, _, _, _, left_snp, right_snp, isExtended := A.FindExtension(rev_read1, s_pos, e_pos, pos)
+                        if isExtended {
+                            //Determine SNP profile
+                            for k, v = range left_snp {
+                                snp_profile[k] = append(snp_profile[k], v)
+                            }
+                            for k, v = range right_snp {
+                                snp_profile[k] = append(snp_profile[k], v)
+                            }
+                        }
+                    //}
+                }
+                if len(snp_profile) > 0 {
+                    break
+                }
+            }
+            loop_num++
+        }
+    }
+
+    snp_prof_len_1 := len(snp_profile)
+
+    //Find SNPs for the second end
+    loop_num = 1
+    snp_found_num := 0
+    for loop_num <= ITER_NUM {
+        //fmt.Println(loop_num, "read2", string(read2))
+        p = r.Intn(len(read2) - 1) + 1
+        //Call FindLCS to determine seed
+        s_pos, e_pos, match_pos, hasExactMatches = search.FindLCS(read2, p)
+        if hasExactMatches {
+            for _, pos := range match_pos {
+                //Call IntervalHasSNP to determine whether extension is needed
+                //if search.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
+                    //Call ApproxSearch to determine extension
+                    _, _, _, _, _, left_snp, right_snp, isExtended := A.FindExtension(read2, s_pos, e_pos, pos)
+                    if isExtended {
+                        snp_found_num += 1
+                        //Determine SNP profile
+                        for k, v = range left_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                        for k, v = range right_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                    }
+                //}
+            }
+            if snp_found_num > 0 {
                 return snp_profile, true
             }
         }
         loop_num++
     }
-    return snp_profile, false
+
+    //Find SNPs for the reverse complement of second end
+    loop_num = 1
+    snp_found_num = 0
+    for loop_num <= ITER_NUM {
+        //fmt.Println(loop_num, "rev_read2", string(rev_read2))
+        p = r.Intn(len(rev_read2) - 1) + 1
+        //Call FindLCS to determine seed
+        s_pos, e_pos, match_pos, hasExactMatches = search.FindLCS(rev_read2, p)
+        if hasExactMatches {
+            for _, pos := range match_pos {
+                //Call IntervalHasSNP to determine whether extension is needed
+                //if search.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
+                    //Call ApproxSearch to determine extension
+                    _, _, _, _, _, left_snp, right_snp, isExtended := A.FindExtension(rev_read2, s_pos, e_pos, pos)
+                    if isExtended {
+                        snp_found_num += 1
+                        //Determine SNP profile
+                        for k, v = range left_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                        for k, v = range right_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                    }
+                //}
+            }
+            if snp_found_num > 0 {
+                return snp_profile, true
+            }
+        }
+        loop_num++
+    }
+
+    if snp_prof_len_1 > 0 {
+        return snp_profile, true
+    } else {
+        return snp_profile, false
+    }
+}
+
+func reverse_complement(read []byte) []byte {
+    l := len(read)
+    rev_read := make([]byte, l)
+    for idx, elem := range read {
+        if elem == 'A' {
+            rev_read[l-1-idx] = 'T'
+        } else if (elem == 'T') {
+            rev_read[l-1-idx] = 'A'
+        } else if (elem == 'C') {
+            rev_read[l-1-idx] = 'G'
+        } else if (elem == 'G') {
+            rev_read[l-1-idx] = 'C'
+        } else {
+            rev_read[l-1-idx] = elem
+        }
+    }
+    return rev_read
 }
