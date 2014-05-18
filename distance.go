@@ -10,28 +10,14 @@ import (
 	"math"
 )
 
-//-------------------------------------------------------------------------------------------------
-// Constants and global variables.
-//-------------------------------------------------------------------------------------------------
-
-// SNP profile
-//var SNP_PROFILE map[int][][]byte
-
-// Same length SNP
-//var SAME_LEN_SNP map[int]int
-
-// Distance threshold for early break
-//var DIST_THRES int = math.MaxInt16
-
 // Value for Infinity
 var INF int = math.MaxInt16
 
 //-------------------------------------------------------------------------------------------------
 // Cost functions for computing distance between reads and multi-genomes.
+// Input slices should have same length
 //-------------------------------------------------------------------------------------------------
 
-// Cost for "SNP match"
-// Input slices should have same length
 func Cost(s, t []byte) int {
 	for i:= 0; i < len(s); i++ {
 		if s[i] != t[i] {
@@ -42,17 +28,8 @@ func Cost(s, t []byte) int {
 }
 
 //-------------------------------------------------------------------------------------------------
-// Functions for computing distance between reads and multi-genomes.
+// Functions for computing distance and alignment between reads and multi-genomes.
 //-------------------------------------------------------------------------------------------------
-
-/*
-// Initilize constants and global variables
-func Init(pDIST_THRES int, pSNP_PROFILE map[int][][]byte, pSAME_LEN_SNP map[int]int, read_len int) {
-	SNP_PROFILE = pSNP_PROFILE
-	SAME_LEN_SNP = pSAME_LEN_SNP
-	DIST_THRES = pDIST_THRES
-}
-*/
 
 //-------------------------------------------------------------------------------------------------
 // Calculate the distance between s and t in backward direction.

@@ -5,7 +5,6 @@
 
 package isc
 
-
 //--------------------------------------------------------------------------------------------------
 // IntervalHasSNP determines whether [i, j] contains SNP positions which are stores in array A.
 // This function impelements interpolation search. The array A must be sorted in increasing order.
@@ -49,4 +48,3 @@ func ReverseComplement(read []byte) []byte {
     }
     return rev_read
 }
-

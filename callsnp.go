@@ -30,17 +30,16 @@ type SNPProf struct {
 func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int,
 	seq_err float32, k, a, n int) {
 
+    index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
     S.SNP_Prof = make(map[int][][]byte)
     S.SNP_Call = make(map[int][]byte)
     S.SNP_Prob = make(map[int][]int)
-
-    index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 }
 
-//-----------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 // FindSNPProfile returns SNP profile of new genome based on SNP profile of reference multi-genomes
 // and alignment between reads and multi-genomes.
-//-----------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 func (I *Index) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
 
     snp_profile := make(map[int][][]byte)

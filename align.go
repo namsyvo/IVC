@@ -1,11 +1,9 @@
 //--------------------------------------------------------------------------------------------------
 // Aligning reads to multigenomes by extending exact matches based on read-multigenome edit distance.
-// Copyright 2014 Nam Sy Vo
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-// Finding matches betwwen reads and multigenomes using exact search with FM index. Exact search
-// is perfomed with regard to a random position on reads.
+// Finding exact matches betwwen reads and multigenomes using exact search with FM index.
+// Exact search is perfomed with regard to a random position on reads.
+// Finding inexact matches betwwen reads and multigenomes by extending FM-index based exact matches
+// using edit distance between reads and multigenomes.
 // Determining whether an interval on multigenomes contains a SNP position using interpolation search.
 // Copyright 2014 Nam Sy Vo
 //--------------------------------------------------------------------------------------------------
@@ -18,7 +16,6 @@ import (
     "math"
     "sort"
     "github.com/vtphan/fmi" //to use FM index
-    //"github.com/namsyvo/multigenome" //to use multigenome
 )
 
 //Global variables
