@@ -4,7 +4,7 @@
 // Copyright 2014 Nam Sy Vo
 //-------------------------------------------------------------------------------------------------
 
-package multigenome
+package isc
 
 import (
 	"math"
@@ -15,13 +15,13 @@ import (
 //-------------------------------------------------------------------------------------------------
 
 // SNP profile
-var SNP_PROFILE map[int][][]byte
+//var SNP_PROFILE map[int][][]byte
 
 // Same length SNP
-var SAME_LEN_SNP map[int]int
+//var SAME_LEN_SNP map[int]int
 
 // Distance threshold for early break
-var DIST_THRES int = math.MaxInt16
+//var DIST_THRES int = math.MaxInt16
 
 // Value for Infinity
 var INF int = math.MaxInt16
@@ -45,12 +45,14 @@ func Cost(s, t []byte) int {
 // Functions for computing distance between reads and multi-genomes.
 //-------------------------------------------------------------------------------------------------
 
+/*
 // Initilize constants and global variables
 func Init(pDIST_THRES int, pSNP_PROFILE map[int][][]byte, pSAME_LEN_SNP map[int]int, read_len int) {
 	SNP_PROFILE = pSNP_PROFILE
 	SAME_LEN_SNP = pSAME_LEN_SNP
 	DIST_THRES = pDIST_THRES
 }
+*/
 
 //-------------------------------------------------------------------------------------------------
 // Calculate the distance between s and t in backward direction.
@@ -58,7 +60,7 @@ func Init(pDIST_THRES int, pSNP_PROFILE map[int][][]byte, pSAME_LEN_SNP map[int]
 // 	t is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func BackwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]byte, [][][]byte, bool) {
+func (I Index) BackwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]byte, [][][]byte, bool) {
 	
     var cost int
     var d, min_d int
@@ -71,8 +73,8 @@ func BackwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]
     d = 0
     m, n := len(s), len(t)
     for m > 0 && n > 0 {
-		snp_values, is_snp = SNP_PROFILE[pos + n - 1]
-		snp_len, is_same_len_snp = SAME_LEN_SNP[pos + n - 1]
+		snp_values, is_snp = I.SNP_PROFILE[pos + n - 1]
+		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + n - 1]
     	if !is_snp {
         	if s[m-1] != t[n-1] {
         		d++
@@ -121,7 +123,7 @@ func BackwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]
 	var temp_dis, min_index int
     for i = 1; i <= m; i++ {
         for j = 1; j <= n; j++ {
-			snp_values, is_snp = SNP_PROFILE[pos + j - 1]
+			snp_values, is_snp = I.SNP_PROFILE[pos + j - 1]
 	    	if !is_snp {
 				if s[i-1] != t[j-1] {
 					D[i][j] = D[i - 1][j - 1] + 1
@@ -162,7 +164,7 @@ func BackwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]
 // 	t is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func BackwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, pos int) map[int][]byte {
+func (I Index) BackwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, pos int) map[int][]byte {
 	
 	var is_snp bool
 	var snp_len int
@@ -173,7 +175,7 @@ func BackwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, po
 	}
 	var i, j int = m, n
 	for  i > 0 || j > 0 {
-		_, is_snp = SNP_PROFILE[pos + j - 1]
+		_, is_snp = I.SNP_PROFILE[pos + j - 1]
 		if i > 0 && j > 0 {
 		  	if !is_snp {
 		  		i, j = i - 1, j - 1
@@ -201,7 +203,7 @@ func BackwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, po
 // 	t is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func ForwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]byte, [][][]byte, bool) {
+func (I Index) ForwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]byte, [][][]byte, bool) {
 	
     M, N := len(s), len(t)
 	
@@ -217,8 +219,8 @@ func ForwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]b
     d = 0
     m, n := M, N
     for m > 0 && n > 0 {
-		snp_values, is_snp = SNP_PROFILE[pos + (N - 1) - (n - 1)]
-		snp_len, is_same_len_snp = SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
+		snp_values, is_snp = I.SNP_PROFILE[pos + (N - 1) - (n - 1)]
+		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
     	if !is_snp {
         	if s[(M - 1) - (m - 1)] != t[(N - 1) - (n - 1)] {
         		d++
@@ -268,7 +270,7 @@ func ForwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]b
 	var temp_dis, min_index int
     for i = 1; i <= m; i++ {
         for j = 1; j <= n; j++ {
-			snp_values, is_snp = SNP_PROFILE[pos + (N - 1) - (j - 1)]
+			snp_values, is_snp = I.SNP_PROFILE[pos + (N - 1) - (j - 1)]
 		    if !is_snp {
 				if s[(M - 1) - (i - 1)] != t[(N - 1) - (j - 1)] {
 					D[i][j] = D[i - 1][j - 1] + 1
@@ -309,7 +311,7 @@ func ForwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, map[int][]b
 // 	t is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func ForwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, pos int) map[int][]byte {
+func (I Index) ForwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, pos int) map[int][]byte {
 	
 	var is_snp bool
 	var snp_len int
@@ -321,7 +323,7 @@ func ForwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][]byte, pos
 	var i, j int = m, n
 	var M, N int = len(s), len(t)
 	for  i > 0 || j > 0 {
-		_, is_snp = SNP_PROFILE[pos + (N - 1) - (j - 1)]
+		_, is_snp = I.SNP_PROFILE[pos + (N - 1) - (j - 1)]
 		if i > 0 && j > 0 {
 		  	if !is_snp {
 		  		i, j = i - 1, j - 1

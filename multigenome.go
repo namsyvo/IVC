@@ -5,7 +5,7 @@
 // Modified by Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
-package multigenome
+package isc
 
 import (
 	"bufio"
@@ -22,7 +22,7 @@ type SNP struct{
 	profile []string
 }
 
-func LoadSNPLocation(file_name string )  (map[int] [][]byte, map[int]int) {
+func (I *Index) LoadSNPLocation(file_name string )  (map[int] [][]byte, map[int]int) {
 	//location := make(map[int]SNP)
 	barr := make(map[int][][]byte)
 	is_equal := make(map[int]int)
@@ -68,7 +68,7 @@ func LoadSNPLocation(file_name string )  (map[int] [][]byte, map[int]int) {
 	return barr, is_equal
 }
 
-func SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
+func (I Index) SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
 	file, err := os.Create(file_name)
 	if  err != nil {
         return
@@ -88,7 +88,7 @@ func SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
 	}	
 }
 
-func SaveMulti(file_name string , multi []byte) {
+func (I Index) SaveMulti(file_name string , multi []byte) {
 	file, err := os.Create(file_name)
     if err != nil {
         // handle the error here
@@ -98,7 +98,7 @@ func SaveMulti(file_name string , multi []byte) {
     file.Write(multi)
 }
 
-func LoadMulti(file_name string) []byte {
+func (I Index) LoadMulti(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
     if err != nil {
         return nil

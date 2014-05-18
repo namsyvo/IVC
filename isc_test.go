@@ -40,7 +40,7 @@ func TestISC_NC007194(t *testing.T) {
     var index_file = "test_data/indexes/genome_starred.txt.index"
     var rev_index_file = "test_data/indexes/genome_starred_rev.txt.index"
 
-    var snpcaller SNPCaller
+    var snpcaller SNPProf
     snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)
 
     var q_file_1 = "test_data/reads/test_reads_1.fq"

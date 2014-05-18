@@ -14,13 +14,13 @@ import (
 )
 
 func main() {
-    var genome_file = flag.String("g", "../test_data/indexes/genome_starred.txt", "multi-genome file")
-    var snp_file = flag.String("s", "../test_data/indexes/SNPlocation.txt", "snp profile file")
-    var index_file = flag.String("i", "../test_data/indexes/genome_starred.txt.index", "index file of multigenome")
-    var rev_index_file = flag.String("r", "../test_data/indexes/genome_starred_rev.txt.index", "index file of reverse of multigenome")
-    var query_file_1 = flag.String("1", "../test_data/reads/test_reads_1.fq", "pairend read file, first end")
-    var query_file_2 = flag.String("2", "../test_data/reads/test_reads_2.fq", "pairend read file, second end")
-    var snp_call_file = flag.String("c", "../test_data/results/test_called_snps.txt", "snp calling file")
+    var genome_file = flag.String("g", "", "multi-genome file")
+    var snp_file = flag.String("s", "", "snp profile file")
+    var index_file = flag.String("i", "", "index file of multigenome")
+    var rev_index_file = flag.String("r", "", "index file of reverse of multigenome")
+    var query_file_1 = flag.String("1", "", "pairend read file, first end")
+    var query_file_2 = flag.String("2", "", "pairend read file, second end")
+    var snp_call_file = flag.String("c", "", "snp calling file")
     var read_len = flag.Int("l", 100, "read length")
     var seq_err = flag.Float64("e", 0.01, "sequencing error")
     //var workers = flag.Int("w", 1, "number of workers")
@@ -30,7 +30,7 @@ func main() {
 	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
 
     fmt.Println("Initializing indexes and parameters...")
-    var snpcaller isc.SNPCaller
+    var snpcaller isc.SNPProf
     snpcaller.Init(*genome_file, *snp_file, *index_file, *rev_index_file,
 					 *read_len, float32(*seq_err), 4, 1, 32)
 
