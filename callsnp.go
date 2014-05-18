@@ -40,7 +40,7 @@ func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string,
 // FindSNPProfile returns SNP profile of new genome based on SNP profile of reference multi-genomes
 // and alignment between reads and multi-genomes.
 //--------------------------------------------------------------------------------------------------
-func (I *Index) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
+func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
 
     snp_profile := make(map[int][][]byte)
     var k int
@@ -202,7 +202,7 @@ func (I *Index) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
 // UpdateSNPProfile updates SNP profile found from alignment between reads and multi-genomes.
 //---------------------------------------------------------------------------------------------------
 func (S *SNPProf) UpdateSNPProfile(read1, read2 []byte) bool {
-	snp_prof, has_SNP_call := index.FindSNPProfile(read1, read2)
+	snp_prof, has_SNP_call := S.FindSNPProfile(read1, read2)
 	if has_SNP_call {
 	    for snp_pos, snp_prof := range snp_prof {
 	        S.SNP_Prof[snp_pos] = append(S.SNP_Prof[snp_pos], snp_prof...)
