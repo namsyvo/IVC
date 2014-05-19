@@ -88,7 +88,7 @@ func (I Index) SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
 	}	
 }
 
-func (I Index) SaveMulti(file_name string , multi []byte) {
+func (I Index) SaveMultigenome(file_name string , multi []byte) {
 	file, err := os.Create(file_name)
     if err != nil {
         // handle the error here
@@ -98,7 +98,7 @@ func (I Index) SaveMulti(file_name string , multi []byte) {
     file.Write(multi)
 }
 
-func (I Index) LoadMulti(file_name string) []byte {
+func (I Index) LoadMultigenome(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
     if err != nil {
         return nil
@@ -108,7 +108,7 @@ func (I Index) LoadMulti(file_name string) []byte {
 }
 
 // string * multi-genome
-func buildMultigenome2(SNP_arr map[int]SNP, seq []byte) []byte {
+func BuildMultigenome(SNP_arr map[int]SNP, seq []byte) []byte {
 	multi := make([]byte, len(seq))
 	copy(multi, seq)
 	for key, _ := range SNP_arr {
@@ -117,7 +117,7 @@ func buildMultigenome2(SNP_arr map[int]SNP, seq []byte) []byte {
 	return multi
 }
 
-func vcfRead(sequence_file string) map[int]SNP {
+func ReadVCF(sequence_file string) map[int]SNP {
 	array := make(map[int]SNP)
 	f,err := os.Open(sequence_file)
     if err != nil{
@@ -191,7 +191,7 @@ func vcfRead(sequence_file string) map[int]SNP {
     return array
 }
 
-func fastaRead(sequence_file string) []byte {
+func ReadFASTA(sequence_file string) []byte {
     f,err := os.Open(sequence_file)
     if err != nil{
         fmt.Printf("%v\n",err)

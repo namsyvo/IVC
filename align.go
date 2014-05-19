@@ -20,7 +20,6 @@ import (
 
 //Global variables
 var (
-    //search Search //to find exact matches (seeds) between reads and multigenomes
     DIST_THRES int = math.MaxInt16 //threshold for distances between reads and multigenomes
     ITER_NUM int //number of random iterations to find proper seeds
     MAXIMUM_MATCH int //maximum number of matches
@@ -39,7 +38,7 @@ type Index struct {
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
 func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int, re float32, k, a, n int) {
-    I.SEQ = I.LoadMulti(genome_file)
+    I.SEQ = I.LoadMultigenome(genome_file)
     I.SNP_PROFILE, I.SAME_LEN_SNP = I.LoadSNPLocation(snp_file)
     I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROFILE))
     for k := range I.SNP_PROFILE {
@@ -54,21 +53,19 @@ func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, r
     DIST_THRES = int(math.Ceil(float64(re) * float64(read_len) +
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
     ITER_NUM = a * (DIST_THRES + 1)
-
-    //multigenome.Init(DIST_THRES, I.SNP_PROFILE, I.SAME_LEN_SNP, read_len)
-
     MAXIMUM_MATCH = n
 
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
-
+    fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
+    fmt.Println("INF: ", INF)
 }
 
 //--------------------------------------------------------------------------------------------------
 // Bachward Search with FM-index, start from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
 
-func (I Index) BackwardSearch(index fmi.Index, pattern []byte, start_pos int) []int {
+func (I Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) []int {
 	var sp, ep, offset int
 	var ok bool
 	
@@ -102,10 +99,10 @@ func (I Index) BackwardSearch(index fmi.Index, pattern []byte, start_pos int) []
 }
 
 //--------------------------------------------------------------------------------------------------
-// FindLCS function returns positions and distances of LCS between reads and multi-genomes.
+// FindSeeds function returns positions and distances of LCS between reads and multi-genomes.
 // It uses both backward search and forward search (backward search on reverse references).
 //--------------------------------------------------------------------------------------------------
-func (I Index) FindLCS(read []byte, p int) (int, int, []int, bool) {
+func (I Index) FindSeeds(read []byte, p int) (int, int, []int, bool) {
     read_len := len(read)
     rev_read := make([]byte, read_len)
     for i := 0; i < read_len; i++ {
@@ -116,12 +113,12 @@ func (I Index) FindLCS(read []byte, p int) (int, int, []int, bool) {
     var rev_result, result []int
 	
     rev_s_pos = p
-    rev_result = I.BackwardSearch(I.REV_FMI, rev_read, rev_s_pos)
+    rev_result = I.BackwardSearchFrom(I.REV_FMI, rev_read, rev_s_pos)
     _, _, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
 	
     //convert rev_e_pos in forward search to s_pos in backward search
     s_pos = read_len - rev_e_pos - 1
-    result = I.BackwardSearch(I.FMI, read, s_pos)
+    result = I.BackwardSearchFrom(I.FMI, read, s_pos)
     sp, ep, e_pos = result[0], result[1], result[2]
 	
     if ep - sp + 1 <= MAXIMUM_MATCH {
@@ -138,7 +135,7 @@ func (I Index) FindLCS(read []byte, p int) (int, int, []int, bool) {
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I Index) FindExtension(read []byte, s_pos, e_pos int, match_pos int) (int, []byte, []byte,
+func (I Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int) (int, []byte, []byte,
 	 []byte, []byte, map[int][]byte, map[int][]byte, bool) {
 
     var ref_left_flank, ref_right_flank []byte
