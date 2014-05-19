@@ -17,6 +17,7 @@ import (
 //Global variables
 var (
     index Index
+    start_pos int = 5
 )
 
 //SNP caller object with Parameters
@@ -55,16 +56,16 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
     fmt.Println("read2", string(read2))
     fmt.Println("rev_read2", string(rev_read2))
     */
+
     //Find SNPs for pairend reads, treat each end separately and independently.
-    var p int
     s_pos, e_pos, match_pos, hasExactMatches := -1, -1, []int{}, false
-    loop_num := 1
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
     //Find SNPs for the first end
+    var p int = start_pos
+    loop_num := 1
     for loop_num <= ITER_NUM {
         //fmt.Println(loop_num, "read1", string(read1))
-        p = r.Intn(len(read1) - 1) + 1
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(read1, p)
         if hasExactMatches {
@@ -88,39 +89,34 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
                 break
             }
         }
-        loop_num++
-    }
-
-    if (len(snp_profile) == 0) {
-        //Find SNPs for the reverse complement of first end
-        for loop_num <= ITER_NUM {
-            //fmt.Println(loop_num, "rev_read1", string(rev_read1))
-            p = r.Intn(len(rev_read1) - 1) + 1
-            //Call FindSeeds to determine seed
-            s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read1, p)
-            if hasExactMatches {
-                for _, pos := range match_pos {
-                    //Call IntervalHasSNP to determine whether extension is needed
-                    //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
-                        //Call ApproxSearch to determine extension
-                        _, _, _, _, _, left_snp, right_snp, isExtended := index.FindExtensions(rev_read1, s_pos, e_pos, pos)
-                        if isExtended {
-                            //Determine SNP profile
-                            for k, v = range left_snp {
-                                snp_profile[k] = append(snp_profile[k], v)
-                            }
-                            for k, v = range right_snp {
-                                snp_profile[k] = append(snp_profile[k], v)
-                            }
+        //Find SNPs for the reverse complement of second end
+        //fmt.Println(loop_num, "rev_read1", string(rev_read1))
+        //Call FindSeeds to determine seed
+        s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read1, p)
+        if hasExactMatches {
+            for _, pos := range match_pos {
+                //Call IntervalHasSNP to determine whether extension is needed
+                //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
+                    //Call ApproxSearch to determine extension
+                    _, _, _, _, _, left_snp, right_snp, isExtended := index.FindExtensions(rev_read1, s_pos, e_pos, pos)
+                    if isExtended {
+                        //Determine SNP profile
+                        for k, v = range left_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
                         }
-                    //}
-                }
-                if len(snp_profile) > 0 {
-                    break
-                }
+                        for k, v = range right_snp {
+                            snp_profile[k] = append(snp_profile[k], v)
+                        }
+                    }
+                //}
             }
-            loop_num++
+            if len(snp_profile) > 0 {
+                break
+            }
         }
+        //Take a random position to search
+        p = r.Intn(len(read1) - 1) + 1
+        loop_num++
     }
 
     snp_prof_len_1 := len(snp_profile)
@@ -128,9 +124,9 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
     //Find SNPs for the second end
     loop_num = 1
     snp_found_num := 0
+    p = start_pos
     for loop_num <= ITER_NUM {
         //fmt.Println(loop_num, "read2", string(read2))
-        p = r.Intn(len(read2) - 1) + 1
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(read2, p)
         if hasExactMatches {
@@ -155,15 +151,8 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
                 return snp_profile, true
             }
         }
-        loop_num++
-    }
-
-    //Find SNPs for the reverse complement of second end
-    loop_num = 1
-    snp_found_num = 0
-    for loop_num <= ITER_NUM {
+        //Find SNPs for the reverse complement of second end
         //fmt.Println(loop_num, "rev_read2", string(rev_read2))
-        p = r.Intn(len(rev_read2) - 1) + 1
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read2, p)
         if hasExactMatches {
@@ -188,6 +177,8 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
                 return snp_profile, true
             }
         }
+        //Take a random position to search
+        p = r.Intn(len(read2) - 1) + 1
         loop_num++
     }
 
@@ -217,7 +208,7 @@ func (S *SNPProf) UpdateSNPProfile(read1, read2 []byte) bool {
 // GenerateSNP returns called SNPs and related information based on SNP profile constructed from
 // alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
-func (S SNPProf) CallSNP() (map[int][]byte, map[int][]int) {
+func (S SNPProf) CallSNP() {
     var snp []byte
     var snp_pos int
     var snp_prof [][]byte
@@ -240,7 +231,6 @@ func (S SNPProf) CallSNP() (map[int][]byte, map[int][]int) {
         S.SNP_Call[snp_pos] = []byte(major_snp)
         S.SNP_Prob[snp_pos] = []int{major_num, len(snp_prof)}
     }
-    return S.SNP_Call, S.SNP_Prob
 }
 
 //-------------------------------------------------------------------------------------------------------
