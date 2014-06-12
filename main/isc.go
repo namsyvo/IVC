@@ -10,7 +10,7 @@ import (
     "os"
     "bufio"
     "flag"
-    "github.com/namsyvo/isc"
+    "github.com/namsyvo/ISC"
 )
 
 func main() {

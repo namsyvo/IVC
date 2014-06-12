@@ -8,7 +8,7 @@ package main
 import (
     "fmt"
     "flag"
-    "github.com/namsyvo/isc"
+    "github.com/namsyvo/ISC"
     "github.com/vtphan/fmi"
 )
 
