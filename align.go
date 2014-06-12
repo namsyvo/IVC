@@ -25,21 +25,12 @@ var (
     MAXIMUM_MATCH int //maximum number of matches
 )
 
-type Index struct {
-    SEQ []byte //multigenomes
-    SNP_PROFILE map[int][][]byte //hash table of SNP profile (position, values)
-    SAME_LEN_SNP map[int]int //hash table to indicate if SNPs has same length
-    SORTED_SNP_POS []int //sorted array of SNP positions
-    FMI fmi.Index //FM-index of multigenomes
-    REV_FMI fmi.Index //FM-index of multigenomes
-}
-
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
 func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int, re float32, k, a, n int) {
-    I.SEQ = I.LoadMultigenome(genome_file)
-    I.SNP_PROFILE, I.SAME_LEN_SNP = I.LoadSNPLocation(snp_file)
+    I.SEQ = LoadMultigenome(genome_file)
+    I.SNP_PROFILE, I.SAME_LEN_SNP = LoadSNPLocation(snp_file)
     I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROFILE))
     for k := range I.SNP_PROFILE {
         I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)
@@ -68,7 +59,7 @@ func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, r
 func (I Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) []int {
 	var sp, ep, offset int
 	var ok bool
-	
+
 	c := pattern[start_pos]
 	sp, ok = index.C[c]
 	if ! ok {

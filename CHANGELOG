@@ -1,2 +1,12 @@
-## 0.1
-Initial version
+## 0.1 Initial version
+- Single-end reads
+- No reverse complement
+
+## 0.2
+- Work with reverse complement of reads
+- Work with pair-end reads
+- Re-organize code, test modules, test data
+
+## 0.3
+- Add indexing
+- 
