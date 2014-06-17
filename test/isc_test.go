@@ -36,10 +36,10 @@ func TestISC_NC007194(t *testing.T) {
 
     fmt.Println("@@@-Read-MultiGenome Alignment ----------------------")
 
-    var genome_file = "../test_data/indexes/genome_starred.txt"
-    var snp_file = "../test_data/indexes/SNPlocation.txt"
-    var index_file = "../test_data/indexes/genome_starred.txt.index"
-    var rev_index_file = "../test_data/indexes/genome_starred_rev.txt.index"
+    var genome_file = "../test_data/indexes/multigenome.txt"
+    var snp_file = "../test_data/indexes/SNPLocation.txt"
+    var index_file = "../test_data/indexes/multigenome.txt.index"
+    var rev_index_file = "../test_data/indexes/multigenome_rev.txt.index"
 
     var snpcaller isc.SNPProf
     snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)

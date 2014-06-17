@@ -30,7 +30,7 @@ var (
 //--------------------------------------------------------------------------------------------------
 func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int, re float32, k, a, n int) {
     I.SEQ = LoadMultigenome(genome_file)
-    I.SNP_PROFILE, I.SAME_LEN_SNP = LoadSNPLocation(snp_file)
+    I.SNP_PROFILE, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(snp_file)
     I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROFILE))
     for k := range I.SNP_PROFILE {
         I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)

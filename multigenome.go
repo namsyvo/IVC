@@ -17,12 +17,14 @@ import (
 )
 
 type SNP struct{
-	profile []string
+	Profile []string
+	AlleleFreq []float32
 }
 
-func LoadSNPLocation(file_name string )  (map[int] [][]byte, map[int]int) {
+func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, map[int]int) {
 	//location := make(map[int]SNP)
 	barr := make(map[int][][]byte)
+	af := make(map[int][]float32)
 	is_equal := make(map[int]int)
 	
 	f,err := os.Open(file_name)
@@ -50,6 +52,11 @@ func LoadSNPLocation(file_name string )  (map[int] [][]byte, map[int]int) {
 		// convert to [][]byte & map[int]int
 		flag := len(t[0]);
 		b := make([][]byte, len(t))
+
+		//testing///////////////////
+		p := make([]float32, len(t))
+		////////////////////////////
+
 		for i:= range b {
 			b[i] = make([]byte, len(t[i]))
 			copy(b[i], []byte(t[i]))
@@ -57,13 +64,19 @@ func LoadSNPLocation(file_name string )  (map[int] [][]byte, map[int]int) {
 			if (flag != len(b[i]) || t[i] == ".") {
 				flag = 0;
 			}
+			p[i] = 1/float32(len(b))
 		}		
 		barr[int(k)] = b
+
+		//testing///////////////////
+		af[int(k)] = p
+		////////////////////////////
+
 		if flag != 0 {
 			is_equal[int(k)] = flag			
 		}
 	}
-	return barr, is_equal
+	return barr, af, is_equal
 }
 
 func SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
@@ -74,7 +87,7 @@ func SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
 	defer file.Close()
 	for i, item := range SNP_arr {
 		str := ""
-		for _, v := range item.profile {
+		for _, v := range item.Profile {
 			str = "\t" + v + str
 		}
 		key := strconv.Itoa(i)

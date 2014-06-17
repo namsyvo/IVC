@@ -18,7 +18,8 @@ import (
 
 type Index struct {
     SEQ []byte //multigenomes
-    SNP_PROFILE map[int][][]byte //hash table of SNP profile (position, values)
+    SNP_PROFILE map[int][][]byte //hash table of SNP Profile (position, snps)
+    SNP_AF map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
     SAME_LEN_SNP map[int]int //hash table to indicate if SNPs has same length
     SORTED_SNP_POS []int //sorted array of SNP positions
     FMI fmi.Index //FM-index of multigenomes
@@ -111,11 +112,11 @@ func ReadVCF(sequence_file string) map[int]SNP {
 				tmp, ok := array[int(pos)]
 				if ok {
 					t = append(t[:0], t[1:]...)
-					tmp.profile = append(tmp.profile, t...)
+					tmp.Profile = append(tmp.Profile, t...)
 				} else {
-					tmp.profile = append(tmp.profile, t...)
+					tmp.Profile = append(tmp.Profile, t...)
 				}
-				sort.Strings(tmp.profile)
+				sort.Strings(tmp.Profile)
 				array[int(pos)] = tmp // append SNP at pos
 				//fmt.Printf("pos=%d %q \n", pos, alt)
 			} else {				
@@ -123,18 +124,25 @@ func ReadVCF(sequence_file string) map[int]SNP {
 				tmp, ok := array[int(pos)]
 				if ok {
 					if split[4] == "<DEL>" {
-						tmp.profile = append(tmp.profile, ".")
+						tmp.Profile = append(tmp.Profile, ".")
 					} else {
-						tmp.profile = append(tmp.profile, split[4])
+						tmp.Profile = append(tmp.Profile, split[4])
 					}					
 				} else {
 					if split[4] == "<DEL>" {
-						tmp.profile = append(tmp.profile, []string{split[3], "."}...)
+						tmp.Profile = append(tmp.Profile, []string{split[3], "."}...)
 					} else {
-						tmp.profile = append(tmp.profile, []string{split[3], split[4]}...)
+						tmp.Profile = append(tmp.Profile, []string{split[3], split[4]}...)
 					}
 				}
-				sort.Strings(tmp.profile)
+				sort.Strings(tmp.Profile)
+
+				//testing//////////////////////////////////////////
+				for i := range tmp.Profile {
+					tmp.AlleleFreq[i] = 1/float32(len(tmp.Profile))
+				}
+				///////////////////////////////////////////////////
+
 				array[int(pos)]= tmp // append SNP at pos
 				//fmt.Println(pos)
 			}
