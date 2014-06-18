@@ -43,19 +43,15 @@ func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, ma
 		sline := string(line[:len(line)-1])
 		split := strings.Split(sline, "\t");
 		k, _ := strconv.ParseInt(split[0], 10, 64)
-		t := make([]string, len(split)-1)
-		for i := 1; i<len(split); i++ {
-			t[i-1] = split[i]
+		t := make([]string, (len(split)-1)/2)
+		for i := 0; i < len(t); i++ {
+			t[i] = split[i + 1]
 		}
 		//location[int(k)] = SNP{t} 
 		
 		// convert to [][]byte & map[int]int
 		flag := len(t[0]);
 		b := make([][]byte, len(t))
-
-		//testing///////////////////
-		p := make([]float32, len(t))
-		////////////////////////////
 
 		for i:= range b {
 			b[i] = make([]byte, len(t[i]))
@@ -64,13 +60,17 @@ func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, ma
 			if (flag != len(b[i]) || t[i] == ".") {
 				flag = 0;
 			}
-			p[i] = 1/float32(len(b))
 		}		
 		barr[int(k)] = b
 
-		//testing///////////////////
+		//Read allele freq - testing///////////////////
+		p := make([]float32, (len(split)-1)/2)
+		for i:= range p {
+			tmp, _ := strconv.ParseFloat(split[i + 1 + (len(split)-1)/2], 32)
+			p[i] = float32(tmp)
+		}		
 		af[int(k)] = p
-		////////////////////////////
+		//////////////////////////////////////////////
 
 		if flag != 0 {
 			is_equal[int(k)] = flag			
