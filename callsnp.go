@@ -23,31 +23,32 @@ var (
 
 //SNP caller object with Parameters
 type SNPProf struct {
-    SNP_Prof map[int][][]byte
-	SNP_Conf map[int][]float32
-    SNP_Call map[int][]byte
-    SNP_Prob map[int][]int
+    SNP_Prof map[int][][]byte // to store all possible SNPs at each position
+	SNP_Conf map[int][]float32 // to store quality of all possible SNPS at each position
+    SNP_Call map[int][]byte // to store SNP call at each position
+    SNP_Prob map[int][]int // to store percentage of called SNP among all possilbe SNPs at each position
 }
 
 //Initialize parameters
 func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int,
 	seq_err float32, k, a, n int) {
 
-    index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
-
     S.SNP_Prof = make(map[int][][]byte)
+    S.SNP_Conf = make(map[int][]float32)
     S.SNP_Call = make(map[int][]byte)
     S.SNP_Prob = make(map[int][]int)
+
+    index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 	S.SNP_Conf = index.SNP_AF
-	/*
-	for snp_pos, snp_conf := range S.SNP_Conf {
-		for idx, base_conf := range snp_conf {
-			fmt.Print(string(index.SNP_PROFILE[snp_pos][idx]), ": ", base_conf)
-			fmt.Print(" - ")
-		}
-		fmt.Println()
-	}
-	*/
+
+    //Print out Allele Freq at each SNP - testing/////////////////
+    for snp_pos, _ := range(index.SNP_PROFILE) {
+            for idx, value := range(index.SNP_PROFILE[snp_pos]) {
+                fmt.Println(snp_pos, " : ", string(value), " : ", S.SNP_Conf[snp_pos][idx])
+            }
+            fmt.Println()
+    }
+    //testing////////////////////////////////////////////////////
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -211,7 +212,7 @@ func (S *SNPProf) UpdateSNPProfile(read1, read2 []byte) bool {
 	    for snp_pos, snp_arr := range snp_prof {
 	        S.SNP_Prof[snp_pos] = append(S.SNP_Prof[snp_pos], snp_arr...)
 
-			/////////////////////////////////////////////////////////////////////////
+			//Update SNP Qual - testing/////////////////////////////////////////////
 			cond_prob := make([]float32, len(S.SNP_Conf[snp_pos]))
 			for idx, base_conf := range S.SNP_Conf[snp_pos] {
 				SNP := index.SNP_PROFILE[snp_pos][idx]
@@ -232,6 +233,11 @@ func (S *SNPProf) UpdateSNPProfile(read1, read2 []byte) bool {
 			for idx, value := range(cond_prob) {
 				S.SNP_Conf[snp_pos][idx] = value / base_prob
 			}
+            fmt.Println("Base: ", string(snp_arr[0]))
+            for idx, value := range(index.SNP_PROFILE[snp_pos]) {
+                fmt.Println(snp_pos, " : ", string(value), " : ", S.SNP_Conf[snp_pos][idx])
+            }
+            fmt.Println()
 			/////////////////////////////////////////////////////////////////////////
 	    }
 		return true
@@ -296,14 +302,16 @@ func (S SNPProf) SNPCall_tofile(file_name string) {
         //fmt.Println(snp_pos, "\t", str_snp)
         _, err := file.WriteString(str_snp_pos + "\t" + str_snp + "\t" + 
 					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
-		////////////////////////
+
+		//Write SNP Qual - testing////////////////////////////
 		for idx, value := range index.SNP_PROFILE[snp_pos] {
 			if bytes.Equal(value, S.SNP_Call[snp_pos]) {
 		        str_snp_conf := strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
-		        _, err = file.WriteString(str_snp_conf + "\n");
+                _, err = file.WriteString(str_snp_conf + "\n");
 			}
 		}
-		////////////////////////
+		//////////////////////////////////////////////////////
+
         if err != nil {
             fmt.Println(err)
             break

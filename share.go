@@ -137,12 +137,6 @@ func ReadVCF(sequence_file string) map[int]SNP {
 				}
 				sort.Strings(tmp.Profile)
 
-				//testing//////////////////////////////////////////
-				for i := range tmp.Profile {
-					tmp.AlleleFreq[i] = 1/float32(len(tmp.Profile))
-				}
-				///////////////////////////////////////////////////
-
 				array[int(pos)]= tmp // append SNP at pos
 				//fmt.Println(pos)
 			}
