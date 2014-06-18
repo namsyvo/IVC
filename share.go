@@ -22,7 +22,7 @@ type Index struct {
     SNP_AF map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
     SAME_LEN_SNP map[int]int //hash table to indicate if SNPs has same length
     SORTED_SNP_POS []int //sorted array of SNP positions
-    FMI fmi.Index //FM-index of multigenomes
+    //FMI fmi.Index //FM-index of multigenomes
     REV_FMI fmi.Index //FM-index of reverse multigenomes
 }
 

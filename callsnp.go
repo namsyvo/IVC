@@ -8,8 +8,8 @@ package isc
 import (
     "fmt"
     "os"
-    "math/rand"
-    "time"
+    //"math/rand"
+    //"time"
     "strconv"
 	"bytes"
     "sort"
@@ -42,12 +42,14 @@ func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string,
 	S.SNP_Conf = index.SNP_AF
 
     //Print out Allele Freq at each SNP - testing/////////////////
+    
     for snp_pos, _ := range(index.SNP_PROFILE) {
             for idx, value := range(index.SNP_PROFILE[snp_pos]) {
                 fmt.Println(snp_pos, " : ", string(value), " : ", S.SNP_Conf[snp_pos][idx])
             }
             fmt.Println()
     }
+    
     //testing////////////////////////////////////////////////////
 }
 
@@ -73,7 +75,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
 
     //Find SNPs for pairend reads, treat each end separately and independently.
     s_pos, e_pos, match_pos, hasExactMatches := -1, -1, []int{}, false
-    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+    //r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
     //Find SNPs for the first end
     var p int = start_pos
@@ -83,6 +85,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(read1, p)
         if hasExactMatches {
+            //fmt.Println(s_pos, e_pos, match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(index.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -129,7 +132,12 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
             }
         }
         //Take a random position to search
-        p = r.Intn(len(read1) - 1) + 1
+        //p = r.Intn(len(read1) - 1) + 1
+
+        //determ search - testing//////
+        p = p + 5
+        ///////////////////////////////
+
         loop_num++
     }
 
@@ -192,7 +200,12 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
             }
         }
         //Take a random position to search
-        p = r.Intn(len(read2) - 1) + 1
+        //p = r.Intn(len(read2) - 1) + 1
+
+        //determ search - testing//////
+        p = p + 5
+        ///////////////////////////////
+        
         loop_num++
     }
 
@@ -233,11 +246,13 @@ func (S *SNPProf) UpdateSNPProfile(read1, read2 []byte) bool {
 			for idx, value := range(cond_prob) {
 				S.SNP_Conf[snp_pos][idx] = value / base_prob
 			}
+            /*
             fmt.Println("Base: ", string(snp_arr[0]))
             for idx, value := range(index.SNP_PROFILE[snp_pos]) {
                 fmt.Println(snp_pos, " : ", string(value), " : ", S.SNP_Conf[snp_pos][idx])
             }
             fmt.Println()
+            */
 			/////////////////////////////////////////////////////////////////////////
 	    }
 		return true
