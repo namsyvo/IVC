@@ -40,7 +40,7 @@ func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string,
 
     index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 	S.SNP_Conf = index.SNP_AF
-
+	/*
     //Print out Allele Freq at each SNP - testing/////////////////
     for snp_pos, _ := range(index.SNP_PROFILE) {
             for idx, value := range(index.SNP_PROFILE[snp_pos]) {
@@ -49,6 +49,7 @@ func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string,
             fmt.Println()
     }
     //testing////////////////////////////////////////////////////
+	*/
 }
 
 //--------------------------------------------------------------------------------------------------
