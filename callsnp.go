@@ -111,6 +111,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read1, p)
         if hasExactMatches {
+            //fmt.Println(s_pos, e_pos, match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -147,6 +148,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(read2, p)
         if hasExactMatches {
+            //fmt.Println(s_pos, e_pos, match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -173,6 +175,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read2, p)
         if hasExactMatches {
+            //fmt.Println(s_pos, e_pos, match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
