@@ -110,12 +110,12 @@ func (I Index) FindSeeds(read []byte, p int) (int, int, []int, bool) {
     rev_sp, rev_ep, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
 
     //convert rev_e_pos in forward search to s_pos in backward search
-    s_pos = rev_e_pos
+    s_pos = read_len - 1 - rev_e_pos
     e_pos = p
     if rev_ep - rev_sp + 1 <= MAXIMUM_MATCH {
         match_pos := make([]int, 0, MAXIMUM_MATCH)
         for p := rev_sp; p <= rev_ep; p++ {
-            match_pos = append(match_pos, len(I.SEQ) - 1 - I.REV_FMI.SA[p])
+            match_pos = append(match_pos, len(I.SEQ) - 1 - I.REV_FMI.SA[p] - (s_pos - e_pos))
         }
         return s_pos, e_pos, match_pos, true
     }
