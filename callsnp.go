@@ -18,7 +18,7 @@ import (
 //Global variables
 var (
     index Index
-    start_pos int = 5
+    start_pos int = 0
 )
 
 //SNP caller object with Parameters
