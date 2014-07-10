@@ -40,18 +40,6 @@ func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string,
 
     index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 	S.SNP_Conf = index.SNP_AF
-	/*
-    //Print out Allele Freq at each SNP - testing/////////////////
-    /*
-    for snp_pos, _ := range(index.SNP_PROFILE) {
-            for idx, value := range(index.SNP_PROFILE[snp_pos]) {
-                fmt.Println(snp_pos, " : ", string(value), " : ", S.SNP_Conf[snp_pos][idx])
-            }
-            fmt.Println()
-    }
-    */
-    //testing////////////////////////////////////////////////////
-	*/
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -67,12 +55,6 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
     //Consider reverse complement of reads.
     rev_read1 := ReverseComplement(read1)
     rev_read2 := ReverseComplement(read2)
-    /*
-    fmt.Println("read1", string(read1))
-    fmt.Println("rev_read1", string(rev_read1))
-    fmt.Println("read2", string(read2))
-    fmt.Println("rev_read2", string(rev_read2))
-    */
 
     //Find SNPs for pairend reads, treat each end separately and independently.
     s_pos, e_pos, match_pos, hasExactMatches := -1, -1, []int{}, false
@@ -86,7 +68,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(read1, p)
         if hasExactMatches {
-            //fmt.Println(s_pos, e_pos, match_pos)
+            //fmt.Println(s_pos, "\t", e_pos, "\t", match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(index.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -112,7 +94,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read1, p)
         if hasExactMatches {
-            //fmt.Println(s_pos, e_pos, match_pos)
+            //fmt.Println(s_pos, "\t", e_pos, "\t", match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -149,7 +131,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(read2, p)
         if hasExactMatches {
-            //fmt.Println(s_pos, e_pos, match_pos)
+            //fmt.Println(s_pos, "\t", e_pos, "\t", match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -176,7 +158,7 @@ func (S SNPProf) FindSNPProfile(read1, read2 []byte) (map[int][][]byte, bool) {
         //Call FindSeeds to determine seed
         s_pos, e_pos, match_pos, hasExactMatches = index.FindSeeds(rev_read2, p)
         if hasExactMatches {
-            //fmt.Println(s_pos, e_pos, match_pos)
+            //fmt.Println(s_pos, "\t", e_pos, "\t", match_pos)
             for _, pos := range match_pos {
                 //Call IntervalHasSNP to determine whether extension is needed
                 //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
@@ -240,14 +222,6 @@ func (S *SNPProf) UpdateSNPProfile(read1, read2 []byte) bool {
 			for idx, value := range(cond_prob) {
 				S.SNP_Conf[snp_pos][idx] = value / base_prob
 			}
-            /*
-            fmt.Println("Base: ", string(snp_arr[0]))
-            for idx, value := range(index.SNP_PROFILE[snp_pos]) {
-                fmt.Println(snp_pos, " : ", string(value), " : ", S.SNP_Conf[snp_pos][idx])
-            }
-            fmt.Println()
-            */
-			/////////////////////////////////////////////////////////////////////////
 	    }
 		return true
 	} else {
@@ -313,14 +287,23 @@ func (S SNPProf) SNPCall_tofile(file_name string) {
 					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
 
 		//Write SNP Qual - testing////////////////////////////
+		flag := false
 		for idx, value := range index.SNP_PROFILE[snp_pos] {
 			if bytes.Equal(value, S.SNP_Call[snp_pos]) {
 		        str_snp_conf := strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
                 _, err = file.WriteString(str_snp_conf + "\n");
+				flag = true
 			}
 		}
-		//////////////////////////////////////////////////////
-
+		if !flag {
+                _, err = file.WriteString("." + "\n");
+			fmt.Println("--------")
+			fmt.Println(snp_pos, "-", S.SNP_Call[snp_pos])
+			for _, val := range index.SNP_PROFILE[snp_pos] {
+				fmt.Print(string(val), "-")
+			}
+			fmt.Println()
+		}
         if err != nil {
             fmt.Println(err)
             break

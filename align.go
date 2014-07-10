@@ -45,13 +45,11 @@ func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, r
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
     ITER_NUM = a * (DIST_THRES + 1)
     MAXIMUM_MATCH = n
-	//testing///
-	//ITER_NUM = 1
-	////////////
+
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
     fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
-    fmt.Println("INF: ", INF)
+    fmt.Println("INF_VALUE: ", INF)
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -119,18 +117,6 @@ func (I Index) FindSeeds(read []byte, p int) (int, int, []int, bool) {
         }
         return s_pos, e_pos, match_pos, true
     }
-    /*
-    result = I.BackwardSearchFrom(I.FMI, read, s_pos)
-    sp, ep, e_pos = result[0], result[1], result[2]
-
-    if ep - sp + 1 <= MAXIMUM_MATCH {
-        match_pos := make([]int, 0, MAXIMUM_MATCH)
-        for p := sp; p <= ep; p++ {
-            match_pos = append(match_pos, I.FMI.SA[p])
-        }
-        return s_pos, e_pos, match_pos, true
-    }
-    */
     return -1, -1, []int{}, false
 }
 
