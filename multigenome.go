@@ -43,7 +43,7 @@ func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, ma
 		sline := string(line[:len(line)-1])
 		split := strings.Split(sline, "\t");
 		k, _ := strconv.ParseInt(split[0], 10, 64)
-		t := make([]string, (len(split)-1)/2)
+		t := make([]string, len(split)-1)
 		for i := 0; i < len(t); i++ {
 			t[i] = split[i + 1]
 		}
@@ -64,10 +64,11 @@ func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, ma
 		barr[int(k)] = b
 
 		//Read allele freq - testing///////////////////
-		p := make([]float32, (len(split)-1)/2)
+		p := make([]float32, len(split)-1)
 		for i:= range p {
-			tmp, _ := strconv.ParseFloat(split[i + 1 + (len(split)-1)/2], 32)
-			p[i] = float32(tmp)
+			//tmp, _ := strconv.ParseFloat(split[i + 1 + (len(split)-1)/2], 32)
+			//p[i] = float32(tmp)
+			p[i] = 1/float32(len(p))
 		}		
 		af[int(k)] = p
 		//////////////////////////////////////////////

@@ -37,7 +37,7 @@ func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, r
     }
     sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
 
-    I.FMI = *fmi.Load(index_file)
+    //I.FMI = *fmi.Load(index_file)
     I.REV_FMI = *fmi.Load(rev_index_file)
 
     //Const for computing distance
@@ -45,7 +45,9 @@ func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, r
      float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
     ITER_NUM = a * (DIST_THRES + 1)
     MAXIMUM_MATCH = n
-
+	//testing///
+	//ITER_NUM = 1
+	////////////
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
     fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
@@ -99,19 +101,28 @@ func (I Index) FindSeeds(read []byte, p int) (int, int, []int, bool) {
     for i := 0; i < read_len; i++ {
         rev_read[i] = read[read_len - i - 1]
     }
-    var sp, ep int = 0, MAXIMUM_MATCH
+    var rev_sp, rev_ep int = 0, MAXIMUM_MATCH
     var rev_s_pos, rev_e_pos, s_pos, e_pos int
-    var rev_result, result []int
+    var rev_result []int
 	
-    rev_s_pos = p
+    rev_s_pos = read_len - 1 - p
     rev_result = I.BackwardSearchFrom(I.REV_FMI, rev_read, rev_s_pos)
-    _, _, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
-	
+    rev_sp, rev_ep, rev_e_pos = rev_result[0], rev_result[1], rev_result[2]
+
     //convert rev_e_pos in forward search to s_pos in backward search
-    s_pos = read_len - rev_e_pos - 1
+    s_pos = read_len - 1 - rev_e_pos
+    e_pos = p
+    if rev_ep - rev_sp + 1 <= MAXIMUM_MATCH {
+        match_pos := make([]int, 0, MAXIMUM_MATCH)
+        for p := rev_sp; p <= rev_ep; p++ {
+            match_pos = append(match_pos, len(I.SEQ) - 1 - I.REV_FMI.SA[p] - (s_pos - e_pos))
+        }
+        return s_pos, e_pos, match_pos, true
+    }
+    /*
     result = I.BackwardSearchFrom(I.FMI, read, s_pos)
     sp, ep, e_pos = result[0], result[1], result[2]
-	
+
     if ep - sp + 1 <= MAXIMUM_MATCH {
         match_pos := make([]int, 0, MAXIMUM_MATCH)
         for p := sp; p <= ep; p++ {
@@ -119,6 +130,7 @@ func (I Index) FindSeeds(read []byte, p int) (int, int, []int, bool) {
         }
         return s_pos, e_pos, match_pos, true
     }
+    */
     return -1, -1, []int{}, false
 }
 
