@@ -55,6 +55,7 @@ func (I Index) BackwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, 
     	if !is_snp {
         	if s[m-1] != t[n-1] {
         		d++
+				S[pos + n - 1] = s[m - 1 : m]
         	}
     		m--
     		n--
@@ -155,6 +156,7 @@ func (I Index) BackwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][]
 		_, is_snp = I.SNP_PROFILE[pos + j - 1]
 		if i > 0 && j > 0 {
 		  	if !is_snp {
+		  		snp_calling[pos + j - 1] = s[i - 1 : i]
 		  		i, j = i - 1, j - 1
 		  	} else {
 				if T[i - 1][j - 1][0] != '.' {
@@ -200,6 +202,7 @@ func (I Index) ForwardDistanceMulti(s, t []byte, pos int) (int, int, int, int, m
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
     	if !is_snp {
         	if s[(M - 1) - (m - 1)] != t[(N - 1) - (n - 1)] {
+	  			S[pos + (N - 1) - (n - 1)] = s[(M - m) : M - m + 1]
         		d++
         	}
     		m--
@@ -303,6 +306,7 @@ func (I Index) ForwardTraceBack(s, t []byte, m, n int, S map[int][]byte, T [][][
 		_, is_snp = I.SNP_PROFILE[pos + (N - 1) - (j - 1)]
 		if i > 0 && j > 0 {
 		  	if !is_snp {
+		  		snp_calling[pos + (N - 1) - (j - 1)] = s[(M - i) : M - (i - 1)]
 		  		i, j = i - 1, j - 1
 		  	} else {
 				if T[i - 1][j - 1][0] != '.' {
