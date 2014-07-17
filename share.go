@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"sort"
     "github.com/vtphan/fmi"
+	"math"
 )
 
 type Index struct {
@@ -24,6 +25,12 @@ type Index struct {
     SORTED_SNP_POS []int //sorted array of SNP positions
     REV_FMI fmi.Index //FM-index of reverse multigenomes
 }
+
+// Value for Infinity
+var (
+	INF int = math.MaxInt16
+	EMPTY_INT_SLICE []int = make([]int, 0)
+)
 
 //--------------------------------------------------------------------------------------------------
 // IntervalHasSNP determines whether [i, j] contains SNP positions which are stores in array A.
@@ -47,33 +54,39 @@ func IntervalHasSNP(A []int, i, j int) bool {
 }
 
 //--------------------------------------------------------------------------------------------------
-// ReverseComplement returns reverse complement of a read.
+// Computing reverse, reverse complement, and complement of a read.
 //--------------------------------------------------------------------------------------------------
-
-func ReverseComplement(read []byte) []byte {
-    l := len(read)
-    rev_read := make([]byte, l)
-    for idx, elem := range read {
+func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
+	read_len := len(read)
+    for i, elem := range read {
+        rev_read[i] = read[read_len - 1 - i]
         if elem == 'A' {
-            rev_read[l-1-idx] = 'T'
+            rev_comp_read[read_len - 1 - i] = 'T'
+            comp_read[i] = 'T'
         } else if (elem == 'T') {
-            rev_read[l-1-idx] = 'A'
+            rev_comp_read[read_len - 1 - i] = 'A'
+            comp_read[i] = 'A'
         } else if (elem == 'C') {
-            rev_read[l-1-idx] = 'G'
+            rev_comp_read[read_len - 1 - i] = 'G'
+            comp_read[i] = 'G'
         } else if (elem == 'G') {
-            rev_read[l-1-idx] = 'C'
+            rev_comp_read[read_len - 1 - i] = 'C'
+            comp_read[i] = 'C'
         } else {
-            rev_read[l-1-idx] = elem
+            rev_comp_read[read_len - 1 - i] = elem
+            comp_read[i] = elem
         }
     }
-    return rev_read
 }
 
+//--------------------------------------------------------------------------------------------------
+// ReadVCF
+//--------------------------------------------------------------------------------------------------
 func ReadVCF(sequence_file string) map[int]SNP {
 	array := make(map[int]SNP)
 	f,err := os.Open(sequence_file)
     if err != nil{
-        fmt.Printf("%v\n",err)
+        fmt.Printf("%v\n", err)
         os.Exit(1)
     }
 
@@ -87,7 +100,7 @@ func ReadVCF(sequence_file string) map[int]SNP {
 			//fmt.Printf("%v\n",err)
 			break
 		}		
-		if line[0]==byte('#') {
+		if line[0] == byte('#') {
 			//fmt.Printf("%s \n",line)
 		} else {
 			sline := string(line)
@@ -95,22 +108,22 @@ func ReadVCF(sequence_file string) map[int]SNP {
 			//fmt.Printf("%s %s %s\n", split[1], split[3], split[4])
 			pos, _ := strconv.ParseInt(split[1], 10, 64)
 			pos = pos - 1
-			if len(split[4])>1 {
+			if len(split[4]) > 1 {
 				alt := strings.Split(split[4], ",")
 				t := make([]string, len(alt)+1)
 				t[0] = split[3]				
-				for i:=0; i<len(alt); i++ {
+				for i := 0 ; i < len(alt) ; i++ {
 					if alt[i] == "<DEL>" {
-						t[i+1] = "."
+						t[i + 1] = "."
 					} else {
-						t[i+1] = alt[i]
+						t[i + 1] = alt[i]
 					}					
 				}	
 				//sort.Strings(t)
 				//array[int(pos)] = SNP{t} // asign SNP at pos
 				tmp, ok := array[int(pos)]
 				if ok {
-					t = append(t[:0], t[1:]...)
+					t = append(t[ : 0], t[1 : ]...)
 					tmp.Profile = append(tmp.Profile, t...)
 				} else {
 					tmp.Profile = append(tmp.Profile, t...)
@@ -144,6 +157,9 @@ func ReadVCF(sequence_file string) map[int]SNP {
     return array
 }
 
+//--------------------------------------------------------------------------------------------------
+// ReadFASTA
+//--------------------------------------------------------------------------------------------------
 func ReadFASTA(sequence_file string) []byte {
     f,err := os.Open(sequence_file)
     if err != nil{
@@ -164,8 +180,8 @@ func ReadFASTA(sequence_file string) []byte {
     //fmt.Printf("%s",line)
 
     for {
-        line , isPrefix, err := br.ReadLine()
-        if err != nil || isPrefix{
+        line, isPrefix, err := br.ReadLine()
+        if err != nil || isPrefix {
             break
         } else {
             byte_array.Write([]byte(line))
@@ -175,4 +191,3 @@ func ReadFASTA(sequence_file string) []byte {
     input := []byte(byte_array.String())
     return input
 }
-
