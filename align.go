@@ -15,6 +15,8 @@ import (
     "fmt"
     "math"
     "sort"
+	"runtime"
+	"log"
     "github.com/vtphan/fmi" //to use FM index
 )
 
@@ -27,23 +29,37 @@ var (
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
-func (I *Index) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int, re float32, k, a, n int) {
-    I.SEQ = LoadMultigenome(genome_file)
-    I.SNP_PROFILE, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(snp_file)
-    I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROFILE))
-    for k := range I.SNP_PROFILE {
+func (I *Index) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInfo) {
+
+    memstats := new(runtime.MemStats)
+
+    I.SEQ = LoadMultigenome(input_info.Genome_file)
+	runtime.ReadMemStats(memstats)
+    log.Printf("align.go: memstats after loading multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+
+    I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(input_info.SNP_file)
+	runtime.ReadMemStats(memstats)
+    log.Printf("align.go: memstats after loading SNP profile:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+
+    I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROF))
+    for k := range I.SNP_PROF {
         I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)
     }
     sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
+	runtime.ReadMemStats(memstats)
+    log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     //I.FMI = *fmi.Load(index_file)
-    I.REV_FMI = *fmi.Load(rev_index_file)
+    I.REV_FMI = *fmi.Load(input_info.Rev_index_file)
+	runtime.ReadMemStats(memstats)
+    log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
+        memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     //Const for computing distance
-    DIST_THRES = int(math.Ceil(float64(re) * float64(read_len) +
-     float64(k) * math.Sqrt(float64(read_len) * float64(re) * float64((1 - re)))))
-    ITER_NUM = a * (DIST_THRES + 1)
-    MAXIMUM_MATCH = n
+    DIST_THRES = int(math.Ceil(float64(read_info.Seq_err) * float64(read_info.Read_len) +
+     float64(para_info.Std_dev_factor) * math.Sqrt(float64(read_info.Read_len) * float64(read_info.Seq_err) * float64((1 - read_info.Seq_err)))))
+    ITER_NUM = para_info.Iter_num_factor * (DIST_THRES + 1)
+    MAXIMUM_MATCH = para_info.Max_match
 
     fmt.Println("DIST_THRES: ", DIST_THRES)
     fmt.Println("ITER_NUM: ", ITER_NUM)
@@ -117,7 +133,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, bw_snp_idx, fw_snp_idx []int, bw_snp_val, fw_snp_val [][]byte, bw_D, fw_D [][]int, bw_T, fw_T [][][]byte) (int, int, int, bool) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_mem AlignMem) (int, int, int, bool) {
 
     var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
     var lcs_len int = s_pos - e_pos + 1
@@ -126,14 +142,14 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, bw_
     left_ext_add_len, right_ext_add_len := 0, 0
     i := 0
     for i = match_pos - e_pos; i < match_pos; i++ {
-        _, isSNP = I.SNP_PROFILE[i]
+        _, isSNP = I.SNP_PROF[i]
         _, isSameLenSNP = I.SAME_LEN_SNP[i]
         if isSNP && !isSameLenSNP {
             left_ext_add_len++
         }
     }
     for i = match_pos + lcs_len; i < (match_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
-        _, isSNP = I.SNP_PROFILE[i]
+        _, isSNP = I.SNP_PROF[i]
         _, isSameLenSNP = I.SAME_LEN_SNP[i]
         if isSNP && !isSameLenSNP {
             right_ext_add_len++
@@ -154,18 +170,18 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, bw_
 
     read_left_flank = read[ : e_pos]
     left_d, left_D, left_m, left_n, left_sn, _ :=
-     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, bw_snp_idx, bw_snp_val, bw_D, bw_T)
+     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_mem.Bw_snp_idx, align_mem.Bw_snp_val, align_mem.Bw_D, align_mem.Bw_T)
 
     read_right_flank = read[s_pos + 1 : ]
     right_d, right_D, right_m, right_n, right_sn, _ :=
-     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, fw_snp_idx, fw_snp_val, fw_D, fw_T)
+     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_snp_idx, align_mem.Fw_snp_val, align_mem.Fw_D, align_mem.Fw_T)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
         left_num := I.BackwardTraceBack(read_left_flank, ref_left_flank,
-         left_m, left_n, left_most_pos, left_sn, bw_snp_idx, bw_snp_val, bw_T)
+         left_m, left_n, left_most_pos, left_sn, align_mem.Bw_snp_idx, align_mem.Bw_snp_val, align_mem.Bw_T)
         right_num := I.ForwardTraceBack(read_right_flank, ref_right_flank,
-         right_m, right_n, match_pos + lcs_len, right_sn, fw_snp_idx, fw_snp_val, fw_T)
+         right_m, right_n, match_pos + lcs_len, right_sn, align_mem.Fw_snp_idx, align_mem.Fw_snp_val, align_mem.Fw_T)
         return dis, left_num, right_num, true
     }
     return dis, 0, 0, false

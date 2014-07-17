@@ -34,21 +34,19 @@ type SNPProf struct {
 }
 
 //Initialize parameters
-func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string, read_len int,
-	seq_err float32, k, a, n int) {
+func (S *SNPProf) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInfo) {
 
 	memstats := new(runtime.MemStats)
 
-    INDEX.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
+    INDEX.Init(input_info, read_info, para_info)
     RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 	START_POS = 0
-	READ_LEN = read_len
+	READ_LEN = read_info.Read_len
     fmt.Println("START_POS: ", START_POS)
     fmt.Println("READ_LEN: ", READ_LEN)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("callsnp.go: memstats after initializing indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("callsnp.go: memstats after initializing indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     S.SNP_Prof = make(map[int][][]byte)
     S.SNP_Conf = make(map[int][]float32)
@@ -67,7 +65,7 @@ func (S *SNPProf) Init(genome_file, snp_file, index_file, rev_index_file string,
 //
 //	- Find SNPs for pairend reads, treat each end separately and independently.
 //--------------------------------------------------------------------------------------------------
-func (S *SNPProf) UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_read1, rev_comp_read2, comp_read1, comp_read2 []byte, bw_snp_idx, fw_snp_idx []int, bw_snp_val, fw_snp_val [][]byte, bw_D, fw_D [][]int, bw_T, fw_T [][][]byte, match_pos []int) bool {
+func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_pos []int) bool {
 
 	var hasSeeds, has_snp_1, has_snp_2 bool
     var p, s_pos, e_pos int
@@ -78,25 +76,25 @@ func (S *SNPProf) UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_rea
     loop_num = 1
 	has_snp_1 = false
     for loop_num <= ITER_NUM {
-        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(read1, rev_read1, p, match_pos)
+        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, p, match_pos)
         if hasSeeds {
-			has_snp_1 = S.FindSNPCall(read1, s_pos, e_pos, match_pos, match_num, bw_snp_idx, fw_snp_idx, bw_snp_val, fw_snp_val, bw_D, fw_D, bw_T, fw_T)
+			has_snp_1 = S.FindSNPCall(read_info.Read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
 		        //fmt.Println(loop_num, "\tori1\t", string(read1))
                 break
             }
         }
         //Find SNPs for the reverse complement of the first end
-        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(rev_comp_read1, comp_read1, p, match_pos)
+        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, p, match_pos)
         if hasSeeds {
-			has_snp_1 = S.FindSNPCall(rev_comp_read1, s_pos, e_pos, match_pos, match_num, bw_snp_idx, fw_snp_idx, bw_snp_val, fw_snp_val, bw_D, fw_D, bw_T, fw_T)
+			has_snp_1 = S.FindSNPCall(read_info.Rev_comp_read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
 		        //fmt.Println(loop_num, "\trev1\t", string(rev_read1))
                 break
             }
         }
         //Take a random position to search
-        p = RAND_GEN.Intn(len(read1) - 1) + 1
+        p = RAND_GEN.Intn(READ_LEN - 1) + 1
         loop_num++
     }
 
@@ -106,25 +104,25 @@ func (S *SNPProf) UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_rea
     has_snp_2 = false
     for loop_num <= ITER_NUM {
         //Call FindSeeds to determine seed
-        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(read2, rev_read2, p, match_pos)
+        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, p, match_pos)
         if hasSeeds {
-			has_snp_2 = S.FindSNPCall(read2, s_pos, e_pos, match_pos, match_num, bw_snp_idx, fw_snp_idx, bw_snp_val, fw_snp_val, bw_D, fw_D, bw_T, fw_T)
+			has_snp_2 = S.FindSNPCall(read_info.Read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
 				//fmt.Println(loop_num, "\tori2\t", string(read2))
 				return true
 			}
 		}
 		//Find SNPs for the reverse complement of the second end
-        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(rev_comp_read2, comp_read2, p, match_pos)
+        s_pos, e_pos, match_num, hasSeeds = INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, p, match_pos)
         if hasSeeds {
-			has_snp_2 = S.FindSNPCall(rev_comp_read2, s_pos, e_pos, match_pos, match_num, bw_snp_idx, fw_snp_idx, bw_snp_val, fw_snp_val, bw_D, fw_D, bw_T, fw_T)
+			has_snp_2 = S.FindSNPCall(read_info.Rev_comp_read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
 				//fmt.Println(loop_num, "\trev2\t", string(rev_read2))
 				return true
 			}
 		}
         //Take a random position to search
-		p = RAND_GEN.Intn(len(read2) - 1) + 1
+		p = RAND_GEN.Intn(READ_LEN - 1) + 1
         loop_num++
     }
 
@@ -138,7 +136,7 @@ func (S *SNPProf) UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_rea
 //---------------------------------------------------------------------------------------------------
 // UpdateSNPCall updates SNP Call found from alignment between reads and multi-genomes.
 //---------------------------------------------------------------------------------------------------
-func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, match_num int, bw_snp_idx, fw_snp_idx []int, bw_snp_val, fw_snp_val [][]byte, bw_D, fw_D [][]int, bw_T, fw_T [][][]byte) bool {
+func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, match_num int, align_mem AlignMem) bool {
 
     var k, idx, left_num, right_num, pos int
 	var val []byte
@@ -149,20 +147,20 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 		pos = match_pos[i]
         //Call IntervalHasSNP to determine whether extension is needed
         //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
-        _, left_num, right_num, isExtended = INDEX.FindExtensions(read, s_pos, e_pos, pos, bw_snp_idx, fw_snp_idx, bw_snp_val, fw_snp_val, bw_D, fw_D, bw_T, fw_T)
+        _, left_num, right_num, isExtended = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_mem)
         if isExtended {
             //Determine SNP profile
 			if left_num > 0 {
 				has_snp = true
 	            for k = 0; k < left_num ; k++ {
-    	            idx, val = bw_snp_idx[k], bw_snp_val[k]
+    	            idx, val = align_mem.Bw_snp_idx[k], align_mem.Bw_snp_val[k]
 					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
     	        }
 			}
 			if right_num > 0 {
 				has_snp = true
 				for k = 0; k < right_num ; k++ {
-    	            idx, val = fw_snp_idx[k], fw_snp_val[k]
+    	            idx, val = align_mem.Fw_snp_idx[k], align_mem.Fw_snp_val[k]
 					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
     	        }
 			}
@@ -175,9 +173,9 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 //---------------------------------------------------------------------------------------------------
 // UpdateSNPProfile updates SNP profile found from alignment between reads and multi-genomes.
 //---------------------------------------------------------------------------------------------------
-func (S *SNPProf) UpdateSNPProfile(read1, read2, rev_read1, rev_read2, rev_comp_read1, rev_comp_read2, comp_read1, comp_read2 []byte, bw_snp_idx, fw_snp_idx []int, bw_snp_val, fw_snp_val [][]byte, bw_D, fw_D [][]int, bw_T, fw_T [][][]byte, match_pos []int) bool {
+func (S *SNPProf) UpdateSNPProfile(read_info ReadInfo, align_mem AlignMem, match_pos []int) bool {
 
-	has_SNP_call := S.UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_read1, rev_comp_read2, comp_read1, comp_read2, bw_snp_idx, fw_snp_idx, bw_snp_val, fw_snp_val, bw_D, fw_D, bw_T, fw_T, match_pos)
+	has_SNP_call := S.UpdateSNPCall(read_info, align_mem, match_pos)
 
 	if has_SNP_call {
 		return true
@@ -196,7 +194,7 @@ func (S *SNPProf) CalculateQual() {
 			//Update SNP Qual - testing/////////////////////////////////////////////
 			cond_prob := make([]float32, len(S.SNP_Conf[snp_pos]))
 			for idx, base_conf := range S.SNP_Conf[snp_pos] {
-				SNP := index.SNP_PROFILE[snp_pos][idx]
+				SNP := index.SNP_PROF[snp_pos][idx]
 				for _, snp := range snp_arr {
 					if bytes.Equal(snp, SNP) {
 						//fmt.Println("Diff: ", string(snp), string(SNP), base_conf)
@@ -271,6 +269,7 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 	var flag bool
 	var idx int
 	var value []byte
+	var str_snp_conf string
 
     for _, snp_pos = range SNP_Pos {
         str_snp_pos = strconv.Itoa(snp_pos)
@@ -279,14 +278,19 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
         str_snp_num1, str_snp_num2 = strconv.Itoa(num[0]), strconv.Itoa(num[1])
         str_snp_prob = strconv.FormatFloat(float64(num[0])/float64(num[1]), 'f', 5, 32)
         //fmt.Println(snp_pos, "\t", str_snp)
-        _, err := file.WriteString(str_snp_pos + "\t" + str_snp + "\t" + 
+		if str_snp != "" {
+	        _, err = file.WriteString(str_snp_pos + "\t" + str_snp + "\t" + 
 					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
+		} else {
+	        _, err = file.WriteString(str_snp_pos + "\t.\t" + 
+					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
+		}
 
 		//Write SNP Qual - testing////////////////////////////
 		flag = false
-		for idx, value = range INDEX.SNP_PROFILE[snp_pos] {
+		for idx, value = range INDEX.SNP_PROF[snp_pos] {
 			if bytes.Equal(value, S.SNP_Call[snp_pos]) {
-		        str_snp_conf := strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
+		        str_snp_conf = strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
                 _, err = file.WriteString(str_snp_conf + "\n");
 				flag = true
 			}
@@ -295,7 +299,7 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 			_, err = file.WriteString("." + "\n");
 			fmt.Println("--------")
 			fmt.Println(snp_pos, " : ", string(S.SNP_Call[snp_pos]))
-			for _, val := range INDEX.SNP_PROFILE[snp_pos] {
+			for _, val := range INDEX.SNP_PROF[snp_pos] {
 				fmt.Print(string(val), " - ")
 			}
 			fmt.Println()

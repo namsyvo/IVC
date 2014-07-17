@@ -17,20 +17,101 @@ import (
 	"math"
 )
 
+//Global constants and variables
+var (
+	INF int = math.MaxInt16 // Value for Infinity
+	EMPTY_INT_SLICE []int = make([]int, 0)
+)
+
+//Index for SNP caller
 type Index struct {
     SEQ []byte //multigenomes
-    SNP_PROFILE map[int][][]byte //hash table of SNP Profile (position, snps)
+    SNP_PROF map[int][][]byte //hash table of SNP Profile (position, snps)
     SNP_AF map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
     SAME_LEN_SNP map[int]int //hash table to indicate if SNPs has same length
     SORTED_SNP_POS []int //sorted array of SNP positions
     REV_FMI fmi.Index //FM-index of reverse multigenomes
 }
 
-// Value for Infinity
-var (
-	INF int = math.MaxInt16
-	EMPTY_INT_SLICE []int = make([]int, 0)
-)
+//Input
+type InputInfo struct {
+    Genome_file string
+    SNP_file string
+    Index_file string
+    Rev_index_file string
+    Read_file_1 string
+    Read_file_2 string
+    SNP_call_file string
+}
+
+//Parameter used in alignment algorithm
+type ParaInfo struct {
+    Dist_thres int //threshold for distances between reads and multigenomes
+    Iter_num int //number of random iterations to find proper seeds
+    Max_match int //maximum number of matches
+	Std_dev_factor int
+	Iter_num_factor int
+}
+
+//"Global" variables used in alignment process (computing distance, snp call)
+type AlignMem struct {
+	Bw_snp_idx []int
+	Fw_snp_idx []int
+	Bw_snp_val [][]byte
+	Fw_snp_val [][]byte
+	Bw_D [][]int
+	Fw_D [][]int
+	Bw_T [][][]byte
+	Fw_T [][][]byte
+}
+
+//Store read and information
+type ReadInfo struct {
+    Read1 []byte
+	Read2 []byte
+	Rev_read1 []byte
+	Rev_read2 []byte
+	Rev_comp_read1 []byte
+	Rev_comp_read2 []byte
+	Comp_read1 []byte
+	Comp_read2 []byte
+	Qual_info []byte
+    Read_len int
+    Seq_err float32
+}
+
+func (read_info *ReadInfo) AllocMem() {
+	read_info.Read1 = make([]byte, read_info.Read_len)
+	read_info.Read2 = make([]byte, read_info.Read_len)
+	read_info.Rev_read1 = make([]byte, read_info.Read_len)
+	read_info.Rev_read2 = make([]byte, read_info.Read_len)
+	read_info.Rev_comp_read1 = make([]byte, read_info.Read_len)
+	read_info.Rev_comp_read2 = make([]byte, read_info.Read_len)
+	read_info.Comp_read1 = make([]byte, read_info.Read_len)
+	read_info.Comp_read2 = make([]byte, read_info.Read_len)
+}
+
+func (align_mem *AlignMem) AllocMem(arr_len int) {
+	InitMatrix(arr_len, &align_mem.Bw_snp_idx, &align_mem.Bw_snp_val, &align_mem.Bw_D, &align_mem.Bw_T)
+	InitMatrix(arr_len, &align_mem.Fw_snp_idx, &align_mem.Fw_snp_val, &align_mem.Fw_D, &align_mem.Fw_T)
+}
+
+//-------------------------------------------------------------------------------------------------
+// Initializing variables for computing distance and alignment between reads and multi-genomes.
+//-------------------------------------------------------------------------------------------------
+func InitMatrix(arr_len int, snp_idx *[]int, snp_val *[][]byte, D *[][]int, T *[][][]byte) {
+	*snp_idx = make([]int, arr_len)
+	*snp_val = make([][]byte, arr_len)
+	*D = make([][]int, arr_len + 1)
+	for i:= 0; i <= arr_len; i++ {
+		(*D)[i] = make([]int, arr_len + 1)
+    }
+	*T = make([][][]byte, arr_len)
+    for i:= 0; i < arr_len; i++ {
+		(*T)[i] = make([][]byte, arr_len)
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 // IntervalHasSNP determines whether [i, j] contains SNP positions which are stores in array A.

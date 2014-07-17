@@ -39,7 +39,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw
     m, n = len(read), len(ref)
 	sn = 0
     for m > 0 && n > 0 {
-		snp_values, is_snp = I.SNP_PROFILE[pos + n - 1]
+		snp_values, is_snp = I.SNP_PROF[pos + n - 1]
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + n - 1]
     	if !is_snp {
         	if read[m-1] != ref[n-1] {
@@ -82,7 +82,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw
 	var temp_dis, min_index int
     for i = 1; i <= m; i++ {
         for j = 1; j <= n; j++ {
-			snp_values, is_snp = I.SNP_PROFILE[pos + j - 1]
+			snp_values, is_snp = I.SNP_PROF[pos + j - 1]
 	    	if !is_snp {
 				if read[i-1] != ref[j-1] {
 					D[i][j] = D[i - 1][j - 1] + 1
@@ -130,7 +130,7 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, sn int, bw
 	var i, j int = m, n
 	var k int = sn
 	for  i > 0 || j > 0 {
-		_, is_snp = I.SNP_PROFILE[pos + j - 1]
+		_, is_snp = I.SNP_PROF[pos + j - 1]
 		if i > 0 && j > 0 {
 		  	if !is_snp {
 		  		i, j = i - 1, j - 1
@@ -175,7 +175,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
     m, n = M, N
 	sn = 0
     for m > 0 && n > 0 {
-		snp_values, is_snp = I.SNP_PROFILE[pos + (N - 1) - (n - 1)]
+		snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (n - 1)]
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
     	if !is_snp {
         	if read[(M - 1) - (m - 1)] != ref[(N - 1) - (n - 1)] {
@@ -218,7 +218,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
 	var temp_dis, min_index int
     for i = 1; i <= m; i++ {
         for j = 1; j <= n; j++ {
-			snp_values, is_snp = I.SNP_PROFILE[pos + (N - 1) - (j - 1)]
+			snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
 		    if !is_snp {
 				if read[(M - 1) - (i - 1)] != ref[(N - 1) - (j - 1)] {
 					D[i][j] = D[i - 1][j - 1] + 1
@@ -266,7 +266,7 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, sn int, fw
 	var M, N int = len(read), len(ref)
 	var k int = sn
 	for  i > 0 || j > 0 {
-		_, is_snp = I.SNP_PROFILE[pos + (N - 1) - (j - 1)]
+		_, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
 		if i > 0 && j > 0 {
 		  	if !is_snp {
 		  		i, j = i - 1, j - 1
