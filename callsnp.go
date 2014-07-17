@@ -294,8 +294,8 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 		if !flag {
 			_, err = file.WriteString("." + "\n");
 			fmt.Println("--------")
-			fmt.Println(snp_pos, " : ", S.SNP_Call[snp_pos])
-			for _, val := range index.SNP_PROFILE[snp_pos] {
+			fmt.Println(snp_pos, " : ", string(S.SNP_Call[snp_pos]))
+			for _, val := range INDEX.SNP_PROFILE[snp_pos] {
 				fmt.Print(string(val), " - ")
 			}
 			fmt.Println()
