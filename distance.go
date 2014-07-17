@@ -194,8 +194,8 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
 	  		if min_d == INF {
 	  			return INF, 0, m, n, sn, false
 	  		}
-			fw_snp_idx[sn] = pos + n - 1
-			fw_snp_val[sn] = read[m - snp_len: m]
+			fw_snp_idx[sn] = pos + (N - 1) - (n - 1)
+			fw_snp_val[sn] = read[M - m : M - (m - snp_len)]
 			sn++
     		d += min_d
     		m -= snp_len

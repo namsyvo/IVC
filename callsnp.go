@@ -96,8 +96,7 @@ func (S *SNPProf) UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_rea
             }
         }
         //Take a random position to search
-        //p = RAND_GEN.Intn(len(read1) - 1) + 1
-		p = p + 5
+        p = RAND_GEN.Intn(len(read1) - 1) + 1
         loop_num++
     }
 
@@ -125,8 +124,7 @@ func (S *SNPProf) UpdateSNPCall(read1, read2, rev_read1, rev_read2, rev_comp_rea
 			}
 		}
         //Take a random position to search
-        //p = RAND_GEN.Intn(len(read2) - 1) + 1
-		p = p + 5
+		p = RAND_GEN.Intn(len(read2) - 1) + 1
         loop_num++
     }
 
@@ -294,15 +292,13 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 			}
 		}
 		if !flag {
-                _, err = file.WriteString("." + "\n");
-			/*
+			_, err = file.WriteString("." + "\n");
 			fmt.Println("--------")
-			fmt.Println(snp_pos, "-", S.SNP_Call[snp_pos])
+			fmt.Println(snp_pos, " : ", S.SNP_Call[snp_pos])
 			for _, val := range index.SNP_PROFILE[snp_pos] {
-				fmt.Print(string(val), "-")
+				fmt.Print(string(val), " - ")
 			}
 			fmt.Println()
-			 */
 		}
 		//////////////////////////////////////////////////////
 
