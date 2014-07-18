@@ -49,7 +49,6 @@ func (I *Index) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInf
 	runtime.ReadMemStats(memstats)
     log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    //I.FMI = *fmi.Load(index_file)
     I.REV_FMI = *fmi.Load(input_info.Rev_index_file)
 	runtime.ReadMemStats(memstats)
     log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
