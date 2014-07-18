@@ -84,6 +84,7 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
         if has_seeds {
 			has_snp_1 = S.FindSNPCall(read_info.Read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
+				fmt.Println(s_pos, "\t", e_pos)
 		        //fmt.Println(loop_num, "\tori1\t", string(read1))
                 break
             }
@@ -93,13 +94,15 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
         if has_seeds {
 			has_snp_1 = S.FindSNPCall(read_info.Rev_comp_read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
+				fmt.Println(s_pos, "\t", e_pos)
 		        //fmt.Println(loop_num, "\trev1\t", string(rev_read1))
                 break
             }
         }
         //Take a random position to search
-        p = RAND_GEN.Intn(READ_LEN - 1) + 1
-        loop_num++
+        //p = RAND_GEN.Intn(READ_LEN - 1) + 1
+        p = p+5
+		loop_num++
     }
 
     //Find SNPs for the second end
@@ -112,6 +115,7 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
         if has_seeds {
 			has_snp_2 = S.FindSNPCall(read_info.Read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
+				fmt.Println(s_pos, "\t", e_pos)
 				//fmt.Println(loop_num, "\tori2\t", string(read2))
 				return true
 			}
@@ -121,13 +125,15 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
         if has_seeds {
 			has_snp_2 = S.FindSNPCall(read_info.Rev_comp_read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
+				fmt.Println(s_pos, "\t", e_pos)
 				//fmt.Println(loop_num, "\trev2\t", string(rev_read2))
 				return true
 			}
 		}
         //Take a random position to search
-		p = RAND_GEN.Intn(READ_LEN - 1) + 1
-        loop_num++
+		//p = RAND_GEN.Intn(READ_LEN - 1) + 1
+        p = p+5
+		loop_num++
     }
 
     if has_snp_1 {
