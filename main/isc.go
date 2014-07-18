@@ -110,11 +110,11 @@ func main() {
 			data2.ReadBytes('\n') //ignore 1st line in input FASTQ file
 			line_f1, err = data1.ReadBytes('\n') //use 2nd line in input FASTQ file
 			if err != nil {
-				return
+				break
             }
 			line_f2, err = data2.ReadBytes('\n') //use 2nd line in input FASTQ file
 			if err != nil {
-				return
+				break
             }
             if len(line_f1) >= isc.READ_LEN && len(line_f2) >= isc.READ_LEN{
 	        	read_num++

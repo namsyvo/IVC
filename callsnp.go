@@ -235,7 +235,6 @@ func (S *SNPProf) CallSNP() {
     var SNP_Qlt map[string]int	
 
     for snp_pos, snp_prof = range S.SNP_Prof {
-println(snp_pos)
         SNP_Qlt = make(map[string]int)
         for _, snp = range snp_prof {
             SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
@@ -276,7 +275,7 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 	var value []byte
 	var str_snp_conf string
 
-	//log.Printf("New Alleles:\n")
+	log.Printf("New Alleles:\n")
     for _, snp_pos = range SNP_Pos {
         str_snp_pos = strconv.Itoa(snp_pos)
         str_snp = string(S.SNP_Call[snp_pos])
@@ -303,11 +302,11 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 		}
 		if !flag {
 			_, err = file.WriteString(".\n");
-			//log.Printf("%s\t%s\n", str_snp_pos, str_snp)
-			//for _, val := range INDEX.SNP_PROF[snp_pos] {
-				//log.Printf("%s\t", string(val))
-			//}
-			//log.Printf("\n")
+			log.Printf("%s\t%s\n", str_snp_pos, str_snp)
+			for _, val := range INDEX.SNP_PROF[snp_pos] {
+				log.Printf("%s\t", string(val))
+			}
+			log.Printf("\n")
 		}
 		//////////////////////////////////////////////////////
 
