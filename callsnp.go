@@ -80,6 +80,7 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
     loop_num = 1
 	has_snp_1 = false
     for loop_num <= ITER_NUM {
+		fmt.Println(loop_num, "\tread1")
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, p, match_pos)
         if has_seeds {
 			fmt.Println("read1, has seed\t", s_pos, "\t", e_pos)
@@ -112,7 +113,7 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
     loop_num = 1
     has_snp_2 = false
     for loop_num <= ITER_NUM {
-        //Call FindSeeds to determine seed
+		fmt.Println(loop_num, "\tread2")
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, p, match_pos)
         if has_seeds {
 			fmt.Println("read2, has seed\t", s_pos, "\t", e_pos)
