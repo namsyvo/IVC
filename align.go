@@ -177,6 +177,10 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
     right_d, right_D, right_m, right_n, right_sn, _ :=
      I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_snp_idx, align_mem.Fw_snp_val, align_mem.Fw_D, align_mem.Fw_T)
 
+	fmt.Println(string(read_left_flank))
+	fmt.Println(string(ref_left_flank))
+	fmt.Println(string(read_right_flank))
+	fmt.Println(string(ref_right_flank))
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
         left_num := I.BackwardTraceBack(read_left_flank, ref_left_flank,
