@@ -56,8 +56,10 @@ func (I *Index) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInf
         memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     //Const for computing distance
-    DIST_THRES = int(math.Ceil(float64(read_info.Seq_err) * float64(read_info.Read_len) +
-     float64(para_info.Std_dev_factor) * math.Sqrt(float64(read_info.Read_len) * float64(read_info.Seq_err) * float64((1 - read_info.Seq_err)))))
+	err := float64(read_info.Seq_err)
+	rlen := float64(read_info.Read_len)
+	k := float64(para_info.Err_var_factor)
+    DIST_THRES = int(math.Ceil(err * rlen + k * math.Sqrt(rlen * err * (1 - err))))
     ITER_NUM = para_info.Iter_num_factor * (DIST_THRES + 1)
     MAXIMUM_MATCH = para_info.Max_match
 

@@ -25,7 +25,7 @@ var (
 
 //Index for SNP caller
 type Index struct {
-    SEQ []byte //multigenomes
+    SEQ []byte //store reference multigenomes
     SNP_PROF map[int][][]byte //hash table of SNP Profile (position, snps)
     SNP_AF map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
     SAME_LEN_SNP map[int]int //hash table to indicate if SNPs has same length
@@ -33,15 +33,16 @@ type Index struct {
     REV_FMI fmi.Index //FM-index of reverse multigenomes
 }
 
-//Input
+//Input information
 type InputInfo struct {
-    Genome_file string
-    SNP_file string
-    Index_file string
-    Rev_index_file string
-    Read_file_1 string
-    Read_file_2 string
-    SNP_call_file string
+	//File names for:
+    Genome_file string //reference multigenome
+    SNP_file string //SNP profile
+    Index_file string //Index of original reference genomes
+    Rev_index_file string //Index of reverse reference genomes
+    Read_file_1 string //first end read
+    Read_file_2 string //second end read
+    SNP_call_file string //store SNP call
 }
 
 //Parameter used in alignment algorithm
@@ -49,46 +50,52 @@ type ParaInfo struct {
     Dist_thres int //threshold for distances between reads and multigenomes
     Iter_num int //number of random iterations to find proper seeds
     Max_match int //maximum number of matches
-	Std_dev_factor int
-	Iter_num_factor int
+	Err_var_factor int //factor for standard variation for sequencing error
+	Iter_num_factor int //factor for 
 }
 
 //"Global" variables used in alignment process (computing distance, snp call)
 type AlignMem struct {
-	Bw_snp_idx []int
-	Fw_snp_idx []int
-	Bw_snp_val [][]byte
-	Fw_snp_val [][]byte
-	Bw_D [][]int
-	Fw_D [][]int
-	Bw_T [][][]byte
-	Fw_T [][][]byte
+	Bw_snp_idx []int // SNP indexes for backward alignment
+	Fw_snp_idx []int // SNP indexes for forward alignment
+	Bw_snp_val [][]byte // SNP values for backward alignment
+	Fw_snp_val [][]byte // SNP values for forward alignment
+	Bw_D [][]int // Distance matrix for backward alignment
+	Fw_D [][]int // Distance matrix for forward alignment
+	Bw_T [][][]byte // SNP trace matrix for backward alignment
+	Fw_T [][][]byte // SNP trace matrix for forward alignment
 }
 
 //Store read and information
 type ReadInfo struct {
-    Read1 []byte
-	Read2 []byte
-	Rev_read1 []byte
-	Rev_read2 []byte
-	Rev_comp_read1 []byte
-	Rev_comp_read2 []byte
-	Comp_read1 []byte
-	Comp_read2 []byte
-	Qual_info []byte
-    Read_len int
-    Seq_err float32
+    Read1 []byte //first end read
+	Read2 []byte //second end read
+	Rev_read1 []byte //reverse of 1st end read
+	Rev_read2 []byte //reverse of 2nd end read
+	Rev_comp_read1 []byte //reverse complement of 1st end read
+	Rev_comp_read2 []byte //reverse complement of 2nd end read
+	Comp_read1 []byte //complement of 1st end read, ~ reverse of reverse complement of the read
+	Comp_read2 []byte //complement of 2nd end read, ~ reverse of reverse complement of the read
+	Qual_info_1 []byte //quality info of 1st read
+	Qual_info_2 []byte //quality info of 2nd read
+    Read_len int //read length
+    Seq_err float32 //average sequencing error, estimated from read if real reads
 }
 
-func (read_info *ReadInfo) AllocMem() {
-	read_info.Read1 = make([]byte, read_info.Read_len)
-	read_info.Read2 = make([]byte, read_info.Read_len)
-	read_info.Rev_read1 = make([]byte, read_info.Read_len)
-	read_info.Rev_read2 = make([]byte, read_info.Read_len)
-	read_info.Rev_comp_read1 = make([]byte, read_info.Read_len)
-	read_info.Rev_comp_read2 = make([]byte, read_info.Read_len)
-	read_info.Comp_read1 = make([]byte, read_info.Read_len)
-	read_info.Comp_read2 = make([]byte, read_info.Read_len)
+func (read_info *ReadInfo) AllocMem() bool {
+	if read_info.Read_len > 0 {
+		read_info.Read1 = make([]byte, read_info.Read_len)
+		read_info.Read2 = make([]byte, read_info.Read_len)
+		read_info.Rev_read1 = make([]byte, read_info.Read_len)
+		read_info.Rev_read2 = make([]byte, read_info.Read_len)
+		read_info.Rev_comp_read1 = make([]byte, read_info.Read_len)
+		read_info.Rev_comp_read2 = make([]byte, read_info.Read_len)
+		read_info.Comp_read1 = make([]byte, read_info.Read_len)
+		read_info.Comp_read2 = make([]byte, read_info.Read_len)
+		return true
+	} else {
+		return false
+	}
 }
 
 func (align_mem *AlignMem) AllocMem(arr_len int) {
