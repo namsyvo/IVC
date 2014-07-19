@@ -248,6 +248,7 @@ func (S *SNPProf) CallSNP() {
     var major_num int
     var SNP_Qlt map[string]int	
 
+	fmt.Println("SNP Prof Len: ", len(S.SNP_Prof))
     for snp_pos, snp_prof = range S.SNP_Prof {
         SNP_Qlt = make(map[string]int)
         for _, snp = range snp_prof {
@@ -297,13 +298,13 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
         str_snp_num1, str_snp_num2 = strconv.Itoa(num[0]), strconv.Itoa(num[1])
         str_snp_prob = strconv.FormatFloat(float64(num[0])/float64(num[1]), 'f', 5, 32)
         //fmt.Println(snp_pos, "\t", str_snp)
-		if str_snp != "" {
+//		if str_snp != "" {
 	        _, err = file.WriteString(str_snp_pos + "\t" + str_snp + "\t" + 
 					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
-		} else {
-	        _, err = file.WriteString(str_snp_pos + "\t.\t" + 
-					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
-		}
+//		} else {
+//	        _, err = file.WriteString(str_snp_pos + "\t.\t" + 
+//					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
+//		}
 
 		//Write SNP Qual - testing////////////////////////////
 		flag = false
