@@ -170,7 +170,9 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 				has_snp = true
 	            for k = 0; k < left_num ; k++ {
     	            idx, val = align_mem.Bw_snp_idx[k], align_mem.Bw_snp_val[k]
-					//fmt.Println(string(read), "\t", idx, "\t", string(val))
+					if idx == 25151634 || idx == 42234935 {
+						fmt.Println(string(read), "\t", idx, "\t", string(val))
+					}
 					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
     	        }
 			}
@@ -266,7 +268,7 @@ func (S *SNPProf) CallSNP() {
     }
 
     for snp_pos, snp = range S.SNP_Call {
-		fmt.Println(snp_pos, "\t", snp)
+		//fmt.Println(snp_pos, "\t", string(snp))
 	}
 }
 
