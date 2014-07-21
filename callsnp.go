@@ -170,7 +170,7 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 				has_snp = true
 	            for k = 0; k < left_num ; k++ {
     	            idx, val = align_mem.Bw_snp_idx[k], align_mem.Bw_snp_val[k]
-					fmt.Println(string(read), "\t", idx, "\t", string(val))
+					//fmt.Println(string(read), "\t", idx, "\t", string(val))
 					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
     	        }
 			}
@@ -178,7 +178,7 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 				has_snp = true
 				for k = 0; k < right_num ; k++ {
     	            idx, val = align_mem.Fw_snp_idx[k], align_mem.Fw_snp_val[k]
-					fmt.Println(string(read), "\t", idx, "\t", string(val))
+					//fmt.Println(string(read), "\t", idx, "\t", string(val))
 					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
     	        }
 			}
@@ -248,7 +248,7 @@ func (S *SNPProf) CallSNP() {
     var major_num int
     var SNP_Qlt map[string]int	
 
-	fmt.Println("SNP Prof Len: ", len(S.SNP_Prof))
+	//fmt.Println("SNP Prof Len: ", len(S.SNP_Prof))
     for snp_pos, snp_prof = range S.SNP_Prof {
         SNP_Qlt = make(map[string]int)
         for _, snp = range snp_prof {
@@ -264,6 +264,10 @@ func (S *SNPProf) CallSNP() {
         S.SNP_Call[snp_pos] = []byte(major_snp)
         S.SNP_Prob[snp_pos] = []int{major_num, len(snp_prof)}
     }
+
+    for snp_pos, snp = range S.SNP_Call {
+		fmt.Println(snp_pos, "\t", snp)
+	}
 }
 
 //-------------------------------------------------------------------------------------------------------
