@@ -180,7 +180,9 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 				has_snp = true
 				for k = 0; k < right_num ; k++ {
     	            idx, val = align_mem.Fw_snp_idx[k], align_mem.Fw_snp_val[k]
-					//fmt.Println(string(read), "\t", idx, "\t", string(val))
+					if idx == 25151634 || idx == 42234935 {
+						fmt.Println(string(read), "\t", idx, "\t", string(val))
+					}
 					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
     	        }
 			}
