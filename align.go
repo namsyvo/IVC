@@ -177,11 +177,11 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
     right_d, right_D, right_m, right_n, right_sn, _ :=
      I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_snp_idx, align_mem.Fw_snp_val, align_mem.Fw_D, align_mem.Fw_T)
 
-	fmt.Println("read_left_flank\t", string(read_left_flank))
-	fmt.Println("ref_left_flank\t", string(ref_left_flank), "\t", left_most_pos)
-	fmt.Println("read_right_flank\t", string(read_right_flank))
-	fmt.Println("ref_right_flank\t", string(ref_right_flank), "\t", match_pos + lcs_len)
-	fmt.Println(left_d,"\t", right_d, "\t", left_D, "\t", right_D)
+	//fmt.Println("read_left_flank\t", string(read_left_flank))
+	//fmt.Println("ref_left_flank\t", string(ref_left_flank), "\t", left_most_pos)
+	//fmt.Println("read_right_flank\t", string(read_right_flank))
+	//fmt.Println("ref_right_flank\t", string(ref_right_flank), "\t", match_pos + lcs_len)
+	//fmt.Println(left_d,"\t", right_d, "\t", left_D, "\t", right_D)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
