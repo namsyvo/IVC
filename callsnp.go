@@ -154,7 +154,7 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
 func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, match_num int, align_mem AlignMem) bool {
 
     var k, idx, left_num, right_num, pos int
-	var val []byte
+	//var val []byte
 	var isExtended, has_snp bool
 
 	has_snp = false
@@ -169,25 +169,29 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 			if left_num > 0 {
 				has_snp = true
 	            for k = 0; k < left_num ; k++ {
-    	            idx, val = align_mem.Bw_snp_idx[k], align_mem.Bw_snp_val[k]
-					if idx == 25151634 || idx == 42234935 {
-						fmt.Println(string(read), "\t", idx, "\t", string(val))
-					}
-					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
+    	            idx, _ = align_mem.Bw_snp_idx[k], align_mem.Bw_snp_val[k]
+					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], align_mem.Bw_snp_val[k])
+					//if idx == 25151634 || idx == 42234935 {
+					//	fmt.Println(string(read), "\t", idx, "\t", string(S.SNP_Prof[idx][0]))
+					//}
     	        }
 			}
 			if right_num > 0 {
 				has_snp = true
 				for k = 0; k < right_num ; k++ {
-    	            idx, val = align_mem.Fw_snp_idx[k], align_mem.Fw_snp_val[k]
-					if idx == 25151634 || idx == 42234935 {
-						fmt.Println(string(read), "\t", idx, "\t", string(val))
-					}
-					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
+    	            idx, _ = align_mem.Fw_snp_idx[k], align_mem.Fw_snp_val[k]
+					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], align_mem.Bw_snp_val[k])
+					//if idx == 25151634 || idx == 42234935 {
+					//	fmt.Println(string(read), "\t", idx, "\t", string(S.SNP_Prof[idx][0]))
+					//}
     	        }
 			}
 		}
 		//}
+	}
+	v, ok := S.SNP_Prof[25151634]
+	if ok {
+		fmt.Println("FindSNPCall: ", string(v[0]))
 	}
 	return has_snp
 }
@@ -252,7 +256,11 @@ func (S *SNPProf) CallSNP() {
     var major_num int
     var SNP_Qlt map[string]int	
 
-	//fmt.Println("SNP Prof Len: ", len(S.SNP_Prof))
+	v, ok := S.SNP_Prof[25151634]
+	if ok {
+		fmt.Println("CallSNP: ", string(v[0]))
+	}
+
     for snp_pos, snp_prof = range S.SNP_Prof {
         SNP_Qlt = make(map[string]int)
         for _, snp = range snp_prof {
@@ -268,10 +276,6 @@ func (S *SNPProf) CallSNP() {
         S.SNP_Call[snp_pos] = []byte(major_snp)
         S.SNP_Prob[snp_pos] = []int{major_num, len(snp_prof)}
     }
-
-    for snp_pos, snp = range S.SNP_Call {
-		//fmt.Println(snp_pos, "\t", string(snp))
-	}
 }
 
 //-------------------------------------------------------------------------------------------------------
