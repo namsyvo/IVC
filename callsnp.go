@@ -177,10 +177,6 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 		}
 		//}
 	}
-	v, ok := S.SNP_Prof[25151634]
-	if ok {
-		fmt.Println("FindSNPCall: ", string(v[0]))
-	}
 	return has_snp
 }
 
@@ -242,11 +238,6 @@ func (S *SNPProf) CallSNP() {
     var major_snp string
     var major_num int
     var SNP_Qlt map[string]int	
-
-	v, ok := S.SNP_Prof[25151634]
-	if ok {
-		fmt.Println("CallSNP: ", string(v[0]))
-	}
 
     for snp_pos, snp_prof = range S.SNP_Prof {
         SNP_Qlt = make(map[string]int)
