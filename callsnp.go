@@ -98,7 +98,8 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
             }
         }
         //Take a random position to search
-        p = RAND_GEN.Intn(READ_LEN - 1) + 1
+        //p = RAND_GEN.Intn(READ_LEN - 1) + 1
+		p = p + 5
         loop_num++
     }
 
@@ -126,8 +127,9 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
 			}
 		}
         //Take a random position to search
-		p = RAND_GEN.Intn(READ_LEN - 1) + 1
-        loop_num++
+		//p = RAND_GEN.Intn(READ_LEN - 1) + 1
+        p = p + 5
+		loop_num++
     }
 
     if has_snp_1 {
@@ -142,32 +144,29 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
 //---------------------------------------------------------------------------------------------------
 func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, match_num int, align_mem AlignMem) bool {
 
-    var k, idx, left_num, right_num, pos int
+    var pos, dis, idx, k int
 	var val []byte
-	var isExtended, has_snp bool
+	var left_snp_idx, right_snp_idx []int
+	var left_snp_val, right_snp_val [][]byte
+	var has_snp bool
 
 	has_snp = false
     for i := 0 ; i < match_num ; i++ {
 		pos = match_pos[i]
         //Call IntervalHasSNP to determine whether extension is needed
         //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
-        _, left_num, right_num, isExtended = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_mem)
-        if isExtended {
+        dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_mem)
+        if dis <= DIST_THRES {
             //Determine SNP profile
-			if left_num > 0 {
-				has_snp = true
-	            for k = 0; k < left_num ; k++ {
-    	            idx, val = align_mem.Bw_snp_idx[k], align_mem.Bw_snp_val[k]
-					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
-    	        }
-			}
-			if right_num > 0 {
-				has_snp = true
-				for k = 0; k < right_num ; k++ {
-    	            idx, val = align_mem.Fw_snp_idx[k], align_mem.Fw_snp_val[k]
-					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
-    	        }
-			}
+			has_snp = true
+	        for k = 0; k < len(left_snp_idx) ; k++ {
+    	        idx, val = left_snp_idx[k], left_snp_val[k]
+				S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
+    	    }
+			for k = 0; k < len(right_snp_idx) ; k++ {
+    	        idx, val = right_snp_idx[k], right_snp_val[k]
+				S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
+    	    }
 		}
 		//}
 	}
@@ -180,7 +179,6 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
 func (S *SNPProf) UpdateSNPProfile(read_info ReadInfo, align_mem AlignMem, match_pos []int) bool {
 
 	has_SNP_call := S.UpdateSNPCall(read_info, align_mem, match_pos)
-
 	if has_SNP_call {
 		return true
 	} else {
