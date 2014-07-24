@@ -135,7 +135,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_mem AlignMem) (int, int, int, bool) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_mem AlignMem) (int, []int, [][]byte, []int, [][]byte) {
 
     var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
     var lcs_len int = s_pos - e_pos + 1
@@ -171,20 +171,23 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
     }
 
     read_left_flank = read[ : e_pos]
-    left_d, left_D, left_m, left_n, left_sn, _ :=
-     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_mem.Bw_snp_idx, align_mem.Bw_snp_val, align_mem.Bw_D, align_mem.Bw_T)
+    left_d, left_D, left_m, left_n, left_snp_idx, left_snp_val :=
+     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_mem.Bw_D, align_mem.Bw_T)
 
     read_right_flank = read[s_pos + 1 : ]
-    right_d, right_D, right_m, right_n, right_sn, _ :=
-     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_snp_idx, align_mem.Fw_snp_val, align_mem.Fw_D, align_mem.Fw_T)
+    right_d, right_D, right_m, right_n, right_snp_idx, right_snp_val :=
+     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_D, align_mem.Fw_T)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
-        left_num := I.BackwardTraceBack(read_left_flank, ref_left_flank,
-         left_m, left_n, left_most_pos, left_sn, align_mem.Bw_snp_idx, align_mem.Bw_snp_val, align_mem.Bw_T)
-        right_num := I.ForwardTraceBack(read_right_flank, ref_right_flank,
-         right_m, right_n, match_pos + lcs_len, right_sn, align_mem.Fw_snp_idx, align_mem.Fw_snp_val, align_mem.Fw_T)
-        return dis, left_num, right_num, true
+        left_idx, left_val := I.BackwardTraceBack(read_left_flank, ref_left_flank,
+         left_m, left_n, left_most_pos, align_mem.Bw_T)
+        right_idx, right_val := I.ForwardTraceBack(read_right_flank, ref_right_flank,
+         right_m, right_n, match_pos + lcs_len, align_mem.Fw_T)
+		left_snp_idx = append(left_snp_idx, left_idx...)
+		right_snp_idx = append(right_snp_idx, right_idx...)
+		left_snp_val = append(left_snp_val, left_val...)
+		right_snp_val = append(right_snp_val, right_val...)
     }
-    return dis, 0, 0, false
+    return dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val
 }
