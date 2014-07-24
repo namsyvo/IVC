@@ -56,10 +56,6 @@ type ParaInfo struct {
 
 //"Global" variables used in alignment process (computing distance, snp call)
 type AlignMem struct {
-	Bw_snp_idx []int // SNP indexes for backward alignment
-	Fw_snp_idx []int // SNP indexes for forward alignment
-	Bw_snp_val [][]byte // SNP values for backward alignment
-	Fw_snp_val [][]byte // SNP values for forward alignment
 	Bw_D [][]int // Distance matrix for backward alignment
 	Fw_D [][]int // Distance matrix for forward alignment
 	Bw_T [][][]byte // SNP trace matrix for backward alignment
