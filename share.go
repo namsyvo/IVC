@@ -95,16 +95,14 @@ func (read_info *ReadInfo) AllocMem() bool {
 }
 
 func (align_mem *AlignMem) AllocMem(arr_len int) {
-	InitMatrix(arr_len, &align_mem.Bw_snp_idx, &align_mem.Bw_snp_val, &align_mem.Bw_D, &align_mem.Bw_T)
-	InitMatrix(arr_len, &align_mem.Fw_snp_idx, &align_mem.Fw_snp_val, &align_mem.Fw_D, &align_mem.Fw_T)
+	InitMatrix(arr_len, &align_mem.Bw_D, &align_mem.Bw_T)
+	InitMatrix(arr_len, &align_mem.Fw_D, &align_mem.Fw_T)
 }
 
 //-------------------------------------------------------------------------------------------------
 // Initializing variables for computing distance and alignment between reads and multi-genomes.
 //-------------------------------------------------------------------------------------------------
-func InitMatrix(arr_len int, snp_idx *[]int, snp_val *[][]byte, D *[][]int, T *[][][]byte) {
-	*snp_idx = make([]int, arr_len)
-	*snp_val = make([][]byte, arr_len)
+func InitMatrix(arr_len int, D *[][]int, T *[][][]byte) {
 	*D = make([][]int, arr_len + 1)
 	for i:= 0; i <= arr_len; i++ {
 		(*D)[i] = make([]int, arr_len + 1)
