@@ -85,23 +85,19 @@ func main() {
     if err != nil {
         panic("Error opening file " + fn1)
     }
-    defer f1.Close()
     data1 = bufio.NewReader(f1)
-	if fn2 != "" {
-	    f2, err := os.Open(fn2)
-    	if err != nil {
-    	    panic("Error opening file " + fn2)
-    	}
-	    data2 = bufio.NewReader(f2)
-	    defer f2.Close()
-	}
+	f2, err := os.Open(fn2)
+    if err != nil {
+    	panic("Error opening file " + fn2)
+    }
+	data2 = bufio.NewReader(f2)
 
 	//f, err := os.Create(*memprofile)
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
 	//pprof.WriteHeapProfile(f)
-    
+
     var has_SNP_call bool
     var line_f1, line_f2 []byte
 	if fn1[len(fn1)-3: ] == ".fq" || fn1[len(fn1)-6: ] == ".fastq"  {
@@ -110,11 +106,11 @@ func main() {
 			data2.ReadBytes('\n') //ignore 1st line in input FASTQ file
 			line_f1, err = data1.ReadBytes('\n') //use 2nd line in input FASTQ file
 			if err != nil {
-				return
+				break
             }
 			line_f2, err = data2.ReadBytes('\n') //use 2nd line in input FASTQ file
 			if err != nil {
-				return
+				break
             }
             if len(line_f1) >= isc.READ_LEN && len(line_f2) >= isc.READ_LEN{
 	        	read_num++
@@ -133,10 +129,10 @@ func main() {
 				runtime.ReadMemStats(memstats)
 				log.Printf("isc.go: memstats after aligning each 10,000 reads:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 			}
-			data1.ReadBytes('\n') //ignore 3rd line in input FASTQ file
-            data2.ReadBytes('\n') //ignore 3rd line in input FASTQ file
-            data1.ReadBytes('\n') //ignore 4th line in input FASTQ file
-            data2.ReadBytes('\n') //ignore 4th line in input FASTQ file
+			data1.ReadBytes('\n') //ignore 3rd line in 1st input FASTQ file
+            data2.ReadBytes('\n') //ignore 3rd line in 2nd input FASTQ file
+            data1.ReadBytes('\n') //ignore 4th line in 1st input FASTQ file
+            data2.ReadBytes('\n') //ignore 4th line in 2nd input FASTQ file
         }
     }
 	/*
@@ -161,6 +157,8 @@ func main() {
     }
 	*/
     //f.Close()
+	f1.Close()
+	f2.Close()
 
 	runtime.ReadMemStats(memstats)
     log.Printf("isc.go: memstats after alignment:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
