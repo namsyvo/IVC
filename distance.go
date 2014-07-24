@@ -25,19 +25,20 @@ func Cost(read, ref []byte) int {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw_snp_val [][]byte, D [][]int, T [][][]byte) (int, int, int, int, int, bool) {
+func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte) {
 
     var i, j, k int
 
     var cost int
-    var d, min_d, m, n, sn int
+    var d, min_d, m, n int
     var snp_len int
     var snp_values [][]byte
     var is_snp, is_same_len_snp bool
 	
     d = 0
     m, n = len(read), len(ref)
-	sn = 0
+	snp_val := make([][]byte, 0)
+	snp_idx := make([]int, 0)
     for m > 0 && n > 0 {
 		snp_values, is_snp = I.SNP_PROF[pos + n - 1]
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + n - 1]
@@ -56,11 +57,12 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw
     			}
     		}
 	  		if min_d == INF {
-	  			return INF, 0, m, n, sn, false
+	  			return INF, 0, m, n, snp_idx, snp_val
 	  		}
-			bw_snp_idx[sn] = pos + n - 1
-			bw_snp_val[sn] = read[m - snp_len: m]
-			sn++
+			snp_idx = append(snp_idx, pos + n - 1)
+			snp := make([]byte, snp_len)
+			copy(snp, read[m - snp_len: m])
+			snp_val = append(snp_val, snp)
     		d += min_d
     		m -= snp_len
     		n--
@@ -68,7 +70,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw
     		break
     	}
 		if d > DIST_THRES {
-			return DIST_THRES + 1, 0, m, n, sn, false
+			return DIST_THRES + 1, 0, m, n, snp_idx, snp_val
 		}
     }
 
@@ -112,9 +114,9 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw
 		}
 	}
 	if D[m][n] >= INF {
-		return d, INF, m, n, sn, true
+		return d, INF, m, n, snp_idx, snp_val
 	}
-    return d, D[m][n], m, n, sn, true
+    return d, D[m][n], m, n, snp_idx, snp_val
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -123,12 +125,13 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, bw_snp_idx []int, bw
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, sn int, bw_snp_idx []int, bw_snp_val [][]byte, T [][][]byte) int {
+func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte) {
 
 	var is_snp bool
 	var snp_len int
 	var i, j int = m, n
-	var k int = sn
+	snp_val := make([][]byte, 0)
+	snp_idx := make([]int, 0)
 	for  i > 0 || j > 0 {
 		_, is_snp = I.SNP_PROF[pos + j - 1]
 		if i > 0 && j > 0 {
@@ -140,9 +143,10 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, sn int, bw
 			  	} else {
 			  		snp_len = 0
 			  	}
-		  		bw_snp_idx[k] = pos + j - 1
-				bw_snp_val[k] = read[i - snp_len : i]
-				k++
+				snp_idx = append(snp_idx, pos + j - 1)
+				snp := make([]byte, snp_len)
+				copy(snp, read[i - snp_len : i])
+				snp_val = append(snp_val, snp)
 		  		i, j = i - snp_len, j - 1
 		  	}
 		} else if i == 0 {
@@ -151,7 +155,7 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, sn int, bw
 			i = i - 1;
 		}
 	}
-	return k
+	return snp_idx, snp_val
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -160,20 +164,21 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, sn int, bw
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_snp_val [][]byte, D [][]int, T [][][]byte) (int, int, int, int, int, bool) {
+func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte) {
 
     var i, j, k int
     var M, N = len(read), len(ref)
 	
     var cost int
-    var d, min_d, m, n, sn int
+    var d, min_d, m, n int
     var snp_len int
     var snp_values [][]byte
     var is_snp, is_same_len_snp bool
 
     d = 0
     m, n = M, N
-	sn = 0
+	snp_idx := make([]int, 0)
+	snp_val := make([][]byte, 0)
     for m > 0 && n > 0 {
 		snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (n - 1)]
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
@@ -192,11 +197,12 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
     			}
     		}
 	  		if min_d == INF {
-	  			return INF, 0, m, n, sn, false
+	  			return INF, 0, m, n, snp_idx, snp_val
 	  		}
-			fw_snp_idx[sn] = pos + (N - 1) - (n - 1)
-			fw_snp_val[sn] = read[M - m : M - (m - snp_len)]
-			sn++
+			snp_idx = append(snp_idx, pos + (N - 1) - (n - 1))
+			snp := make([]byte, snp_len)
+			copy(snp, read[M - m : M - (m - snp_len)])
+			snp_val = append(snp_val, snp)
     		d += min_d
     		m -= snp_len
     		n--
@@ -204,7 +210,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
     		break
     	}
 		if d > DIST_THRES {
-			return DIST_THRES + 1, 0, m, n, sn, false
+			return DIST_THRES + 1, 0, m, n, snp_idx, snp_val
 		}
     }
 
@@ -248,9 +254,9 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
 		}
     }
 	if D[m][n] >= INF {
-		return d, INF, m, n, sn, true
+		return d, INF, m, n, snp_idx, snp_val
 	}
-    return d, D[m][n], m, n, sn, true
+    return d, D[m][n], m, n, snp_idx, snp_val
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -259,12 +265,15 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, fw_snp_idx []int, fw_
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, sn int, fw_snp_idx []int, fw_snp_val [][]byte, T [][][]byte) int {
+func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte) {
 	var is_snp bool
 	var snp_len int
 	var i, j int = m, n
 	var M, N int = len(read), len(ref)
-	var k int = sn
+
+	//Trace back from right-bottom conner of distance matrix T
+	snp_idx := make([]int, 0)
+	snp_val := make([][]byte, 0)
 	for  i > 0 || j > 0 {
 		_, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
 		if i > 0 && j > 0 {
@@ -272,15 +281,14 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, sn int, fw
 		  		i, j = i - 1, j - 1
 		  	} else {
 				if T[i - 1][j - 1][0] != '.' {
-					//if snp_values[T[pos + (N - 1) - (j - 1)]][0] != '.' {
 			  		snp_len = len(T[i - 1][j - 1])
-			  		//snp_len = len(snp_values[T[pos + (N - 1) - (j - 1)]])
 			  	} else {
 			  		snp_len = 0
 			  	}
-		  		fw_snp_idx[k] = pos + (N - 1) - (j - 1)
-				fw_snp_val[k] = read[M - i : M - (i - snp_len)]
-				k++
+		  		snp_idx = append(snp_idx, pos + (N - 1) - (j - 1))
+				snp := make([]byte, snp_len)
+				copy(snp, read[M - i : M - (i - snp_len)])
+				snp_val = append(snp_val, snp)
 		  		i, j = i - snp_len, j - 1
 		  	}
 		} else if i == 0 {
@@ -289,5 +297,5 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, sn int, fw
 			i = i - 1;
 		}
 	}
-	return k
+	return snp_idx, snp_val
 }
