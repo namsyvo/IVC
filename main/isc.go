@@ -18,13 +18,13 @@ import (
 
 func main() {
 
+	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
+
 	memstats := new(runtime.MemStats)
     log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 
     runtime.ReadMemStats(memstats)
     log.Printf("isc.go: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
-	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
 
     fmt.Println("Initializing indexes and parameters...")
 
@@ -38,8 +38,8 @@ func main() {
     var read_len = flag.Int("l", 100, "read length")
     var seq_err = flag.Float64("e", 0.01, "sequencing error")
 	//var memprofile = flag.String("memprofile", "", "write memory profile to this file")
-    //var workers = flag.Int("w", 1, "number of workers")
     //flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
+    //var workers = flag.Int("w", 1, "number of workers")
     flag.Parse()
 
 	input_info := isc.InputInfo{}
@@ -168,11 +168,15 @@ func main() {
     fmt.Println("\tNumber of aligned reads: ", snp_aligned_read_num)
 	
     fmt.Println("Calling SNPs from alignment results...")
-    snpcaller.CallSNP()
-    snpcaller.SNPCall_tofile(input_info.SNP_call_file)
 
+    snpcaller.CallSNP()
 	runtime.ReadMemStats(memstats)
     log.Printf("isc.go: memstats after snp call:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
+        memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+
+    snpcaller.SNPCall_tofile(input_info.SNP_call_file)
+	runtime.ReadMemStats(memstats)
+    log.Printf("isc.go: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
         memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     fmt.Println("Finish, check the file", input_info.SNP_call_file, "for results")

@@ -49,7 +49,6 @@ func (I *Index) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInf
 	runtime.ReadMemStats(memstats)
     log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    //I.FMI = *fmi.Load(index_file)
     I.REV_FMI = *fmi.Load(input_info.Rev_index_file)
 	runtime.ReadMemStats(memstats)
     log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
@@ -177,6 +176,12 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
     read_right_flank = read[s_pos + 1 : ]
     right_d, right_D, right_m, right_n, right_snp_idx, right_snp_val :=
      I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_D, align_mem.Fw_T)
+
+	//fmt.Println("read_left_flank\t", string(read_left_flank))
+	//fmt.Println("ref_left_flank\t", string(ref_left_flank), "\t", left_most_pos)
+	//fmt.Println("read_right_flank\t", string(read_right_flank))
+	//fmt.Println("ref_right_flank\t", string(ref_right_flank), "\t", match_pos + lcs_len)
+	//fmt.Println(left_d,"\t", right_d, "\t", left_D, "\t", right_D)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
