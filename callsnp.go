@@ -80,13 +80,13 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
     loop_num = 1
 	has_snp_1 = false
     for loop_num <= ITER_NUM {
-		//fmt.Println(loop_num, "\tread1")
+		fmt.Println(loop_num, "\tread1")
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, p, match_pos)
         if has_seeds {
-			//fmt.Println("read1, has seed\t", s_pos, "\t", e_pos)
+			fmt.Println("read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
 			has_snp_1 = S.FindSNPCall(read_info.Read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
-				//fmt.Println("read1, has snp\t", s_pos, "\t", e_pos)
+				fmt.Println("read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
 		        //fmt.Println(loop_num, "\tori1\t", string(read1))
                 break
             }
@@ -94,16 +94,17 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
         //Find SNPs for the reverse complement of the first end
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, p, match_pos)
         if has_seeds {
-			//fmt.Println("rc_read1, has seed\t", s_pos, "\t", e_pos)
+			fmt.Println("rc_read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
 			has_snp_1 = S.FindSNPCall(read_info.Rev_comp_read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
-				//fmt.Println("rc_read1, has snp\t", s_pos, "\t", e_pos)
+				fmt.Println("rc_read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
 		        //fmt.Println(loop_num, "\trev1\t", string(rev_read1))
                 break
             }
         }
         //Take a random position to search
-        p = RAND_GEN.Intn(READ_LEN - 1) + 1
+        //p = RAND_GEN.Intn(READ_LEN - 1) + 1
+		p=p+5
         loop_num++
     }
 
@@ -112,13 +113,13 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
     loop_num = 1
     has_snp_2 = false
     for loop_num <= ITER_NUM {
-		//fmt.Println(loop_num, "\tread2")
+		fmt.Println(loop_num, "\tread2")
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, p, match_pos)
         if has_seeds {
-			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos)
+			fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			has_snp_2 = S.FindSNPCall(read_info.Read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
-				//fmt.Println("read2, has snp\t", s_pos, "\t", e_pos)
+				fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 				//fmt.Println(loop_num, "\tori2\t", string(read2))
 				return true
 			}
@@ -126,16 +127,17 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
 		//Find SNPs for the reverse complement of the second end
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, p, match_pos)
         if has_seeds {
-			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos)
+			fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			has_snp_2 = S.FindSNPCall(read_info.Rev_comp_read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
-				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos)
+				fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 				//fmt.Println(loop_num, "\trev2\t", string(rev_read2))
 				return true
 			}
 		}
         //Take a random position to search
-		p = RAND_GEN.Intn(READ_LEN - 1) + 1
+		//p = RAND_GEN.Intn(READ_LEN - 1) + 1
+		p=p+5
 		loop_num++
     }
 
