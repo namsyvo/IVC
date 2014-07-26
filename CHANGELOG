@@ -1,12 +1,27 @@
-## 0.1 Initial version
-- Single-end reads
-- No reverse complement
+## 0.3.2
+- Improve runtime: use go routines to perform alignment of reads in parallel.
 
-## 0.2
-- Work with reverse complement of reads
-- Work with pair-end reads
-- Re-organize code, test modules, test data
+## 0.3.1
+- Improve memory usage: put read info and alignment info into shared variables.
+(Re-organize code: put related parameters and variables together in structs,
+and put code for initializing memory to functions on structs.)
 
 ## 0.3
-- Add indexing
-- 
+- Call new SNPs from alignment with known alleles (postponned)
+
+## 0.2.2
+- Use randomized algorithm with one index as the main strategy.
+
+## 0.2.1
+- Add call SNPs quality calculation
+
+## 0.2
+- Work with pair-end reads. Consider reverse complement of reads.
+- Add indexing phase to main program.
+(Re-organize code, test modules, test data.)
+
+## 0.1 Initial version
+- Implement seed-and-extend strategy to align reads to the multi-genome. Work with
+ single-end reads, no reverse complement. Allow only known SNPs.
+- Implement algorithm to calculate distance between reads and the multi-genome.
+- Build reference multi-genome
