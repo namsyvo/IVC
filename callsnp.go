@@ -80,13 +80,13 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
     loop_num = 1
 	has_snp_1 = false
     for loop_num <= ITER_NUM {
-		fmt.Println(loop_num, "\tread1")
+		//fmt.Println(loop_num, "\tread1")
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, p, match_pos)
         if has_seeds {
-			fmt.Println("read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
+			//fmt.Println("read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
 			has_snp_1 = S.FindSNPCall(read_info.Read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
-				fmt.Println("read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
+				//fmt.Println("read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
 		        //fmt.Println(loop_num, "\tori1\t", string(read1))
                 break
             }
@@ -94,10 +94,10 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
         //Find SNPs for the reverse complement of the first end
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, p, match_pos)
         if has_seeds {
-			fmt.Println("rc_read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
+			//fmt.Println("rc_read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
 			has_snp_1 = S.FindSNPCall(read_info.Rev_comp_read1, s_pos, e_pos, match_pos, match_num, align_mem)
             if has_snp_1 {
-				fmt.Println("rc_read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
+				//fmt.Println("rc_read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
 		        //fmt.Println(loop_num, "\trev1\t", string(rev_read1))
                 break
             }
@@ -113,13 +113,13 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
     loop_num = 1
     has_snp_2 = false
     for loop_num <= ITER_NUM {
-		fmt.Println(loop_num, "\tread2")
+		//fmt.Println(loop_num, "\tread2")
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, p, match_pos)
         if has_seeds {
-			fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
+			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			has_snp_2 = S.FindSNPCall(read_info.Read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
-				fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
+				//fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 				//fmt.Println(loop_num, "\tori2\t", string(read2))
 				return true
 			}
@@ -127,10 +127,10 @@ func (S *SNPProf) UpdateSNPCall(read_info ReadInfo, align_mem AlignMem, match_po
 		//Find SNPs for the reverse complement of the second end
         s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, p, match_pos)
         if has_seeds {
-			fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
+			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			has_snp_2 = S.FindSNPCall(read_info.Rev_comp_read2, s_pos, e_pos, match_pos, match_num, align_mem)
 			if has_snp_2 {
-				fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
+				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 				//fmt.Println(loop_num, "\trev2\t", string(rev_read2))
 				return true
 			}
@@ -167,15 +167,21 @@ func (S *SNPProf) FindSNPCall(read []byte, s_pos, e_pos int, match_pos []int, ma
         dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_mem)
         if dis <= DIST_THRES {
             //Determine SNP profile
-			has_snp = true
-	        for k = 0; k < len(left_snp_idx) ; k++ {
-    	        idx, val = left_snp_idx[k], left_snp_val[k]
-				S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
-    	    }
-			for k = 0; k < len(right_snp_idx) ; k++ {
-    	        idx, val = right_snp_idx[k], right_snp_val[k]
-				S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
-    	    }
+			if len(left_snp_idx) == 0 && len(right_snp_idx) == 0 {
+				continue
+			} else {
+			    for k = 0; k < len(left_snp_idx) ; k++ {
+			        idx, val = left_snp_idx[k], left_snp_val[k]
+					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
+					//fmt.Println("left snp\t", idx, "\t", string(val))
+			    }
+				for k = 0; k < len(right_snp_idx) ; k++ {
+			        idx, val = right_snp_idx[k], right_snp_val[k]
+					S.SNP_Prof[idx] = append(S.SNP_Prof[idx], val)
+					//fmt.Println("right snp\t", idx, "\t", string(val))
+			    }
+				has_snp = true
+			}
 		}
 		//}
 	}
@@ -197,40 +203,36 @@ func (S *SNPProf) UpdateSNPProfile(read_info ReadInfo, align_mem AlignMem, match
 
 
 /*
-func (S *SNPProf) CalculateQual() {
+//---------------------------------------------------------------------------------------------------
+// CalcQual calculates called SNP quality.
+//---------------------------------------------------------------------------------------------------
+func (S *SNPProf) CalcQual() {
 
-	    for i := 0 ; i < len(bw_snp_idx) := range snp_prof {
-	        S.SNP_Prof[snp_pos] = append(S.SNP_Prof[snp_pos], snp_arr...)
-
-			//Update SNP Qual - testing/////////////////////////////////////////////
-			cond_prob := make([]float32, len(S.SNP_Conf[snp_pos]))
-			for idx, base_conf := range S.SNP_Conf[snp_pos] {
-				SNP := index.SNP_PROF[snp_pos][idx]
-				for _, snp := range snp_arr {
-					if bytes.Equal(snp, SNP) {
-						//fmt.Println("Diff: ", string(snp), string(SNP), base_conf)
-						cond_prob[idx] = base_conf * float32(1 - 0.01)
-					} else {
-						//fmt.Println("Same: ", string(snp), string(SNP), base_conf)
-						cond_prob[idx] = base_conf * float32(0.01)
-					}
-				}
+	cond_prob := make([]float32, len(S.SNP_Conf[snp_pos]))
+	for idx, base_conf := range S.SNP_Conf[snp_pos] {
+		SNP := index.SNP_PROF[snp_pos][idx]
+		for _, snp := range snp_arr {
+			if bytes.Equal(snp, SNP) {
+				//fmt.Println("Diff: ", string(snp), string(SNP), base_conf)
+				cond_prob[idx] = base_conf * float32(1 - 0.01)
+			} else {
+				//fmt.Println("Same: ", string(snp), string(SNP), base_conf)
+				cond_prob[idx] = base_conf * float32(0.01)
 			}
-			base_prob := float32(0)
-			for _, value := range(cond_prob) {
-				base_prob += value
-			}
-			for idx, value := range(cond_prob) {
-				S.SNP_Conf[snp_pos][idx] = value / base_prob
-			}
-			///////////////////////////////////////////////////////////////////////
-
-	    }
+		}
+	}
+	base_prob := float32(0)
+	for _, value := range(cond_prob) {
+		base_prob += value
+	}
+	for idx, value := range(cond_prob) {
+		S.SNP_Conf[snp_pos][idx] = value / base_prob
+	}
 }
 */
 
 //-----------------------------------------------------------------------------------------------------
-// GenerateSNP returns called SNPs and related information based on SNP profile constructed from
+// CallSNP returns called SNPs and related information based on SNP profile constructed from
 // alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
 func (S *SNPProf) CallSNP() {
