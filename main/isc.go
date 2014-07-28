@@ -37,6 +37,9 @@ func main() {
     var snp_call_file = flag.String("c", "", "snp calling file")
     var read_len = flag.Int("l", 100, "read length")
     var seq_err = flag.Float64("e", 0.01, "sequencing error")
+    var search_mode = flag.Int("m", 1, "searching mode for finding seeds(1: random, 2: deterministic)")
+    var start_pos = flag.Int("p", 0, "starting position on reads for finding seeds")
+    var search_step = flag.Int("j", 5, "step for searching in deterministic mode")
 	//var memprofile = flag.String("memprofile", "", "write memory profile to this file")
     //flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
     //var workers = flag.Int("w", 1, "number of workers")
@@ -50,6 +53,9 @@ func main() {
     input_info.Read_file_1 = *read_file_1
     input_info.Read_file_2 = *read_file_2
     input_info.SNP_call_file = *snp_call_file
+    input_info.Search_mode = *search_mode
+    input_info.Start_pos = *start_pos
+    input_info.Search_step = *search_step
 
 	read_info := isc.ReadInfo{}
     read_info.Read_len = *read_len
@@ -114,10 +120,10 @@ func main() {
 			if err != nil {
 				break
             }
-            if len(line_f1) >= isc.READ_LEN && len(line_f2) >= isc.READ_LEN{
+            if len(line_f1) >= read_info.Read_len && len(line_f2) >= read_info.Read_len{
 	        	read_num++
-                read_info.Read1 = line_f1[0 : isc.READ_LEN]
-                read_info.Read2 = line_f2[0 : isc.READ_LEN]
+                read_info.Read1 = line_f1[0 : read_info.Read_len]
+                read_info.Read2 = line_f2[0 : read_info.Read_len]
 				isc.RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
 				isc.RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
 
@@ -147,10 +153,10 @@ func main() {
 			if err1 != nil {
 				break
 	        }
-	        if len(line_f1) >= isc.READ_LEN {
+	        if len(line_f1) >= read_info.Read_len {
 				read_num++
-				read1 = line_f1[0 : isc.READ_LEN]
-				read2 = line_f1[0 : isc.READ_LEN]
+				read1 = line_f1[0 : read_info.Read_len]
+				read2 = line_f1[0 : read_info.Read_len]
 				isc.RevComp(read1, rev_read1, rev_comp_read1, comp_read1)
 				isc.RevComp(read2, rev_read2, rev_comp_read2, comp_read2)
 				has_SNP_call = snpcaller.UpdateSNPProfile(read_info, align_mem, match_pos)
