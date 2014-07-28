@@ -16,13 +16,13 @@ import (
 	"strconv"
 )
 
-type SNP struct{
+type SNPProfile struct{
 	Profile []string
 	AlleleFreq []float32
 }
 
 func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, map[int]int) {
-	//location := make(map[int]SNP)
+	//location := make(map[int]SNPProfile)
 	barr := make(map[int][][]byte)
 	af := make(map[int][]float32)
 	is_equal := make(map[int]int)
@@ -47,7 +47,7 @@ func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, ma
 		for i := 0; i < len(t); i++ {
 			t[i] = split[i + 1]
 		}
-		//location[int(k)] = SNP{t} 
+		//location[int(k)] = SNPProfile{t} 
 		
 		// convert to [][]byte & map[int]int
 		flag := len(t[0]);
@@ -80,7 +80,7 @@ func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, ma
 	return barr, af, is_equal
 }
 
-func SaveSNPLocation(file_name string , SNP_arr map[int]SNP) {
+func SaveSNPLocation(file_name string , SNP_arr map[int]SNPProfile) {
 	file, err := os.Create(file_name)
 	if  err != nil {
         return
@@ -120,7 +120,7 @@ func LoadMultigenome(file_name string) []byte {
 }
 
 // string * multi-genome
-func BuildMultigenome(SNP_arr map[int]SNP, seq []byte) []byte {
+func BuildMultigenome(SNP_arr map[int]SNPProfile, seq []byte) []byte {
 	multi := make([]byte, len(seq))
 	copy(multi, seq)
 	for key, _ := range SNP_arr {
