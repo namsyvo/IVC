@@ -164,8 +164,8 @@ func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
 //--------------------------------------------------------------------------------------------------
 // ReadVCF
 //--------------------------------------------------------------------------------------------------
-func ReadVCF(sequence_file string) map[int]SNP {
-	array := make(map[int]SNP)
+func ReadVCF(sequence_file string) map[int]SNPProfile {
+	array := make(map[int]SNPProfile)
 	f,err := os.Open(sequence_file)
     if err != nil{
         fmt.Printf("%v\n", err)
