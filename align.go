@@ -112,12 +112,12 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
     var rev_sp, rev_ep int = 0, MAXIMUM_MATCH
     var rev_s_pos, rev_e_pos, s_pos, e_pos int
 	
-    rev_s_pos = READ_LEN - 1 - p
+    rev_s_pos = len(read) - 1 - p
     rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.REV_FMI, rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
 		//convert rev_e_pos in forward search to s_pos in backward search
-		s_pos = READ_LEN - 1 - rev_e_pos
+		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
 		if rev_ep - rev_sp + 1 <= MAXIMUM_MATCH {
 		    for idx = rev_sp ; idx <= rev_ep ; idx++ {
