@@ -37,7 +37,7 @@ func main() {
     var snp_call_file = flag.String("c", "", "snp calling file")
     var read_len = flag.Int("l", 100, "read length")
     var seq_err = flag.Float64("e", 0.01, "sequencing error")
-    var search_mode = flag.Int("m", 1, "searching mode for finding seeds(1: random, 2: deterministic)")
+    var search_mode = flag.Int("m", 2, "searching mode for finding seeds(1: random, 2: deterministic)")
     var start_pos = flag.Int("p", 0, "starting position on reads for finding seeds")
     var search_step = flag.Int("j", 5, "step for searching in deterministic mode")
 	//var memprofile = flag.String("memprofile", "", "write memory profile to this file")
