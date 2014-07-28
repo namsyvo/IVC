@@ -12,8 +12,9 @@ import (
     "flag"
     "github.com/namsyvo/ISC"
 	"runtime"
-	//"runtime/pprof"
+	"time"
 	"log"
+	//"runtime/pprof"
 )
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
     log.Printf("isc.go: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     fmt.Println("Initializing indexes and parameters...")
+	start_time := time.Now()
 
     var genome_file = flag.String("g", "", "multi-genome file")
     var snp_file = flag.String("s", "", "snp profile file")
@@ -70,6 +72,9 @@ func main() {
     var snpcaller isc.SNPProf
     snpcaller.Init(input_info, read_info, para_info)
 
+	index_time := time.Since(start_time)
+	log.Printf("ISC: time for SNP caller init:\t%s", index_time)
+
 	runtime.ReadMemStats(memstats)
     log.Printf("align.go: memstats after SNP caller init:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
@@ -80,6 +85,7 @@ func main() {
     log.Printf("isc.go: memstats after loading all global variables and indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     fmt.Println("Aligning reads to the mutigenome...")
+	start_time = time.Now()
 	
     read_num, snp_aligned_read_num := 0, 0
 	match_pos := make([]int, isc.MAXIMUM_MATCH)
@@ -171,6 +177,9 @@ func main() {
 	f1.Close()
 	f2.Close()
 
+	align_time := time.Since(start_time)
+	log.Printf("ISC: time for alignment:\t%s", align_time)
+
 	runtime.ReadMemStats(memstats)
     log.Printf("isc.go: memstats after alignment:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
         memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
@@ -179,6 +188,7 @@ func main() {
     fmt.Println("\tNumber of aligned reads: ", snp_aligned_read_num)
 	
     fmt.Println("Calling SNPs from alignment results...")
+	start_time = time.Now()
 
     snpcaller.CallSNP()
 	runtime.ReadMemStats(memstats)
@@ -189,6 +199,9 @@ func main() {
 	runtime.ReadMemStats(memstats)
     log.Printf("isc.go: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
         memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+
+	callsnp_time := time.Since(start_time)
+	log.Printf("ISC: time for calling SNPs:\t%s", callsnp_time)
 
     fmt.Println("Finish, check the file", input_info.SNP_call_file, "for results")
 }
