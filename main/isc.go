@@ -98,7 +98,9 @@ func main() {
 	//}
 	//pprof.WriteHeapProfile(f)
 
-    var has_SNP_call bool
+	var snp isc.SNP
+	var SNPs []isc.SNP
+
     var line_f1, line_f2 []byte
 	if fn1[len(fn1)-3: ] == ".fq" || fn1[len(fn1)-6: ] == ".fastq"  {
 		for {
@@ -119,9 +121,12 @@ func main() {
 				isc.RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
 				isc.RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
 
-				has_SNP_call = snpcaller.UpdateSNPProfile(read_info, align_mem, match_pos)
-				if has_SNP_call {
+				SNPs = snpcaller.FindSNP(read_info, align_mem, match_pos)
+				if len(SNPs) > 0 {
 	        	    snp_aligned_read_num++
+					for _, snp = range SNPs {
+						snpcaller.SNP_Prof[snp.SNP_Idx] = append(snpcaller.SNP_Prof[snp.SNP_Idx], snp.SNP_Val)
+					}
 		        }
             }
 			//pprof.WriteHeapProfile(f)
