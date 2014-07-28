@@ -1,5 +1,5 @@
 ## 0.3.1
-- Make several minor changes
+- Make several minor changes.
 - Improve memory usage: put read info and alignment info into shared variables.
 (Re-organize code: put related parameters and variables together in structs,
 and put code for initializing memory to functions on structs.)
@@ -9,6 +9,12 @@ and put code for initializing memory to functions on structs.)
 
 ## 0.3
 - Use randomized algorithm with one index as the main strategy.
+
+## 0.2.3
+- Use deterministic search for alignment step.
+
+## 0.2.2
+- Use one index for alignment step.
 
 ## 0.2.1
 - Add call SNPs quality calculation
