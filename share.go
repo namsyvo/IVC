@@ -43,6 +43,9 @@ type InputInfo struct {
     Read_file_1 string //first end read
     Read_file_2 string //second end read
     SNP_call_file string //store SNP call
+	Search_mode int //searching mode for finding seeds
+	Start_pos int //starting postion on reads for finding seeds
+	Search_step int //step for searching in deterministic mode
 }
 
 //Parameter used in alignment algorithm

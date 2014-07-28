@@ -21,8 +21,9 @@ import (
 var (
 	INDEX Index //SNP caller Index
 	RAND_GEN *rand.Rand //pseudo-random number generator
+	SEARCH_MODE int //searching mode for finding seeds
 	START_POS int //start postion on reads to search
-	READ_LEN int //length of reads
+	SEARCH_STEP int //step for searching in deterministic mode
 )
 
 //SNP stores SNP info
@@ -46,10 +47,12 @@ func (S *SNPProf) Init(input_info InputInfo, read_info ReadInfo, para_info ParaI
 
     INDEX.Init(input_info, read_info, para_info)
     RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
-	START_POS = 0
-	READ_LEN = read_info.Read_len
+	SEARCH_MODE = input_info.Search_mode
+	START_POS = input_info.Start_pos
+	SEARCH_STEP = input_info.Search_step
+    fmt.Println("SEARCH_MODE: ", SEARCH_MODE)
     fmt.Println("START_POS: ", START_POS)
-    fmt.Println("READ_LEN: ", READ_LEN)
+    fmt.Println("SEARCH_STEP: ", SEARCH_STEP)
 
 	runtime.ReadMemStats(memstats)
 	log.Printf("callsnp.go: memstats after initializing indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
@@ -110,9 +113,12 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_mem AlignMem, match_pos []in
                 break
             }
         }
-        //Take a random position to search
-        //p = RAND_GEN.Intn(READ_LEN - 1) + 1
-		p=p+5
+        //Take a new position to search
+		if SEARCH_MODE == 1 {
+			p = RAND_GEN.Intn(read_info.Read_len - 1) + 1
+		} else if SEARCH_MODE == 2 {
+			p = p + SEARCH_STEP
+		}
         loop_num++
     }
 
@@ -144,9 +150,12 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_mem AlignMem, match_pos []in
 				return SNPs
 			}
 		}
-        //Take a random position to search
-		//p = RAND_GEN.Intn(READ_LEN - 1) + 1
-		p=p+5
+        //Take a new position to search
+		if SEARCH_MODE == 1 {
+			p = RAND_GEN.Intn(read_info.Read_len - 1) + 1
+		} else if SEARCH_MODE == 2 {
+			p = p + SEARCH_STEP
+		}
 		loop_num++
     }
 	return SNPs
