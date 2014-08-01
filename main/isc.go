@@ -79,7 +79,6 @@ func main() {
 	read_info := isc.ReadInfo{}
     read_info.Read_len = *read_len
     read_info.Seq_err = float32(*seq_err)
-	read_info.AllocMem()
 
 	runtime.GOMAXPROCS(input_info.Proc_num)
 
@@ -166,13 +165,12 @@ func main() {
 func ReadReads(input_info isc.InputInfo, data []chan isc.ReadInfo, results chan []isc.SNP, quit chan int) {
 	memstats := new(runtime.MemStats)
 	
-	var i int
+	var i, j int
 
 	read_info := make([]isc.ReadInfo, input_info.Routine_num)
 	for i = 0; i < input_info.Routine_num; i++ {
 		read_info[i].Read_len = 100
 		read_info[i].Seq_err = float32(0.01)
-		read_info[i].AllocMem()
 	}
 	
 	fn1, fn2 := input_info.Read_file_1, input_info.Read_file_2
@@ -200,14 +198,16 @@ func ReadReads(input_info isc.InputInfo, data []chan isc.ReadInfo, results chan 
 				line_f2, err_f2 = data2.ReadBytes('\n') //use 2nd line in input FASTQ file
 				if err_f1 != nil || err_f2 != nil {
 					fmt.Println("\tNumber of reads: ", read_num)
-					quit <- 0
-					quit <- 0
+					for j = 0; j < input_info.Routine_num; j++ {
+						quit <- 0
+					}
 					return
 				}
 				if len(line_f1) >= read_info[i].Read_len && len(line_f2) >= read_info[i].Read_len{
 	        		read_num++
 					read_info[i].Read1 = line_f1[0 : read_info[i].Read_len]
 					read_info[i].Read2 = line_f2[0 : read_info[i].Read_len]
+					read_info[i].AllocMem()
 					isc.RevComp(read_info[i].Read1, read_info[i].Rev_read1, read_info[i].Rev_comp_read1, read_info[i].Comp_read1)
 					isc.RevComp(read_info[i].Read2, read_info[i].Rev_read2, read_info[i].Rev_comp_read2, read_info[i].Comp_read2)
 					data[i] <- read_info[i]

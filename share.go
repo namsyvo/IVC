@@ -85,8 +85,6 @@ type ReadInfo struct {
 
 func (read_info *ReadInfo) AllocMem() bool {
 	if read_info.Read_len > 0 {
-		read_info.Read1 = make([]byte, read_info.Read_len)
-		read_info.Read2 = make([]byte, read_info.Read_len)
 		read_info.Rev_read1 = make([]byte, read_info.Read_len)
 		read_info.Rev_read2 = make([]byte, read_info.Read_len)
 		read_info.Rev_comp_read1 = make([]byte, read_info.Read_len)
