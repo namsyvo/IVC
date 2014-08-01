@@ -46,6 +46,8 @@ type InputInfo struct {
 	Search_mode int //searching mode for finding seeds
 	Start_pos int //starting postion on reads for finding seeds
 	Search_step int //step for searching in deterministic mode
+	Proc_num int //maximum number of CPUs using by Go
+	Routine_num int //number of goroutines
 }
 
 //Parameter used in alignment algorithm
