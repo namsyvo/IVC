@@ -1,3 +1,9 @@
+## 0.3.4
+- Use goroutines to process reads simultaneously:
+    + One goroutine reads input files and put data to a data channel.
+    + Other goroutines take data from the data channel and process them.
+- Make several minor changes.
+
 ## 0.3.1
 - Make several minor changes.
 - Improve memory usage: put read info and alignment info into shared variables.
