@@ -27,96 +27,96 @@ func Cost(read, ref []byte) int {
 //-------------------------------------------------------------------------------------------------
 func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte) {
 
-    var i, j, k int
+	var i, j, k int
 
-    var cost int
-    var d, min_d, m, n int
-    var snp_len int
-    var snp_values [][]byte
-    var is_snp, is_same_len_snp bool
-	
-    d = 0
-    m, n = len(read), len(ref)
+	var cost int
+	var d, min_d, m, n int
+	var snp_len int
+	var snp_values [][]byte
+	var is_snp, is_same_len_snp bool
+
+	d = 0
+	m, n = len(read), len(ref)
 	snp_val := make([][]byte, 0)
 	snp_idx := make([]int, 0)
-    for m > 0 && n > 0 {
-		snp_values, is_snp = I.SNP_PROF[pos + n - 1]
-		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + n - 1]
-    	if !is_snp {
-        	if read[m-1] != ref[n-1] {
-        		d++
-        	}
-    		m--
-    		n--
-    	} else if is_same_len_snp {
+	for m > 0 && n > 0 {
+		snp_values, is_snp = I.SNP_PROF[pos+n-1]
+		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos+n-1]
+		if !is_snp {
+			if read[m-1] != ref[n-1] {
+				d++
+			}
+			m--
+			n--
+		} else if is_same_len_snp {
 			min_d = 1000 * INF // 1000*INF is a value for testing, will change to a better solution later
-    		for i = 0; i < len(snp_values); i++ {
-    			cost = Cost(read[m - snp_len: m], snp_values[i])
-    			if min_d > cost {
-    				min_d = cost
-    			}
-    		}
-	  		if min_d == INF {
-	  			return INF, 0, m, n, snp_idx, snp_val
-	  		}
-			snp_idx = append(snp_idx, pos + n - 1)
+			for i = 0; i < len(snp_values); i++ {
+				cost = Cost(read[m-snp_len:m], snp_values[i])
+				if min_d > cost {
+					min_d = cost
+				}
+			}
+			if min_d == INF {
+				return INF, 0, m, n, snp_idx, snp_val
+			}
+			snp_idx = append(snp_idx, pos+n-1)
 			snp := make([]byte, snp_len)
-			copy(snp, read[m - snp_len: m])
+			copy(snp, read[m-snp_len:m])
 			snp_val = append(snp_val, snp)
-    		d += min_d
-    		m -= snp_len
-    		n--
-    	} else {
-    		break
-    	}
+			d += min_d
+			m -= snp_len
+			n--
+		} else {
+			break
+		}
 		if d > DIST_THRES {
 			return DIST_THRES + 1, 0, m, n, snp_idx, snp_val
 		}
-    }
+	}
 
-    D[0][0] = 0
+	D[0][0] = 0
 	for i = 1; i <= 100; i++ {
 		D[i][0] = INF
-    }
+	}
 	for j = 1; j <= 100; j++ {
 		D[0][j] = 0
-    }
+	}
 	var temp_dis, min_index int
-    for i = 1; i <= m; i++ {
-        for j = 1; j <= n; j++ {
-			snp_values, is_snp = I.SNP_PROF[pos + j - 1]
-	    	if !is_snp {
+	for i = 1; i <= m; i++ {
+		for j = 1; j <= n; j++ {
+			snp_values, is_snp = I.SNP_PROF[pos+j-1]
+			if !is_snp {
 				if read[i-1] != ref[j-1] {
-					D[i][j] = D[i - 1][j - 1] + 1
+					D[i][j] = D[i-1][j-1] + 1
 				} else {
-					D[i][j] = D[i - 1][j - 1]
+					D[i][j] = D[i-1][j-1]
 				}
-	   		} else {
+			} else {
 				D[i][j] = 1000 * INF //1000*INF is a value for testing, will change to a better solution later
 				min_index = 0
 				for k = 0; k < len(snp_values); k++ {
 					snp_len = len(snp_values[k])
 					//One possnble case: i - snp_len < 0 for all k
-					if i - snp_len >= 0 {
+					if i-snp_len >= 0 {
 						if snp_values[k][0] != '.' {
-							temp_dis = D[i - snp_len][j - 1] + Cost(read[i - snp_len : i], snp_values[k])
+							temp_dis = D[i-snp_len][j-1] + Cost(read[i-snp_len:i], snp_values[k])
 						} else {
-    						temp_dis = D[i][j - 1]
+							temp_dis = D[i][j-1]
 						}
-	    				if D[i][j] > temp_dis {
-	    					D[i][j] = temp_dis
+						if D[i][j] > temp_dis {
+							D[i][j] = temp_dis
 							min_index = k
-	    				}
+						}
 					}
-	   			}
-				T[i - 1][j - 1] = snp_values[min_index]
+				}
+				T[i-1][j-1] = snp_values[min_index]
 			}
 		}
 	}
 	if D[m][n] >= INF {
 		return d, INF, m, n, snp_idx, snp_val
 	}
-    return d, D[m][n], m, n, snp_idx, snp_val
+	return d, D[m][n], m, n, snp_idx, snp_val
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -132,27 +132,27 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 	var i, j int = m, n
 	snp_val := make([][]byte, 0)
 	snp_idx := make([]int, 0)
-	for  i > 0 || j > 0 {
-		_, is_snp = I.SNP_PROF[pos + j - 1]
+	for i > 0 || j > 0 {
+		_, is_snp = I.SNP_PROF[pos+j-1]
 		if i > 0 && j > 0 {
-		  	if !is_snp {
-		  		i, j = i - 1, j - 1
-		  	} else {
-				if T[i - 1][j - 1][0] != '.' {
-			  		snp_len = len(T[i - 1][j - 1])
-			  	} else {
-			  		snp_len = 0
-			  	}
-				snp_idx = append(snp_idx, pos + j - 1)
+			if !is_snp {
+				i, j = i-1, j-1
+			} else {
+				if T[i-1][j-1][0] != '.' {
+					snp_len = len(T[i-1][j-1])
+				} else {
+					snp_len = 0
+				}
+				snp_idx = append(snp_idx, pos+j-1)
 				snp := make([]byte, snp_len)
-				copy(snp, read[i - snp_len : i])
+				copy(snp, read[i-snp_len:i])
 				snp_val = append(snp_val, snp)
-		  		i, j = i - snp_len, j - 1
-		  	}
+				i, j = i-snp_len, j-1
+			}
 		} else if i == 0 {
-			j = j - 1;
+			j = j - 1
 		} else if j == 0 {
-			i = i - 1;
+			i = i - 1
 		}
 	}
 	return snp_idx, snp_val
@@ -166,97 +166,97 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 //-------------------------------------------------------------------------------------------------
 func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte) {
 
-    var i, j, k int
-    var M, N = len(read), len(ref)
-	
-    var cost int
-    var d, min_d, m, n int
-    var snp_len int
-    var snp_values [][]byte
-    var is_snp, is_same_len_snp bool
+	var i, j, k int
+	var M, N = len(read), len(ref)
 
-    d = 0
-    m, n = M, N
+	var cost int
+	var d, min_d, m, n int
+	var snp_len int
+	var snp_values [][]byte
+	var is_snp, is_same_len_snp bool
+
+	d = 0
+	m, n = M, N
 	snp_idx := make([]int, 0)
 	snp_val := make([][]byte, 0)
-    for m > 0 && n > 0 {
-		snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (n - 1)]
-		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
-    	if !is_snp {
-        	if read[(M - 1) - (m - 1)] != ref[(N - 1) - (n - 1)] {
-        		d++
-        	}
-    		m--
-    		n--
-    	} else if is_same_len_snp {
+	for m > 0 && n > 0 {
+		snp_values, is_snp = I.SNP_PROF[pos+(N-1)-(n-1)]
+		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos+(N-1)-(n-1)]
+		if !is_snp {
+			if read[(M-1)-(m-1)] != ref[(N-1)-(n-1)] {
+				d++
+			}
+			m--
+			n--
+		} else if is_same_len_snp {
 			min_d = 1000 * INF //1000*INF is a value for testing, will change to a better solution later
-    		for i = 0; i < len(snp_values); i++ {
-    			cost = Cost(read[M - m: M - (m - snp_len)], snp_values[i])
-    			if min_d > cost {
-    				min_d = cost
-    			}
-    		}
-	  		if min_d == INF {
-	  			return INF, 0, m, n, snp_idx, snp_val
-	  		}
-			snp_idx = append(snp_idx, pos + (N - 1) - (n - 1))
+			for i = 0; i < len(snp_values); i++ {
+				cost = Cost(read[M-m:M-(m-snp_len)], snp_values[i])
+				if min_d > cost {
+					min_d = cost
+				}
+			}
+			if min_d == INF {
+				return INF, 0, m, n, snp_idx, snp_val
+			}
+			snp_idx = append(snp_idx, pos+(N-1)-(n-1))
 			snp := make([]byte, snp_len)
-			copy(snp, read[M - m : M - (m - snp_len)])
+			copy(snp, read[M-m:M-(m-snp_len)])
 			snp_val = append(snp_val, snp)
-    		d += min_d
-    		m -= snp_len
-    		n--
-    	} else {
-    		break
-    	}
+			d += min_d
+			m -= snp_len
+			n--
+		} else {
+			break
+		}
 		if d > DIST_THRES {
 			return DIST_THRES + 1, 0, m, n, snp_idx, snp_val
 		}
-    }
+	}
 
-    D[0][0] = 0
+	D[0][0] = 0
 	for i = 1; i <= 100; i++ {
 		D[i][0] = INF
-    }
+	}
 	for i = 1; i <= 100; i++ {
 		D[0][i] = 0
-    }
+	}
 	var temp_dis, min_index int
-    for i = 1; i <= m; i++ {
-        for j = 1; j <= n; j++ {
-			snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
-		    if !is_snp {
-				if read[(M - 1) - (i - 1)] != ref[(N - 1) - (j - 1)] {
-					D[i][j] = D[i - 1][j - 1] + 1
+	for i = 1; i <= m; i++ {
+		for j = 1; j <= n; j++ {
+			snp_values, is_snp = I.SNP_PROF[pos+(N-1)-(j-1)]
+			if !is_snp {
+				if read[(M-1)-(i-1)] != ref[(N-1)-(j-1)] {
+					D[i][j] = D[i-1][j-1] + 1
 				} else {
-					D[i][j] = D[i - 1][j - 1]
+					D[i][j] = D[i-1][j-1]
 				}
-		   	} else {
+			} else {
 				D[i][j] = 1000 * INF //1000*INF is a value for testing, will change to a better solution later
 				min_index = 0
 				for k = 0; k < len(snp_values); k++ {
 					snp_len = len(snp_values[k])
 					//One possnble case: i - snp_len < 0 for all k
-					if i - snp_len >= 0 {
+					if i-snp_len >= 0 {
 						if snp_values[k][0] != '.' {
-							temp_dis = D[i - snp_len][j - 1] + Cost(read[M - i : M - (i - snp_len)], snp_values[k])
+							temp_dis = D[i-snp_len][j-1] + Cost(read[M-i:M-(i-snp_len)], snp_values[k])
 						} else {
-	    					temp_dis = D[i][j - 1]
+							temp_dis = D[i][j-1]
 						}
-	    				if D[i][j] > temp_dis {
-	    					D[i][j] = temp_dis
+						if D[i][j] > temp_dis {
+							D[i][j] = temp_dis
 							min_index = k
-		   				}
+						}
 					}
-		   		}
-				T[i - 1][j - 1] = snp_values[min_index]
+				}
+				T[i-1][j-1] = snp_values[min_index]
 			}
 		}
-    }
+	}
 	if D[m][n] >= INF {
 		return d, INF, m, n, snp_idx, snp_val
 	}
-    return d, D[m][n], m, n, snp_idx, snp_val
+	return d, D[m][n], m, n, snp_idx, snp_val
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -274,27 +274,27 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 	//Trace back from right-bottom conner of distance matrix T
 	snp_idx := make([]int, 0)
 	snp_val := make([][]byte, 0)
-	for  i > 0 || j > 0 {
-		_, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
+	for i > 0 || j > 0 {
+		_, is_snp = I.SNP_PROF[pos+(N-1)-(j-1)]
 		if i > 0 && j > 0 {
-		  	if !is_snp {
-		  		i, j = i - 1, j - 1
-		  	} else {
-				if T[i - 1][j - 1][0] != '.' {
-			  		snp_len = len(T[i - 1][j - 1])
-			  	} else {
-			  		snp_len = 0
-			  	}
-		  		snp_idx = append(snp_idx, pos + (N - 1) - (j - 1))
+			if !is_snp {
+				i, j = i-1, j-1
+			} else {
+				if T[i-1][j-1][0] != '.' {
+					snp_len = len(T[i-1][j-1])
+				} else {
+					snp_len = 0
+				}
+				snp_idx = append(snp_idx, pos+(N-1)-(j-1))
 				snp := make([]byte, snp_len)
-				copy(snp, read[M - i : M - (i - snp_len)])
+				copy(snp, read[M-i:M-(i-snp_len)])
 				snp_val = append(snp_val, snp)
-		  		i, j = i - snp_len, j - 1
-		  	}
+				i, j = i-snp_len, j-1
+			}
 		} else if i == 0 {
-			j = j - 1;
+			j = j - 1
 		} else if j == 0 {
-			i = i - 1;
+			i = i - 1
 		}
 	}
 	return snp_idx, snp_val

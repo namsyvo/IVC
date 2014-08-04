@@ -8,85 +8,85 @@
 package isc
 
 import (
-	"fmt"
-	"os"
 	"bufio"
-	"io/ioutil"
-	"strings"
-	"strconv"
-	"sort"
 	"bytes"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
-type SNPProfile struct{
-	Profile []string
+type SNPProfile struct {
+	Profile    []string
 	AlleleFreq []float32
 }
 
-func LoadSNPLocation(file_name string ) (map[int][][]byte, map[int][]float32, map[int]int) {
+func LoadSNPLocation(file_name string) (map[int][][]byte, map[int][]float32, map[int]int) {
 	//location := make(map[int]SNPProfile)
 	barr := make(map[int][][]byte)
 	af := make(map[int][]float32)
 	is_equal := make(map[int]int)
-	
-	f,err := os.Open(file_name)
-    if err != nil{
-        fmt.Printf("%v\n",err)
-        os.Exit(1)
-    }
+
+	f, err := os.Open(file_name)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
 	defer f.Close()
-    br := bufio.NewReader(f)
-	for{
-		line , err := br.ReadString('\n')
+	br := bufio.NewReader(f)
+	for {
+		line, err := br.ReadString('\n')
 		if err != nil {
 			//fmt.Printf("%v\n",err)
 			break
 		}
 		sline := string(line[:len(line)-1])
-		split := strings.Split(sline, "\t");
+		split := strings.Split(sline, "\t")
 		k, _ := strconv.ParseInt(split[0], 10, 64)
 		t := make([]string, len(split)-1)
 		for i := 0; i < len(t); i++ {
-			t[i] = split[i + 1]
+			t[i] = split[i+1]
 		}
-		//location[int(k)] = SNPProfile{t} 
-		
+		//location[int(k)] = SNPProfile{t}
+
 		// convert to [][]byte & map[int]int
-		flag := len(t[0]);
+		flag := len(t[0])
 		b := make([][]byte, len(t))
 
-		for i:= range b {
+		for i := range b {
 			b[i] = make([]byte, len(t[i]))
 			copy(b[i], []byte(t[i]))
 			//b[i] = []byte(t[i])
-			if (flag != len(b[i]) || t[i] == ".") {
-				flag = 0;
+			if flag != len(b[i]) || t[i] == "." {
+				flag = 0
 			}
-		}		
+		}
 		barr[int(k)] = b
 
 		//Read allele freq - testing///////////////////
 		p := make([]float32, len(split)-1)
-		for i:= range p {
+		for i := range p {
 			//tmp, _ := strconv.ParseFloat(split[i + 1 + (len(split)-1)/2], 32)
 			//p[i] = float32(tmp)
-			p[i] = 1/float32(len(p))
-		}		
+			p[i] = 1 / float32(len(p))
+		}
 		af[int(k)] = p
 		//////////////////////////////////////////////
 
 		if flag != 0 {
-			is_equal[int(k)] = flag			
+			is_equal[int(k)] = flag
 		}
 	}
 	return barr, af, is_equal
 }
 
-func SaveSNPLocation(file_name string , SNP_arr map[int]SNPProfile) {
+func SaveSNPLocation(file_name string, SNP_arr map[int]SNPProfile) {
 	file, err := os.Create(file_name)
-	if  err != nil {
-        return
-    }
+	if err != nil {
+		return
+	}
 	defer file.Close()
 	for i, item := range SNP_arr {
 		str := ""
@@ -94,30 +94,30 @@ func SaveSNPLocation(file_name string , SNP_arr map[int]SNPProfile) {
 			str = "\t" + v + str
 		}
 		key := strconv.Itoa(i)
-		_, err := file.WriteString(key + str + "\n"); 
+		_, err := file.WriteString(key + str + "\n")
 		if err != nil {
-            fmt.Println(err)
-            break
-        }
-	}	
+			fmt.Println(err)
+			break
+		}
+	}
 }
 
-func SaveMultigenome(file_name string , multi []byte) {
+func SaveMultigenome(file_name string, multi []byte) {
 	file, err := os.Create(file_name)
-    if err != nil {
-        // handle the error here
-        return
-    }
-    defer file.Close()
-    file.Write(multi)
+	if err != nil {
+		// handle the error here
+		return
+	}
+	defer file.Close()
+	file.Write(multi)
 }
 
 func LoadMultigenome(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
-    if err != nil {
-        return nil
-    }
-    str := string(bs)	
+	if err != nil {
+		return nil
+	}
+	str := string(bs)
 	return ([]byte(str))
 }
 
@@ -126,7 +126,7 @@ func BuildMultigenome(SNP_arr map[int]SNPProfile, seq []byte) []byte {
 	multi := make([]byte, len(seq))
 	copy(multi, seq)
 	for key, _ := range SNP_arr {
-		 multi[key] = '*'
+		multi[key] = '*'
 	}
 	return multi
 }
@@ -135,35 +135,35 @@ func BuildMultigenome(SNP_arr map[int]SNPProfile, seq []byte) []byte {
 // Read FASTA files
 //--------------------------------------------------------------------------------------------------
 func ReadFASTA(sequence_file string) []byte {
-    f,err := os.Open(sequence_file)
-    if err != nil{
-        fmt.Printf("%v\n",err)
-        os.Exit(1)
-    }
-
-    defer f.Close()
-    br := bufio.NewReader(f)
-    byte_array := bytes.Buffer{}
-
-    //line , err := br.ReadString('\n')
-	_ , isPrefix, err := br.ReadLine()
-	if err != nil || isPrefix{
-		fmt.Printf("%v\n",err)
+	f, err := os.Open(sequence_file)
+	if err != nil {
+		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-    //fmt.Printf("%s",line)
 
-    for {
-        line, isPrefix, err := br.ReadLine()
-        if err != nil || isPrefix {
-            break
-        } else {
-            byte_array.Write([]byte(line))
-        }
-    }
-    //byte_array.Write([]byte("$"))
-    input := []byte(byte_array.String())
-    return input
+	defer f.Close()
+	br := bufio.NewReader(f)
+	byte_array := bytes.Buffer{}
+
+	//line , err := br.ReadString('\n')
+	_, isPrefix, err := br.ReadLine()
+	if err != nil || isPrefix {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	//fmt.Printf("%s",line)
+
+	for {
+		line, isPrefix, err := br.ReadLine()
+		if err != nil || isPrefix {
+			break
+		} else {
+			byte_array.Write([]byte(line))
+		}
+	}
+	//byte_array.Write([]byte("$"))
+	input := []byte(byte_array.String())
+	return input
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -171,46 +171,46 @@ func ReadFASTA(sequence_file string) []byte {
 //--------------------------------------------------------------------------------------------------
 func ReadVCF(sequence_file string) map[int]SNPProfile {
 	array := make(map[int]SNPProfile)
-	f,err := os.Open(sequence_file)
-    if err != nil{
-        fmt.Printf("%v\n", err)
-        os.Exit(1)
-    }
+	f, err := os.Open(sequence_file)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
 
-    defer f.Close()
-    br := bufio.NewReader(f)
-    //byte_array := bytes.Buffer{}
+	defer f.Close()
+	br := bufio.NewReader(f)
+	//byte_array := bytes.Buffer{}
 
-	for{
-		line , err := br.ReadString('\n')
+	for {
+		line, err := br.ReadString('\n')
 		if err != nil {
 			//fmt.Printf("%v\n",err)
 			break
-		}		
+		}
 		if line[0] == byte('#') {
 			//fmt.Printf("%s \n",line)
 		} else {
 			sline := string(line)
-			split := strings.Split(sline, "\t");
+			split := strings.Split(sline, "\t")
 			//fmt.Printf("%s %s %s\n", split[1], split[3], split[4])
 			pos, _ := strconv.ParseInt(split[1], 10, 64)
 			pos = pos - 1
 			if len(split[4]) > 1 {
 				alt := strings.Split(split[4], ",")
 				t := make([]string, len(alt)+1)
-				t[0] = split[3]				
-				for i := 0 ; i < len(alt) ; i++ {
+				t[0] = split[3]
+				for i := 0; i < len(alt); i++ {
 					if alt[i] == "<DEL>" {
-						t[i + 1] = "."
+						t[i+1] = "."
 					} else {
-						t[i + 1] = alt[i]
-					}					
-				}	
+						t[i+1] = alt[i]
+					}
+				}
 				//sort.Strings(t)
 				//array[int(pos)] = SNP{t} // asign SNP at pos
 				tmp, ok := array[int(pos)]
 				if ok {
-					t = append(t[ : 0], t[1 : ]...)
+					t = append(t[:0], t[1:]...)
 					tmp.Profile = append(tmp.Profile, t...)
 				} else {
 					tmp.Profile = append(tmp.Profile, t...)
@@ -218,7 +218,7 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 				sort.Strings(tmp.Profile)
 				array[int(pos)] = tmp // append SNP at pos
 				//fmt.Printf("pos=%d %q \n", pos, alt)
-			} else {				
+			} else {
 				//array[int(pos)] = SNP{[]string{split[3], split[4]}} // asign SNP at pos
 				tmp, ok := array[int(pos)]
 				if ok {
@@ -226,7 +226,7 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 						tmp.Profile = append(tmp.Profile, ".")
 					} else {
 						tmp.Profile = append(tmp.Profile, split[4])
-					}					
+					}
 				} else {
 					if split[4] == "<DEL>" {
 						tmp.Profile = append(tmp.Profile, []string{split[3], "."}...)
@@ -236,10 +236,10 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 				}
 				sort.Strings(tmp.Profile)
 
-				array[int(pos)]= tmp // append SNP at pos
+				array[int(pos)] = tmp // append SNP at pos
 				//fmt.Println(pos)
 			}
 		}
 	}
-    return array
+	return array
 }

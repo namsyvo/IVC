@@ -8,22 +8,21 @@
 // Copyright 2014 Nam Sy Vo
 //--------------------------------------------------------------------------------------------------
 
-
 package isc
 
 import (
-    "fmt"
-    "math"
-    "sort"
-	"runtime"
+	"fmt"
+	"github.com/vtphan/fmi" //to use FM index
 	"log"
-    "github.com/vtphan/fmi" //to use FM index
+	"math"
+	"runtime"
+	"sort"
 )
 
 var (
-    DIST_THRES int = INF //threshold for distances between reads and multigenomes
-    ITER_NUM int = INF //number of random iterations to find proper seeds
-    MAXIMUM_MATCH int = INF //maximum number of matches
+	DIST_THRES    int = INF //threshold for distances between reads and multigenomes
+	ITER_NUM      int = INF //number of random iterations to find proper seeds
+	MAXIMUM_MATCH int = INF //maximum number of matches
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -31,46 +30,46 @@ var (
 //--------------------------------------------------------------------------------------------------
 func (I *Index) Init(input_info InputInfo, para_info ParaInfo) {
 
-    memstats := new(runtime.MemStats)
+	memstats := new(runtime.MemStats)
 
-    I.SEQ = LoadMultigenome(input_info.Genome_file)
+	I.SEQ = LoadMultigenome(input_info.Genome_file)
 	runtime.ReadMemStats(memstats)
-    log.Printf("align.go: memstats after loading multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("align.go: memstats after loading multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(input_info.SNP_file)
+	I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(input_info.SNP_file)
 	runtime.ReadMemStats(memstats)
-    log.Printf("align.go: memstats after loading SNP profile:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("align.go: memstats after loading SNP profile:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROF))
-    for k := range I.SNP_PROF {
-        I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)
-    }
-    sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
+	I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROF))
+	for k := range I.SNP_PROF {
+		I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)
+	}
+	sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
 	runtime.ReadMemStats(memstats)
-    log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    I.REV_FMI = *fmi.Load(input_info.Rev_index_file)
+	I.REV_FMI = *fmi.Load(input_info.Rev_index_file)
 	runtime.ReadMemStats(memstats)
-    log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-        memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
+		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    //Const for computing distance
+	//Const for computing distance
 	err := float64(para_info.Seq_err)
 	rlen := float64(para_info.Read_len)
 	k := float64(para_info.Err_var_factor)
-    DIST_THRES = int(math.Ceil(err * rlen + k * math.Sqrt(rlen * err * (1 - err))))
-    ITER_NUM = para_info.Iter_num_factor * (DIST_THRES + 1)
-    MAXIMUM_MATCH = para_info.Max_match
+	DIST_THRES = int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	ITER_NUM = para_info.Iter_num_factor * (DIST_THRES + 1)
+	MAXIMUM_MATCH = para_info.Max_match
 
-    fmt.Println("DIST_THRES: ", DIST_THRES)
-    fmt.Println("ITER_NUM: ", ITER_NUM)
-    fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
+	fmt.Println("DIST_THRES: ", DIST_THRES)
+	fmt.Println("ITER_NUM: ", ITER_NUM)
+	fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
 }
 
 //--------------------------------------------------------------------------------------------------
 // Bachward Search with FM-index, start from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
-func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) (int, int, int){
+func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) (int, int, int) {
 	var sp, ep, offset int
 	var ok bool
 
@@ -82,12 +81,12 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 	ep = index.EP[c]
 	var sp0, ep0 int
 	// if Debug { fmt.Println("pattern: ", string(pattern), "\n\t", string(c), sp, ep) }
-	for i:= start_pos - 1 ; i >= 0 ; i-- {
+	for i := start_pos - 1; i >= 0; i-- {
 		//fmt.Println("pos, # candidates: ", i, ep - sp + 1)
-  		c = pattern[i]
-  		offset, ok = index.C[c]
-  		if ok {
-			sp0 = offset + index.OCC[c][sp - 1]
+		c = pattern[i]
+		offset, ok = index.C[c]
+		if ok {
+			sp0 = offset + index.OCC[c][sp-1]
 			ep0 = offset + index.OCC[c][ep] - 1
 			if sp0 <= ep0 {
 				sp = sp0
@@ -96,9 +95,9 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 				return sp, ep, i + 1
 			}
 		} else {
-			return  0, -1, -1
+			return 0, -1, -1
 		}
-  		// if Debug { fmt.Println("\t", string(c), sp, ep) }
+		// if Debug { fmt.Println("\t", string(c), sp, ep) }
 	}
 	return sp, ep, 0
 }
@@ -109,25 +108,25 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 //--------------------------------------------------------------------------------------------------
 func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, int, int, bool) {
 
-    var rev_sp, rev_ep int = 0, MAXIMUM_MATCH
-    var rev_s_pos, rev_e_pos, s_pos, e_pos int
-	
-    rev_s_pos = len(read) - 1 - p
-    rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.REV_FMI, rev_read, rev_s_pos)
+	var rev_sp, rev_ep int = 0, MAXIMUM_MATCH
+	var rev_s_pos, rev_e_pos, s_pos, e_pos int
+
+	rev_s_pos = len(read) - 1 - p
+	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.REV_FMI, rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep - rev_sp + 1 <= MAXIMUM_MATCH {
-		    for idx = rev_sp ; idx <= rev_ep ; idx++ {
-		        match_pos[idx - rev_sp] = len(I.SEQ) - 1 - I.REV_FMI.SA[idx] - (s_pos - e_pos)
-		    }
-		    return s_pos, e_pos, rev_ep - rev_sp + 1, true
+		if rev_ep-rev_sp+1 <= MAXIMUM_MATCH {
+			for idx = rev_sp; idx <= rev_ep; idx++ {
+				match_pos[idx-rev_sp] = len(I.SEQ) - 1 - I.REV_FMI.SA[idx] - (s_pos - e_pos)
+			}
+			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}
-	    return s_pos, e_pos, rev_ep - rev_sp + 1, false
+		return s_pos, e_pos, rev_ep - rev_sp + 1, false
 	}
-    return -1, -1, -1, false // will be changed later
+	return -1, -1, -1, false // will be changed later
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -136,57 +135,57 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 //-----------------------------------------------------------------------------------------------------
 func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info AlignInfo) (int, []int, [][]byte, []int, [][]byte) {
 
-    var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
-    var lcs_len int = s_pos - e_pos + 1
+	var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
+	var lcs_len int = s_pos - e_pos + 1
 
-    var isSNP, isSameLenSNP bool
-    left_ext_add_len, right_ext_add_len := 0, 0
-    i := 0
-    for i = match_pos - e_pos; i < match_pos; i++ {
-        _, isSNP = I.SNP_PROF[i]
-        _, isSameLenSNP = I.SAME_LEN_SNP[i]
-        if isSNP && !isSameLenSNP {
-            left_ext_add_len++
-        }
-    }
-    for i = match_pos + lcs_len; i < (match_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
-        _, isSNP = I.SNP_PROF[i]
-        _, isSameLenSNP = I.SAME_LEN_SNP[i]
-        if isSNP && !isSameLenSNP {
-            right_ext_add_len++
-        }
-    }
-    left_most_pos := match_pos - e_pos - left_ext_add_len
-    if left_most_pos >= 0 {
-        ref_left_flank = I.SEQ[left_most_pos : match_pos]
-    } else {
-        ref_left_flank = I.SEQ[0 : match_pos]
-    }
-    right_most_pos := (match_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
-    if  right_most_pos <= len(I.SEQ) {
-        ref_right_flank = I.SEQ[match_pos + lcs_len : right_most_pos]
-    } else {
-        ref_right_flank = I.SEQ[match_pos + lcs_len : len(I.SEQ)]
-    }
+	var isSNP, isSameLenSNP bool
+	left_ext_add_len, right_ext_add_len := 0, 0
+	i := 0
+	for i = match_pos - e_pos; i < match_pos; i++ {
+		_, isSNP = I.SNP_PROF[i]
+		_, isSameLenSNP = I.SAME_LEN_SNP[i]
+		if isSNP && !isSameLenSNP {
+			left_ext_add_len++
+		}
+	}
+	for i = match_pos + lcs_len; i < (match_pos+lcs_len)+(len(read)-s_pos)-1; i++ {
+		_, isSNP = I.SNP_PROF[i]
+		_, isSameLenSNP = I.SAME_LEN_SNP[i]
+		if isSNP && !isSameLenSNP {
+			right_ext_add_len++
+		}
+	}
+	left_most_pos := match_pos - e_pos - left_ext_add_len
+	if left_most_pos >= 0 {
+		ref_left_flank = I.SEQ[left_most_pos:match_pos]
+	} else {
+		ref_left_flank = I.SEQ[0:match_pos]
+	}
+	right_most_pos := (match_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
+	if right_most_pos <= len(I.SEQ) {
+		ref_right_flank = I.SEQ[match_pos+lcs_len : right_most_pos]
+	} else {
+		ref_right_flank = I.SEQ[match_pos+lcs_len : len(I.SEQ)]
+	}
 
-    read_left_flank = read[ : e_pos]
-    left_d, left_D, left_m, left_n, left_snp_idx, left_snp_val :=
-     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
+	read_left_flank = read[:e_pos]
+	left_d, left_D, left_m, left_n, left_snp_idx, left_snp_val :=
+		I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
 
-    read_right_flank = read[s_pos + 1 : ]
-    right_d, right_D, right_m, right_n, right_snp_idx, right_snp_val :=
-     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
+	read_right_flank = read[s_pos+1:]
+	right_d, right_D, right_m, right_n, right_snp_idx, right_snp_val :=
+		I.ForwardDistance(read_right_flank, ref_right_flank, match_pos+lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
-    dis := left_d + right_d + left_D + right_D
-    if dis <= DIST_THRES {
-        left_idx, left_val := I.BackwardTraceBack(read_left_flank, ref_left_flank,
-         left_m, left_n, left_most_pos, align_info.Bw_Trace)
-        right_idx, right_val := I.ForwardTraceBack(read_right_flank, ref_right_flank,
-         right_m, right_n, match_pos + lcs_len, align_info.Fw_Trace)
+	dis := left_d + right_d + left_D + right_D
+	if dis <= DIST_THRES {
+		left_idx, left_val := I.BackwardTraceBack(read_left_flank, ref_left_flank,
+			left_m, left_n, left_most_pos, align_info.Bw_Trace)
+		right_idx, right_val := I.ForwardTraceBack(read_right_flank, ref_right_flank,
+			right_m, right_n, match_pos+lcs_len, align_info.Fw_Trace)
 		left_snp_idx = append(left_snp_idx, left_idx...)
 		right_snp_idx = append(right_snp_idx, right_idx...)
 		left_snp_val = append(left_snp_val, left_val...)
 		right_snp_val = append(right_snp_val, right_val...)
-    }
-    return dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val
+	}
+	return dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val
 }

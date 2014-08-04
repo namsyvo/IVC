@@ -6,38 +6,38 @@
 package isc
 
 import (
-    "fmt"
-    "os"
-    "math/rand"
-    "time"
-    "strconv"
 	"bytes"
-    "sort"
-	"runtime"
+	"fmt"
 	"log"
+	"math/rand"
+	"os"
+	"runtime"
+	"sort"
+	"strconv"
+	"time"
 )
 
 //Global variables
 var (
-	INDEX Index //SNP caller Index
-	RAND_GEN *rand.Rand //pseudo-random number generator
-	SEARCH_MODE int //searching mode for finding seeds
-	START_POS int //start postion on reads to search
-	SEARCH_STEP int //step for searching in deterministic mode
+	INDEX       Index      //SNP caller Index
+	RAND_GEN    *rand.Rand //pseudo-random number generator
+	SEARCH_MODE int        //searching mode for finding seeds
+	START_POS   int        //start postion on reads to search
+	SEARCH_STEP int        //step for searching in deterministic mode
 )
 
 //SNP stores SNP info
 type SNP struct {
 	SNP_Idx int
-    SNP_Val []byte
+	SNP_Val []byte
 }
 
 //SNPProf stores SNP Calling information and defines SNP calling functions
 type SNPProf struct {
-    SNP_Prof map[int][][]byte // to store all possible SNPs at each position
+	SNP_Prof map[int][][]byte  // to store all possible SNPs at each position
 	SNP_Conf map[int][]float32 // to store quality of all possible SNPS at each position
-    SNP_Call map[int][]byte // to store SNP call at each position
-    SNP_Prob map[int][]int // to store percentage of called SNP among all possilbe SNPs at each position
+	SNP_Call map[int][]byte    // to store SNP call at each position
+	SNP_Prob map[int][]int     // to store percentage of called SNP among all possilbe SNPs at each position
 }
 
 //Initialize parameters
@@ -45,30 +45,30 @@ func (S *SNPProf) Init(input_info InputInfo, para_info ParaInfo) {
 
 	memstats := new(runtime.MemStats)
 
-    INDEX.Init(input_info, para_info)
-    RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
+	INDEX.Init(input_info, para_info)
+	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 	SEARCH_MODE = input_info.Search_mode
 	START_POS = input_info.Start_pos
 	SEARCH_STEP = input_info.Search_step
-    fmt.Println("SEARCH_MODE: ", SEARCH_MODE)
-    fmt.Println("START_POS: ", START_POS)
-    fmt.Println("SEARCH_STEP: ", SEARCH_STEP)
+	fmt.Println("SEARCH_MODE: ", SEARCH_MODE)
+	fmt.Println("START_POS: ", START_POS)
+	fmt.Println("SEARCH_STEP: ", SEARCH_STEP)
 
 	runtime.ReadMemStats(memstats)
 	log.Printf("callsnp.go: memstats after initializing indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-    S.SNP_Prof = make(map[int][][]byte)
-    S.SNP_Conf = make(map[int][]float32)
-    S.SNP_Call = make(map[int][]byte)
-    S.SNP_Prob = make(map[int][]int)
-    S.SNP_Conf = make(map[int][]float32)
+	S.SNP_Prof = make(map[int][][]byte)
+	S.SNP_Conf = make(map[int][]float32)
+	S.SNP_Call = make(map[int][]byte)
+	S.SNP_Prob = make(map[int][]int)
+	S.SNP_Conf = make(map[int][]float32)
 
 	for k, v := range INDEX.SNP_AF {
 		S.SNP_Conf[k] = v
 	}
 
-    runtime.ReadMemStats(memstats)
-    log.Printf("callsnp.go: memstats after initializing SNP Prof:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	runtime.ReadMemStats(memstats)
+	log.Printf("callsnp.go: memstats after initializing SNP Prof:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
 }
 
@@ -81,54 +81,54 @@ func (S *SNPProf) Init(input_info InputInfo, para_info ParaInfo) {
 func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []int) []SNP {
 
 	var has_seeds bool
-    var p, s_pos, e_pos int
+	var p, s_pos, e_pos int
 	var loop_num, match_num int
 	var SNPs, snps []SNP
 
-    //Find SNPs for the first end
+	//Find SNPs for the first end
 	p = START_POS
-    loop_num = 1
-    for loop_num <= ITER_NUM {
+	loop_num = 1
+	for loop_num <= ITER_NUM {
 		//fmt.Println(loop_num, "\tread1")
-        s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, p, match_pos)
-        if has_seeds {
+		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, p, match_pos)
+		if has_seeds {
 			//fmt.Println("read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
 			snps = S.FindSNPFromMatch(read_info.Read1, s_pos, e_pos, match_pos, match_num, align_info)
-            if len(snps) > 0 {
+			if len(snps) > 0 {
 				//fmt.Println("read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read1))
-		        //fmt.Println(loop_num, "\tori1\t", string(read1))
+				//fmt.Println(loop_num, "\tori1\t", string(read1))
 				SNPs = append(SNPs, snps...)
-                break
-            }
-        }
-        //Find SNPs for the reverse complement of the first end
-        s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, p, match_pos)
-        if has_seeds {
+				break
+			}
+		}
+		//Find SNPs for the reverse complement of the first end
+		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, p, match_pos)
+		if has_seeds {
 			//fmt.Println("rc_read1, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
 			snps = S.FindSNPFromMatch(read_info.Rev_comp_read1, s_pos, e_pos, match_pos, match_num, align_info)
-            if len(snps) > 0 {
+			if len(snps) > 0 {
 				//fmt.Println("rc_read1, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read1))
-		        //fmt.Println(loop_num, "\trev1\t", string(rev_read1))
+				//fmt.Println(loop_num, "\trev1\t", string(rev_read1))
 				SNPs = append(SNPs, snps...)
-                break
-            }
-        }
-        //Take a new position to search
+				break
+			}
+		}
+		//Take a new position to search
 		if SEARCH_MODE == 1 {
-			p = RAND_GEN.Intn(read_info.Read_len - 1) + 1
+			p = RAND_GEN.Intn(read_info.Read_len-1) + 1
 		} else if SEARCH_MODE == 2 {
 			p = p + SEARCH_STEP
 		}
-        loop_num++
-    }
+		loop_num++
+	}
 
-    //Find SNPs for the second end
-    p = START_POS
-    loop_num = 1
-    for loop_num <= ITER_NUM {
+	//Find SNPs for the second end
+	p = START_POS
+	loop_num = 1
+	for loop_num <= ITER_NUM {
 		//fmt.Println(loop_num, "\tread2")
-        s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, p, match_pos)
-        if has_seeds {
+		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, p, match_pos)
+		if has_seeds {
 			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			snps = S.FindSNPFromMatch(read_info.Read2, s_pos, e_pos, match_pos, match_num, align_info)
 			if len(snps) > 0 {
@@ -139,8 +139,8 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []
 			}
 		}
 		//Find SNPs for the reverse complement of the second end
-        s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, p, match_pos)
-        if has_seeds {
+		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, p, match_pos)
+		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			snps = S.FindSNPFromMatch(read_info.Rev_comp_read2, s_pos, e_pos, match_pos, match_num, align_info)
 			if len(snps) > 0 {
@@ -150,14 +150,14 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []
 				return SNPs
 			}
 		}
-        //Take a new position to search
+		//Take a new position to search
 		if SEARCH_MODE == 1 {
-			p = RAND_GEN.Intn(read_info.Read_len - 1) + 1
+			p = RAND_GEN.Intn(read_info.Read_len-1) + 1
 		} else if SEARCH_MODE == 2 {
 			p = p + SEARCH_STEP
 		}
 		loop_num++
-    }
+	}
 	return SNPs
 }
 
@@ -166,39 +166,38 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []
 //---------------------------------------------------------------------------------------------------
 func (S *SNPProf) FindSNPFromMatch(read []byte, s_pos, e_pos int, match_pos []int, match_num int, align_info AlignInfo) []SNP {
 
-    var pos, dis, k int
+	var pos, dis, k int
 	var left_snp_idx, right_snp_idx []int
 	var left_snp_val, right_snp_val [][]byte
 	var snp SNP
 	var snps []SNP
 
-    for i := 0 ; i < match_num ; i++ {
+	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
-        //Call IntervalHasSNP to determine whether extension is needed
-        //if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
-        dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
-        if dis <= DIST_THRES {
-            //Determine SNP profile
+		//Call IntervalHasSNP to determine whether extension is needed
+		//if index.IntervalHasSNP(A.SORTED_SNP_POS, pos - e_pos, pos - e_pos + len(read1)) {
+		dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
+		if dis <= DIST_THRES {
+			//Determine SNP profile
 			if len(left_snp_idx) == 0 && len(right_snp_idx) == 0 {
 				continue
 			} else {
-			    for k = 0; k < len(left_snp_idx) ; k++ {
-			        snp.SNP_Idx, snp.SNP_Val = left_snp_idx[k], left_snp_val[k]
+				for k = 0; k < len(left_snp_idx); k++ {
+					snp.SNP_Idx, snp.SNP_Val = left_snp_idx[k], left_snp_val[k]
 					snps = append(snps, snp)
 					//fmt.Println("left snp\t", idx, "\t", string(val))
-			    }
-				for k = 0; k < len(right_snp_idx) ; k++ {
-			        snp.SNP_Idx, snp.SNP_Val = right_snp_idx[k], right_snp_val[k]
+				}
+				for k = 0; k < len(right_snp_idx); k++ {
+					snp.SNP_Idx, snp.SNP_Val = right_snp_idx[k], right_snp_val[k]
 					snps = append(snps, snp)
 					//fmt.Println("right snp\t", idx, "\t", string(val))
-			    }
+				}
 			}
 		}
 		//}
 	}
 	return snps
 }
-
 
 /*
 //---------------------------------------------------------------------------------------------------
@@ -234,48 +233,48 @@ func (S *SNPProf) CalcQual() {
 // alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
 func (S *SNPProf) CallSNP() {
-    var snp []byte
-    var snp_pos int
-    var snp_prof [][]byte
-    var major_snp string
-    var major_num int
-    var SNP_Qlt map[string]int	
+	var snp []byte
+	var snp_pos int
+	var snp_prof [][]byte
+	var major_snp string
+	var major_num int
+	var SNP_Qlt map[string]int
 
-    for snp_pos, snp_prof = range S.SNP_Prof {
-        SNP_Qlt = make(map[string]int)
-        for _, snp = range snp_prof {
-            SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
-        }
-        major_num = 0
-        for snp_val, snp_num := range SNP_Qlt {
-            if snp_num > major_num {
-                major_num = snp_num
-                major_snp = snp_val
-            }
-        }
-        S.SNP_Call[snp_pos] = []byte(major_snp)
-        S.SNP_Prob[snp_pos] = []int{major_num, len(snp_prof)}
-    }
+	for snp_pos, snp_prof = range S.SNP_Prof {
+		SNP_Qlt = make(map[string]int)
+		for _, snp = range snp_prof {
+			SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
+		}
+		major_num = 0
+		for snp_val, snp_num := range SNP_Qlt {
+			if snp_num > major_num {
+				major_num = snp_num
+				major_snp = snp_val
+			}
+		}
+		S.SNP_Call[snp_pos] = []byte(major_snp)
+		S.SNP_Prob[snp_pos] = []int{major_num, len(snp_prof)}
+	}
 }
 
 //-------------------------------------------------------------------------------------------------------
 // SNPCall_tofile writes called SNPs and related information to given output file in tab-delimited format
 //-------------------------------------------------------------------------------------------------------
 func (S *SNPProf) SNPCall_tofile(file_name string) {
-    var snp_pos int
-    var SNP_Pos = make([]int, 0, len(S.SNP_Call))
-    for snp_pos, _ := range S.SNP_Call {
-        SNP_Pos = append(SNP_Pos, snp_pos)
-    }
-    sort.Ints(SNP_Pos)
+	var snp_pos int
+	var SNP_Pos = make([]int, 0, len(S.SNP_Call))
+	for snp_pos, _ := range S.SNP_Call {
+		SNP_Pos = append(SNP_Pos, snp_pos)
+	}
+	sort.Ints(SNP_Pos)
 
-    file, err := os.Create(file_name)
-    if  err != nil {
-        return
-    }
-    defer file.Close()
-    var num []int
-    var str_snp_pos, str_snp, str_snp_num1, str_snp_num2, str_snp_prob string
+	file, err := os.Create(file_name)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	var num []int
+	var str_snp_pos, str_snp, str_snp_num1, str_snp_num2, str_snp_prob string
 
 	var flag bool
 	var idx int
@@ -283,32 +282,32 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 	var str_snp_conf string
 
 	log.Printf("New Alleles:\n")
-    for _, snp_pos = range SNP_Pos {
-        str_snp_pos = strconv.Itoa(snp_pos)
-        str_snp = string(S.SNP_Call[snp_pos])
-        num = S.SNP_Prob[snp_pos]
-        str_snp_num1, str_snp_num2 = strconv.Itoa(num[0]), strconv.Itoa(num[1])
-        str_snp_prob = strconv.FormatFloat(float64(num[0])/float64(num[1]), 'f', 5, 32)
+	for _, snp_pos = range SNP_Pos {
+		str_snp_pos = strconv.Itoa(snp_pos)
+		str_snp = string(S.SNP_Call[snp_pos])
+		num = S.SNP_Prob[snp_pos]
+		str_snp_num1, str_snp_num2 = strconv.Itoa(num[0]), strconv.Itoa(num[1])
+		str_snp_prob = strconv.FormatFloat(float64(num[0])/float64(num[1]), 'f', 5, 32)
 
 		if str_snp != "" {
-	        _, err = file.WriteString(str_snp_pos + "\t" + str_snp + "\t" + 
-					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
+			_, err = file.WriteString(str_snp_pos + "\t" + str_snp + "\t" +
+				str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t")
 		} else {
-	        _, err = file.WriteString(str_snp_pos + "\t.\t" + 
-					str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t");
+			_, err = file.WriteString(str_snp_pos + "\t.\t" +
+				str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t")
 		}
 
 		//Write SNP Qual - testing////////////////////////////
 		flag = false
 		for idx, value = range INDEX.SNP_PROF[snp_pos] {
 			if bytes.Equal(value, S.SNP_Call[snp_pos]) {
-		        str_snp_conf = strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
-                _, err = file.WriteString(str_snp_conf + "\n");
+				str_snp_conf = strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
+				_, err = file.WriteString(str_snp_conf + "\n")
 				flag = true
 			}
 		}
 		if !flag {
-			_, err = file.WriteString(".\n");
+			_, err = file.WriteString(".\n")
 			log.Printf("%s\t%s\n", str_snp_pos, str_snp)
 			for _, val := range INDEX.SNP_PROF[snp_pos] {
 				log.Printf("%s\t", string(val))
@@ -317,9 +316,9 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 		}
 		//////////////////////////////////////////////////////
 
-        if err != nil {
-            fmt.Println(err)
-            break
-        }
-    }   
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+	}
 }
