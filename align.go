@@ -29,7 +29,7 @@ var (
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
-func (I *Index) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInfo) {
+func (I *Index) Init(input_info InputInfo, para_info ParaInfo) {
 
     memstats := new(runtime.MemStats)
 
@@ -55,8 +55,8 @@ func (I *Index) Init(input_info InputInfo, read_info ReadInfo, para_info ParaInf
         memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
     //Const for computing distance
-	err := float64(read_info.Seq_err)
-	rlen := float64(read_info.Read_len)
+	err := float64(para_info.Seq_err)
+	rlen := float64(para_info.Read_len)
 	k := float64(para_info.Err_var_factor)
     DIST_THRES = int(math.Ceil(err * rlen + k * math.Sqrt(rlen * err * (1 - err))))
     ITER_NUM = para_info.Iter_num_factor * (DIST_THRES + 1)
@@ -134,7 +134,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_mem AlignMem) (int, []int, [][]byte, []int, [][]byte) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info AlignInfo) (int, []int, [][]byte, []int, [][]byte) {
 
     var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
     var lcs_len int = s_pos - e_pos + 1
@@ -171,18 +171,18 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
 
     read_left_flank = read[ : e_pos]
     left_d, left_D, left_m, left_n, left_snp_idx, left_snp_val :=
-     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_mem.Bw_D, align_mem.Bw_T)
+     I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
 
     read_right_flank = read[s_pos + 1 : ]
     right_d, right_D, right_m, right_n, right_snp_idx, right_snp_val :=
-     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_mem.Fw_D, align_mem.Fw_T)
+     I.ForwardDistance(read_right_flank, ref_right_flank, match_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
     dis := left_d + right_d + left_D + right_D
     if dis <= DIST_THRES {
         left_idx, left_val := I.BackwardTraceBack(read_left_flank, ref_left_flank,
-         left_m, left_n, left_most_pos, align_mem.Bw_T)
+         left_m, left_n, left_most_pos, align_info.Bw_Trace)
         right_idx, right_val := I.ForwardTraceBack(read_right_flank, ref_right_flank,
-         right_m, right_n, match_pos + lcs_len, align_mem.Fw_T)
+         right_m, right_n, match_pos + lcs_len, align_info.Fw_Trace)
 		left_snp_idx = append(left_snp_idx, left_idx...)
 		right_snp_idx = append(right_snp_idx, right_idx...)
 		left_snp_val = append(left_snp_val, left_val...)

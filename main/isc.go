@@ -22,7 +22,6 @@ func main() {
 
 	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
 
-		
 	//f, err := os.Create(*memprofile)
 	//if err != nil {
 	//	log.Fatal(err)
@@ -57,6 +56,13 @@ func main() {
     //flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
     flag.Parse()
 
+	/*Will validate all input info here ...
+	if strings.ToLower(*read_file_1[len(*read_file_1) - 3: ]) != ".fq" && strings.ToLower(*read_file_1[len(*read_file_1) - 6: ]) != ".fastq"  {
+		fmt.Println("Improper input FASTA file extension")
+		return
+	}
+	*/
+
 	input_info := isc.InputInfo{}
     input_info.Genome_file = *genome_file
     input_info.SNP_file = *snp_file
@@ -75,15 +81,22 @@ func main() {
 	para_info.Max_match = 32
 	para_info.Err_var_factor = 4
 	para_info.Iter_num_factor = 1
-
-	read_info := isc.ReadInfo{}
-    read_info.Read_len = *read_len
-    read_info.Seq_err = float32(*seq_err)
+    para_info.Seq_err = float32(*seq_err)
+    para_info.Read_len = *read_len
 
 	runtime.GOMAXPROCS(input_info.Proc_num)
 
     var snpcaller isc.SNPProf
-    snpcaller.Init(input_info, read_info, para_info)
+    snpcaller.Init(input_info, para_info)
+
+	align_info := make([]isc.AlignInfo, input_info.Routine_num)
+	for i := 0; i < input_info.Routine_num; i++ {
+		align_info[i].InitAlignInfo(*read_len)
+	}
+	match_pos := make([][]int, input_info.Routine_num)
+	for i := 0; i < input_info.Routine_num; i++ {
+		match_pos[i] = make([]int, isc.MAXIMUM_MATCH)
+	}
 
 	index_time := time.Since(start_time)
 	log.Printf("ISC: time for SNP caller init:\t%s", index_time)
@@ -91,34 +104,18 @@ func main() {
 	runtime.ReadMemStats(memstats)
     log.Printf("align.go: memstats after SNP caller init:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-	align_mem := make([]isc.AlignMem, input_info.Routine_num)
-	for i := 0; i < input_info.Routine_num; i++ {
-		align_mem[i].AllocMem(read_info.Read_len)
-	}
-	match_pos := make([][]int, input_info.Routine_num)
-	for i := 0; i < input_info.Routine_num; i++ {
-		match_pos[i] = make([]int, isc.MAXIMUM_MATCH)
-	}
 
-	runtime.ReadMemStats(memstats)
-    log.Printf("isc.go: memstats after loading all global variables and indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-		
     fmt.Println("Aligning reads to the mutigenome...")
 	start_time = time.Now()
 
-	data := make([]chan isc.ReadInfo, input_info.Routine_num)
-	for i := 0; i < input_info.Routine_num; i++ {
-		data[i] = make(chan isc.ReadInfo)
-	}
+	data := make(chan isc.ReadInfo, input_info.Routine_num)
 	results := make(chan []isc.SNP)
-	quit := make(chan int)
 
-	go ReadReads(input_info, data, results, quit)
+	go ReadReads(input_info, data, results)
 
 	var wg sync.WaitGroup
-	wg.Add(input_info.Routine_num)
 	for i := 0; i < input_info.Routine_num; i++ {
-		go ProcessReads(&snpcaller, data[i], results, quit, &wg, align_mem[i], match_pos[i])
+		go ProcessReads(&snpcaller, data, results, &wg, align_info[i], match_pos[i])
 	}
 	go func() {
 		wg.Wait()
@@ -162,83 +159,68 @@ func main() {
     fmt.Println("Finish, check the file", input_info.SNP_call_file, "for results")
 }
 
-func ReadReads(input_info isc.InputInfo, data []chan isc.ReadInfo, results chan []isc.SNP, quit chan int) {
+//--------------------------------------------------------------------------------------------------
+//Read input FASTQ files and put data into data channel
+//--------------------------------------------------------------------------------------------------
+func ReadReads(input_info isc.InputInfo, data chan isc.ReadInfo, results chan []isc.SNP) {
 	memstats := new(runtime.MemStats)
 	
-	var i, j int
-
-	read_info := make([]isc.ReadInfo, input_info.Routine_num)
-	for i = 0; i < input_info.Routine_num; i++ {
-		read_info[i].Read_len = 100
-		read_info[i].Seq_err = float32(0.01)
-	}
+	read_info := isc.ReadInfo{}
 	
 	fn1, fn2 := input_info.Read_file_1, input_info.Read_file_2
 	f1, err_f1 := os.Open(fn1)
 	if err_f1 != nil {
-		panic("Error opening file " + fn1)
+		panic("Error opening input read file " + fn1)
 	}
 	defer f1.Close()
 	f2, err_f2 := os.Open(fn2)
 	if err_f2 != nil {
-    	panic("Error opening file " + fn2)
+    	panic("Error opening input read file " + fn2)
 	}
 	defer f2.Close()
-	
-	var read_num int
+
+	var read_num int = 0
 	var line_f1, line_f2 []byte
-	data1 := bufio.NewReader(f1)
-	data2 := bufio.NewReader(f2)
-	if fn1[len(fn1)-3: ] == ".fq" || fn1[len(fn1)-6: ] == ".fastq"  {
-		for {
-			for i = 0; i < input_info.Routine_num; i++ {
-				data1.ReadBytes('\n') //ignore 1st line in input FASTQ file
-				data2.ReadBytes('\n') //ignore 1st line in input FASTQ file
-				line_f1, err_f1 = data1.ReadBytes('\n') //use 2nd line in input FASTQ file
-				line_f2, err_f2 = data2.ReadBytes('\n') //use 2nd line in input FASTQ file
-				if err_f1 != nil || err_f2 != nil {
-					fmt.Println("\tNumber of reads: ", read_num)
-					for j = 0; j < input_info.Routine_num; j++ {
-						quit <- 0
-					}
-					return
-				}
-				if len(line_f1) >= read_info[i].Read_len && len(line_f2) >= read_info[i].Read_len{
-	        		read_num++
-					read_info[i].Read1 = line_f1[0 : read_info[i].Read_len]
-					read_info[i].Read2 = line_f2[0 : read_info[i].Read_len]
-					read_info[i].AllocMem()
-					isc.RevComp(read_info[i].Read1, read_info[i].Rev_read1, read_info[i].Rev_comp_read1, read_info[i].Comp_read1)
-					isc.RevComp(read_info[i].Read2, read_info[i].Rev_read2, read_info[i].Rev_comp_read2, read_info[i].Comp_read2)
-					data[i] <- read_info[i]
-				}
-				//pprof.WriteHeapProfile(f)
-				if (read_num % 10000 == 0) {
-					runtime.ReadMemStats(memstats)
-					log.Printf("isc.go: memstats after aligning each 10,000 reads:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-				}
-				data1.ReadBytes('\n') //ignore 3rd line in 1st input FASTQ file
-				data2.ReadBytes('\n') //ignore 3rd line in 2nd input FASTQ file
-				data1.ReadBytes('\n') //ignore 4th line in 1st input FASTQ file
-				data2.ReadBytes('\n') //ignore 4th line in 2nd input FASTQ file
-			}
+	scanner1 := bufio.NewScanner(f1)
+	scanner2 := bufio.NewScanner(f2)
+	for scanner1.Scan() && scanner2.Scan() {
+		//ignore 1st lines in input FASTQ files
+		scanner1.Scan() //use 2nd line in input FASTQ file 1
+		scanner2.Scan() //use 2nd line in input FASTQ file 2
+		line_f1 = scanner1.Bytes()
+		line_f2 = scanner2.Bytes()
+		if len(line_f1) > 0 && len(line_f2) > 0 {
+    		read_num++
+			read_info.AssignReads(line_f1, line_f2)
+			read_info.CalcRevComp()
+			data <- read_info
 		}
+		//pprof.WriteHeapProfile(f)
+		if (read_num % 10000 == 0) {
+			runtime.ReadMemStats(memstats)
+			log.Printf("isc.go: memstats after aligning each 10,000 reads:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+		}
+		scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
+		scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
+		scanner1.Scan() //ignore 4th line in 1st input FASTQ file 1
+		scanner2.Scan() //ignore 4th line in 2nd input FASTQ file 2
 	}
+	close(data)
 }
 
-func ProcessReads(snpcaller *isc.SNPProf, data chan isc.ReadInfo, results chan []isc.SNP, quit chan int, wg *sync.WaitGroup, align_mem isc.AlignMem, match_pos []int) {
+//--------------------------------------------------------------------------------------------------
+//Take data from data channel, process them (find SNPs) and put results (SNPs) into results channel
+//--------------------------------------------------------------------------------------------------
+func ProcessReads(snpcaller *isc.SNPProf, data chan isc.ReadInfo, results chan []isc.SNP,
+ wg *sync.WaitGroup, align_info isc.AlignInfo, match_pos []int) {
+	wg.Add(1)
 	defer wg.Done()
 	var read_info isc.ReadInfo
 	var SNPs []isc.SNP
-	for {
-		select {
-		case read_info = <- data:
-			SNPs = (*snpcaller).FindSNP(read_info, align_mem, match_pos)
-			if len(SNPs) > 0 {
-				results <- SNPs
-			}
-		case <- quit:
-			return
+	for read_info = range(data) {
+		SNPs = (*snpcaller).FindSNP(read_info, align_info, match_pos)
+		if len(SNPs) > 0 {
+			results <- SNPs
 		}
 	}
 }
