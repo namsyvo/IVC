@@ -30,10 +30,9 @@ func main() {
 	//pprof.WriteHeapProfile(f)
 
 	memstats := new(runtime.MemStats)
-	log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
-
 	runtime.ReadMemStats(memstats)
-	log.Printf("isc.go: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
+	log.Printf("ISC: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
@@ -102,7 +101,7 @@ func main() {
 	log.Printf("ISC: time for SNP caller init:\t%s", index_time)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("align.go: memstats after SNP caller init:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("ISC: memstats after SNP caller init:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
 	fmt.Println("Aligning reads to the mutigenome...")
 	start_time = time.Now()
@@ -136,24 +135,24 @@ func main() {
 	log.Printf("ISC: time for alignment:\t%s", align_time)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("isc.go: memstats after alignment:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
+	log.Printf("ISC: memstats after alignment:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
 	fmt.Println("Calling SNPs from alignment results...")
+
 	start_time = time.Now()
-
-	snpcaller.CallSNP()
-	runtime.ReadMemStats(memstats)
-	log.Printf("isc.go: memstats after snp call:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
-	snpcaller.SNPCall_tofile(input_info.SNP_call_file)
-	runtime.ReadMemStats(memstats)
-	log.Printf("isc.go: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
+	snpcaller.CallSNP(input_info.Routine_num)
 	callsnp_time := time.Since(start_time)
 	log.Printf("ISC: time for calling SNPs:\t%s", callsnp_time)
+
+	start_time = time.Now()
+	snpcaller.SNPCall_tofile(input_info.SNP_call_file)
+	writetofile_time := time.Since(start_time)
+	log.Printf("ISC: time for writing SNPs to file:\t%s", writetofile_time)
+
+	runtime.ReadMemStats(memstats)
+	log.Printf("ISC: memstats after snp call:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
+		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
 	fmt.Println("Finish, check the file", input_info.SNP_call_file, "for results")
 }
@@ -204,6 +203,7 @@ func ReadReads(input_info isc.InputInfo, data chan isc.ReadInfo, results chan []
 		scanner1.Scan() //ignore 4th line in 1st input FASTQ file 1
 		scanner2.Scan() //ignore 4th line in 2nd input FASTQ file 2
 	}
+	fmt.Println("\tNumber of inout reads: ", read_num)
 	close(data)
 }
 
