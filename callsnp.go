@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"time"
 	"sort"
-	//"bytes"
+	"bytes"
 	"sync"
 )
 
@@ -229,7 +229,7 @@ func (S *SNPProf) CalcQual() {
 }
 */
 
-type CallSNP struct {
+type CalledSNP struct {
 	SNPPos int
 	SNPCall []byte
 	SNPProb []int
@@ -241,52 +241,50 @@ type CallSNP struct {
 //-----------------------------------------------------------------------------------------------------
 func (S *SNPProf) CallSNP(routine_num int) {
 
-	SNP_Pos := make([]int, 0, len(S.SNP_Prof))
-	for snp_pos, _ := range S.SNP_Prof {
-		SNP_Pos = append(SNP_Pos, snp_pos)
-	}
-	sort.Ints(SNP_Pos)
-
-	snp_pos_chan := make(chan int, 32)
-	result_chan := make(chan CallSNP)
+	snp_pos_chan := make(chan int, routine_num)
+	result_chan := make(chan CalledSNP)
 	go func() {
-		for _, snp_pos := range SNP_Pos {
+		for snp_pos, _ := range S.SNP_Prof {
 			snp_pos_chan <- snp_pos
 		}
+		close(snp_pos_chan)
 	}()
 	var wg sync.WaitGroup
-	for i := 0; i < routine_num; i++ {
-		go func() {
-			wg.Add(1)
-			defer wg.Done()
-			snp_pos := <- snp_pos_chan
-			SNP_Qlt := make(map[string]int)
-			for _, snp := range S.SNP_Prof[snp_pos] {
-				SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
-			}
-			major_num := 0
-			var major_snp string
-			for snp_val, snp_num := range SNP_Qlt {
-				if snp_num > major_num {
-					major_num = snp_num
-					major_snp = snp_val
-				}
-			}
-			var callSNP CallSNP
-			callSNP.SNPPos = snp_pos
-			callSNP.SNPCall = []byte(major_snp)
-			callSNP.SNPProb = []int{major_num, len(S.SNP_Prof[snp_pos])}
-			result_chan <- callSNP
-		}()
-	}
+	wg.Add(routine_num)
 	go func() {
 		wg.Wait()
 		close(result_chan)
 	}()
+
+	for i := 0; i < routine_num; i++ {
+		go func() {
+			defer wg.Done()
+			var snp []byte
+			for snp_pos := range snp_pos_chan {
+				SNP_Qlt := make(map[string]int)
+				for _, snp = range S.SNP_Prof[snp_pos] {
+					SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
+				}
+				major_num := 0
+				var major_snp string
+				for snp_val, snp_num := range SNP_Qlt {
+					if snp_num > major_num {
+						major_num = snp_num
+						major_snp = snp_val
+					}
+				}
+				calledSNP := new(CalledSNP)
+				calledSNP.SNPPos = snp_pos
+				calledSNP.SNPCall = []byte(major_snp)
+				calledSNP.SNPProb = []int{major_num, len(S.SNP_Prof[snp_pos])}
+				result_chan <- *calledSNP
+			}
+		}()
+	}
 	for snp_prof := range result_chan {
 		S.SNP_Call[snp_prof.SNPPos] = snp_prof.SNPCall
 		S.SNP_Prob[snp_prof.SNPPos] = snp_prof.SNPProb
-	}		
+	}
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -299,18 +297,26 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 		return
 	}
 	defer file.Close()
+
 	var nums []int
+	var snp_pos int
 	var str_snp_pos, str_snp, str_snp_num1, str_snp_num2, str_snp_prob string
-/*
+
+	SNP_Pos := make([]int, 0, len(S.SNP_Prof))
+	for snp_pos, _ = range S.SNP_Call {
+		SNP_Pos = append(SNP_Pos, snp_pos)
+	}
+	sort.Ints(SNP_Pos)
+
 	var flag bool
 	var idx int
 	var value []byte
 	var str_snp_conf string
-*/
+
 	//log.Printf("New Alleles:\n")
-	for snp_pos, snp_val := range S.SNP_Call {
+	for _, snp_pos = range SNP_Pos {
 		str_snp_pos = strconv.Itoa(snp_pos)
-		str_snp = string(snp_val)
+		str_snp = string(S.SNP_Call[snp_pos])
 		nums = S.SNP_Prob[snp_pos]
 		str_snp_num1, str_snp_num2 = strconv.Itoa(nums[0]), strconv.Itoa(nums[1])
 		str_snp_prob = strconv.FormatFloat(float64(nums[0])/float64(nums[1]), 'f', 5, 32)
@@ -322,7 +328,7 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 			_, err = file.WriteString(str_snp_pos + "\t.\t" +
 				str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t")
 		}
-/*
+
 		//Write SNP Qual - testing////////////////////////////
 		flag = false
 		for idx, value = range INDEX.SNP_PROF[snp_pos] {
@@ -341,7 +347,7 @@ func (S *SNPProf) SNPCall_tofile(file_name string) {
 			//log.Printf("\n")
 		}
 		//////////////////////////////////////////////////////
-*/
+
 		if err != nil {
 			fmt.Println(err)
 			break
