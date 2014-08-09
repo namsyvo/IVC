@@ -51,8 +51,8 @@ func main() {
 	var search_mode = flag.Int("m", 2, "searching mode for finding seeds (1: random, 2: deterministic)")
 	var start_pos = flag.Int("p", 0, "starting position on reads for finding seeds")
 	var search_step = flag.Int("j", 5, "step for searching in deterministic mode")
-	var proc_num = flag.Int("w", 1, "maximum number of CPUs using by Go")
-	var routine_num = flag.Int("t", 1, "number of goroutines")
+	var proc_num = flag.Int("w", 0, "maximum number of CPUs using by Go")
+	var routine_num = flag.Int("t", 0, "number of goroutines")
 	//var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
@@ -83,6 +83,11 @@ func main() {
 	input_info.Search_step = *search_step
 	input_info.Proc_num = *proc_num
 	input_info.Routine_num = *routine_num
+	if *proc_num == 0 || *routine_num == 0 {
+		input_info.Proc_num = runtime.NumCPU()
+		input_info.Routine_num = runtime.NumCPU()
+	}
+	println("input_info.Proc_num, input_info.Routine_num: ", input_info.Proc_num, input_info.Routine_num)
 
 	para_info := isc.ParaInfo{}
 	para_info.Max_match = 32
