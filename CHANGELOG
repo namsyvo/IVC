@@ -1,6 +1,7 @@
-## 0.3.5, TO DO:
-- Use a memory-efficient version of fmi package for multigenome.
-- Use goroutines to load index:
+## 0.3.5:
+- Improve memory usage by using a memory-efficient version of fmi package for multigenome (use uint32 instead of int).
+- Improve running time by using goroutines to load index (modify function Load() in fmi package).
+- Improve user interface (main/index.go and main/isc.go).
 
 ## 0.3.4
 - Use goroutines to process reads simultaneously:
