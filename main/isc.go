@@ -40,8 +40,6 @@ func main() {
 
 	var genome_file = flag.String("g", "", "reference genome file")
 	var dbsnp_file = flag.String("s", "", "snp profile file")
-	//var index_file = flag.String("i", "", "index file of multigenome")
-	//var rev_index_file = flag.String("r", "", "index file of reverse of multigenome")
 	var idx_dir = flag.String("i", "", "index directory")
 	var read_file_1 = flag.String("1", "", "pairend read file, first end")
 	var read_file_2 = flag.String("2", "", "pairend read file, second end")
