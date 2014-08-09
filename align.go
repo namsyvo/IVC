@@ -70,7 +70,7 @@ func (I *Index) Init(input_info InputInfo, para_info ParaInfo) {
 // Bachward Search with FM-index, start from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
 func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) (int, int, int) {
-	var sp, ep, offset int
+	var sp, ep, offset uint32
 	var ok bool
 
 	c := pattern[start_pos]
@@ -79,7 +79,7 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 		return 0, -1, -1
 	}
 	ep = index.EP[c]
-	var sp0, ep0 int
+	var sp0, ep0 uint32
 	// if Debug { fmt.Println("pattern: ", string(pattern), "\n\t", string(c), sp, ep) }
 	for i := start_pos - 1; i >= 0; i-- {
 		//fmt.Println("pos, # candidates: ", i, ep - sp + 1)
@@ -92,14 +92,15 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 				sp = sp0
 				ep = ep0
 			} else {
-				return sp, ep, i + 1
+				return int(sp), int(ep), i + 1
 			}
 		} else {
-			return 0, -1, -1
+			return int(sp), int(ep), i + 1
+			//return 0, -1, -1
 		}
 		// if Debug { fmt.Println("\t", string(c), sp, ep) }
 	}
-	return sp, ep, 0
+	return int(sp), int(ep), 0
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -120,7 +121,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 		e_pos = p
 		if rev_ep-rev_sp+1 <= MAXIMUM_MATCH {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				match_pos[idx-rev_sp] = len(I.SEQ) - 1 - I.REV_FMI.SA[idx] - (s_pos - e_pos)
+				match_pos[idx-rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}

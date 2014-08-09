@@ -43,7 +43,7 @@ func main() {
 	isc.SaveSNPLocation(*snp_file, SNP_array)
 
 	saved_genome := isc.LoadMultigenome(*multigenome_file)
-	saved_SNP_array, saved_SameLen_SNP := isc.LoadSNPLocation(*snp_file)
+	saved_SNP_array, _, saved_SameLen_SNP := isc.LoadSNPLocation(*snp_file)
 
 	fmt.Println("Multigenome length: ", len(saved_genome))
 	fmt.Println("SNP profile index size: ", len(saved_SNP_array))

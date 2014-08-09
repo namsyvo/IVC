@@ -250,7 +250,6 @@ func (S *SNPProf) CallSNP(routine_num int) {
 		close(snp_pos_chan)
 	}()
 	var wg sync.WaitGroup
-	wg.Add(routine_num)
 	go func() {
 		wg.Wait()
 		close(result_chan)
@@ -258,18 +257,17 @@ func (S *SNPProf) CallSNP(routine_num int) {
 
 	for i := 0; i < routine_num; i++ {
 		go func() {
+			wg.Add(1)
 			defer wg.Done()
 			var snp []byte
-			var snp_val string
-			var snp_num, major_num int
 			for snp_pos := range snp_pos_chan {
 				SNP_Qlt := make(map[string]int)
 				for _, snp = range S.SNP_Prof[snp_pos] {
 					SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
 				}
-				major_num = 0
+				major_num := 0
 				var major_snp string
-				for snp_val, snp_num = range SNP_Qlt {
+				for snp_val, snp_num := range SNP_Qlt {
 					if snp_num > major_num {
 						major_num = snp_num
 						major_snp = snp_val
