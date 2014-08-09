@@ -1,3 +1,7 @@
+## 0.3.5, TO DO:
+- Use a memory-efficient version of fmi package for multigenome.
+- Use goroutines to load index:
+
 ## 0.3.4
 - Use goroutines to process reads simultaneously:
     + One goroutine reads input files and put data to a data channel.
