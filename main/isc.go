@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"path"
 	//"runtime/pprof"
 )
 
@@ -37,16 +38,17 @@ func main() {
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
 
-	var genome_file = flag.String("g", "", "multi-genome file")
-	var snp_file = flag.String("s", "", "snp profile file")
-	var index_file = flag.String("i", "", "index file of multigenome")
-	var rev_index_file = flag.String("r", "", "index file of reverse of multigenome")
+	var genome_file = flag.String("g", "", "reference genome file")
+	var dbsnp_file = flag.String("s", "", "snp profile file")
+	//var index_file = flag.String("i", "", "index file of multigenome")
+	//var rev_index_file = flag.String("r", "", "index file of reverse of multigenome")
+	var idx_dir = flag.String("i", "", "index directory")
 	var read_file_1 = flag.String("1", "", "pairend read file, first end")
 	var read_file_2 = flag.String("2", "", "pairend read file, second end")
-	var snp_call_file = flag.String("c", "", "snp calling file")
+	var snp_call_file = flag.String("o", "", "snp calling file")
 	var read_len = flag.Int("l", 100, "read length")
 	var seq_err = flag.Float64("e", 0.01, "sequencing error")
-	var search_mode = flag.Int("m", 2, "searching mode for finding seeds(1: random, 2: deterministic)")
+	var search_mode = flag.Int("m", 2, "searching mode for finding seeds (1: random, 2: deterministic)")
 	var start_pos = flag.Int("p", 0, "starting position on reads for finding seeds")
 	var search_step = flag.Int("j", 5, "step for searching in deterministic mode")
 	var proc_num = flag.Int("w", 1, "maximum number of CPUs using by Go")
@@ -62,11 +64,17 @@ func main() {
 	}
 	*/
 
+	_, genome_file_name := path.Split(*genome_file)
+	multigenome_file := path.Join(*idx_dir, genome_file_name) + ".mgf"
+	rev_multigenome_file := path.Join(*idx_dir, genome_file_name) + "_rev.mgf"
+	_, dbsnp_file_name := path.Split(*dbsnp_file)
+	snp_prof_file := path.Join(*idx_dir, dbsnp_file_name) + ".idx"
+
 	input_info := isc.InputInfo{}
-	input_info.Genome_file = *genome_file
-	input_info.SNP_file = *snp_file
-	input_info.Index_file = *index_file
-	input_info.Rev_index_file = *rev_index_file
+	input_info.Genome_file = multigenome_file
+	input_info.SNP_file = snp_prof_file
+	input_info.Index_file = multigenome_file + ".index/"
+	input_info.Rev_index_file = rev_multigenome_file + ".index/"
 	input_info.Read_file_1 = *read_file_1
 	input_info.Read_file_2 = *read_file_2
 	input_info.SNP_call_file = *snp_call_file
