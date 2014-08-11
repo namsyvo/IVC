@@ -140,30 +140,27 @@ func ReadFASTA(sequence_file string) []byte {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-
 	defer f.Close()
 	br := bufio.NewReader(f)
 	byte_array := bytes.Buffer{}
 
-	//line , err := br.ReadString('\n')
-	_, isPrefix, err := br.ReadLine()
+	var isPrefix bool
+	_, isPrefix, err = br.ReadLine()
 	if err != nil || isPrefix {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 	//fmt.Printf("%s",line)
-
+	var line []byte
 	for {
-		line, isPrefix, err := br.ReadLine()
+		line, isPrefix, err = br.ReadLine()
 		if err != nil || isPrefix {
 			break
 		} else {
-			byte_array.Write([]byte(line))
+			byte_array.Write(line)
 		}
 	}
-	//byte_array.Write([]byte("$"))
-	input := []byte(byte_array.String())
-	return input
+	return []byte(byte_array.String())
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -179,10 +176,13 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 
 	defer f.Close()
 	br := bufio.NewReader(f)
-	//byte_array := bytes.Buffer{}
+	var line string
+	var split, alt []string
+	t := make([]string, 1000)
+	var pos int64
 
 	for {
-		line, err := br.ReadString('\n')
+		line, err = br.ReadString('\n')
 		if err != nil {
 			//fmt.Printf("%v\n",err)
 			break
@@ -190,27 +190,26 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 		if line[0] == byte('#') {
 			//fmt.Printf("%s \n",line)
 		} else {
-			sline := string(line)
-			split := strings.Split(sline, "\t")
+			split = strings.Split(line, "\t")
 			//fmt.Printf("%s %s %s\n", split[1], split[3], split[4])
-			pos, _ := strconv.ParseInt(split[1], 10, 64)
+			pos, _ = strconv.ParseInt(split[1], 10, 64)
 			pos = pos - 1
 			if len(split[4]) > 1 {
-				alt := strings.Split(split[4], ",")
-				t := make([]string, len(alt)+1)
+				alt = strings.Split(split[4], ",")
+				//t := make([]string, len(alt)+1)
 				t[0] = split[3]
 				for i := 0; i < len(alt); i++ {
+					println("len(alt): ", len(alt))
 					if alt[i] == "<DEL>" {
 						t[i+1] = "."
 					} else {
+println("in for: ", i+1)
 						t[i+1] = alt[i]
 					}
 				}
-				//sort.Strings(t)
-				//array[int(pos)] = SNP{t} // asign SNP at pos
 				tmp, ok := array[int(pos)]
 				if ok {
-					t = append(t[:0], t[1:]...)
+					t = append(t[:0], t[1:len(alt)+1]...)
 					tmp.Profile = append(tmp.Profile, t...)
 				} else {
 					tmp.Profile = append(tmp.Profile, t...)
@@ -219,7 +218,6 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 				array[int(pos)] = tmp // append SNP at pos
 				//fmt.Printf("pos=%d %q \n", pos, alt)
 			} else {
-				//array[int(pos)] = SNP{[]string{split[3], split[4]}} // asign SNP at pos
 				tmp, ok := array[int(pos)]
 				if ok {
 					if split[4] == "<DEL>" {

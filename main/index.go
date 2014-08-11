@@ -36,8 +36,17 @@ func main() {
 	start_time := time.Now()
 
 	sequence := isc.ReadFASTA(*genome_file)
+	runtime.ReadMemStats(memstats)
+	log.Printf("ISC-index: memstats after reading genome file:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+
 	SNP_array := isc.ReadVCF(*dbsnp_file)
+	runtime.ReadMemStats(memstats)
+	log.Printf("ISC-index: memstats after reading SNP profile file:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+
 	multigenome := isc.BuildMultigenome(SNP_array, sequence)
+
+	runtime.ReadMemStats(memstats)
+	log.Printf("ISC-index: memstats after building multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
 	multigenome_len := len(multigenome)
 	rev_multigenome := make([]byte, multigenome_len)
