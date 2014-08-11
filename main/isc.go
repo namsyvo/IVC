@@ -91,8 +91,8 @@ func main() {
 	para_info.Max_match = 32
 	para_info.Err_var_factor = 4
 	para_info.Iter_num_factor = 1
-	para_info.Seq_err = float32(*seq_err)
-	para_info.Read_len = *read_len
+	para_info.Seq_err = float32(*seq_err) //will be replaced by seq_err estimated from input reads
+	para_info.Read_len = *read_len //will be replaced by read length taken from input reads
 
 	runtime.GOMAXPROCS(input_info.Proc_num)
 
