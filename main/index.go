@@ -91,7 +91,7 @@ func main() {
 
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC-index: memstats after indexing multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
+	
 	start_time = time.Now()
 
 	idx = *fmi.New(rev_multigenome_file)
@@ -102,8 +102,9 @@ func main() {
 
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC-index: memstats after indexing reversed multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
+	
 	fmt.Println("Index directory for multigenome: ", multigenome_file + ".index/")
 	fmt.Println("Index directory for reversed multigenome: ", rev_multigenome_file + ".index/")
 	fmt.Println("Finish indexing multigenome.")
+
 }

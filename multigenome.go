@@ -13,13 +13,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
+	//"sort"
 )
 
 type SNPProfile struct {
-	Profile    []string
+	Profile    [][]byte
 	AlleleFreq []float32
 }
 
@@ -91,7 +91,7 @@ func SaveSNPLocation(file_name string, SNP_arr map[int]SNPProfile) {
 	for i, item := range SNP_arr {
 		str := ""
 		for _, v := range item.Profile {
-			str = "\t" + v + str
+			str = "\t" + string(v) + str
 		}
 		key := strconv.Itoa(i)
 		_, err := file.WriteString(key + str + "\n")
@@ -117,8 +117,7 @@ func LoadMultigenome(file_name string) []byte {
 	if err != nil {
 		return nil
 	}
-	str := string(bs)
-	return ([]byte(str))
+	return bs
 }
 
 // string * multi-genome
@@ -173,71 +172,78 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-
 	defer f.Close()
-	br := bufio.NewReader(f)
-	var line string
-	var split, alt []string
-	t := make([]string, 1000)
-	var pos int64
 
+	var line []byte
+	var alt [][]byte
+	var pos int
+
+	data := bufio.NewReader(f)
 	for {
-		line, err = br.ReadString('\n')
+		line, err = data.ReadBytes('\n')
 		if err != nil {
 			//fmt.Printf("%v\n",err)
 			break
 		}
-		if line[0] == byte('#') {
+		if bytes.Equal(line[0:1], []byte("#")) {
 			//fmt.Printf("%s \n",line)
 		} else {
-			split = strings.Split(line, "\t")
-			//fmt.Printf("%s %s %s\n", split[1], split[3], split[4])
-			pos, _ = strconv.ParseInt(split[1], 10, 64)
-			pos = pos - 1
-			if len(split[4]) > 1 {
-				alt = strings.Split(split[4], ",")
-				//t := make([]string, len(alt)+1)
-				t[0] = split[3]
-				for i := 0; i < len(alt); i++ {
-					println("len(alt): ", len(alt))
-					if alt[i] == "<DEL>" {
-						t[i+1] = "."
-					} else {
-println("in for: ", i+1)
-						t[i+1] = alt[i]
-					}
-				}
-				tmp, ok := array[int(pos)]
-				if ok {
-					t = append(t[:0], t[1:len(alt)+1]...)
-					tmp.Profile = append(tmp.Profile, t...)
+			tmp := SNPProfile{}
+			sub_line, _ := SplitN(line, []byte("\t"), 9)
+			pos, _ = strconv.Atoi(string(sub_line[1]))
+			tmp.Profile = append(tmp.Profile, sub_line[3])
+			alt = bytes.Split(sub_line[4], []byte(","))
+			for i := 0; i < len(alt); i++ {
+				if bytes.Equal(alt[i], []byte("<DEL>")) {
+					tmp.Profile = append(tmp.Profile, []byte("."))
 				} else {
-					tmp.Profile = append(tmp.Profile, t...)
+					tmp.Profile = append(tmp.Profile, alt[i])
 				}
-				sort.Strings(tmp.Profile)
-				array[int(pos)] = tmp // append SNP at pos
-				//fmt.Printf("pos=%d %q \n", pos, alt)
-			} else {
-				tmp, ok := array[int(pos)]
-				if ok {
-					if split[4] == "<DEL>" {
-						tmp.Profile = append(tmp.Profile, ".")
-					} else {
-						tmp.Profile = append(tmp.Profile, split[4])
-					}
-				} else {
-					if split[4] == "<DEL>" {
-						tmp.Profile = append(tmp.Profile, []string{split[3], "."}...)
-					} else {
-						tmp.Profile = append(tmp.Profile, []string{split[3], split[4]}...)
-					}
-				}
-				sort.Strings(tmp.Profile)
-
-				array[int(pos)] = tmp // append SNP at pos
-				//fmt.Println(pos)
 			}
+
+			//sort.Strings(tmp.Profile)
+			array[pos - 1] = tmp // append SNP at pos
 		}
 	}
 	return array
+}
+
+func SplitN(s, sep []byte, n int) ([][]byte, int) {
+	first_idx, sep_idx := 0, 0
+	sep_num := 0
+	t := make([][]byte, 0)
+	for first_idx < len(s) {
+		sep_idx = bytes.Index(s[first_idx:], sep)
+		if sep_idx != -1 {
+			sep_num++
+			tmp := make([]byte, first_idx + sep_idx - first_idx)
+			copy(tmp, s[first_idx : first_idx + sep_idx])
+			t = append(t, tmp)
+			if sep_num == n {
+				return t, sep_num
+			}
+			first_idx = first_idx + sep_idx + 1
+		} else {
+			return t, sep_num
+		}
+	}
+	return t, sep_num
+}
+
+func IndexN(s, sep []byte, n int) int {
+	first_idx, sep_idx := 0, 0
+	sep_num := 0
+	for first_idx < len(s) {
+		sep_idx = bytes.Index(s[first_idx:], sep)
+		if sep_idx != -1 {
+			sep_num++
+			if sep_num == n {
+				return first_idx + sep_idx
+			}
+			first_idx = first_idx + sep_idx + 1
+		} else {
+			return -1
+		}
+	}
+	return -1
 }
