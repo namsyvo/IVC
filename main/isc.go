@@ -214,7 +214,7 @@ func ReadReads(input_info isc.InputInfo, data chan isc.ReadInfo, results chan []
 		scanner1.Scan() //ignore 4th line in 1st input FASTQ file 1
 		scanner2.Scan() //ignore 4th line in 2nd input FASTQ file 2
 	}
-	fmt.Println("\tNumber of inout reads: ", read_num)
+	fmt.Println("\tNumber of input reads: ", read_num)
 	close(data)
 }
 
