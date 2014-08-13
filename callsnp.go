@@ -250,11 +250,6 @@ func (S *SNPProf) CallSNP(routine_num int) {
 		close(snp_pos_chan)
 	}()
 	var wg sync.WaitGroup
-	go func() {
-		wg.Wait()
-		close(result_chan)
-	}()
-
 	for i := 0; i < routine_num; i++ {
 		go func() {
 			wg.Add(1)
@@ -281,6 +276,11 @@ func (S *SNPProf) CallSNP(routine_num int) {
 			}
 		}()
 	}
+	go func() {
+		wg.Wait()
+		close(result_chan)
+	}()
+
 	for snp_prof := range result_chan {
 		S.SNP_Call[snp_prof.SNPPos] = snp_prof.SNPCall
 		S.SNP_Prob[snp_prof.SNPPos] = snp_prof.SNPProb
