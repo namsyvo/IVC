@@ -1,0 +1,23 @@
+(1) Calculate SNP quality after finishing alignment step.
+    + Read allele frequency from SNP profile (VCF files).
+    + Store all SNPs at each position found from read-multigenome alignment.
+    + Calculate SNP quality based on Bayesian method.
+
+(2) Call new SNPs and new alleles:
+    + Generate new simlated reads with new SNPs and new alleles (0.1%, 0.5%, 1%).
+    + Modify the traceback algorithm to call new SNPs with current distance calculation algorithm (that is, calling only exist alleles).
+    + Modify the distance calculation and traceback algorithms to call new alleles (and new SNPs as well).
+
+(3) Exploit the advantage of pair-end reads:
+    + Difference(first match, second match) is small.
+    + Distance(read, ref) is small.
+    + Matches are in reverse strands.
+
+- Integrate indexing and SNP calling steps:
+    (1) Create or load the index:
+        + Create the index only if (A) it does not exist, or (B) it exists but there is an error loading it.
+        + Currently, the program will recreate the index every time if the index is larger than 1 GB (due to size limit for loading file in Golang)
+    (2) Call SNPs.
+    (3) Save the index (both FM and SNP indexes).
+        + Tell users that the program has finished calling SNPs so they can go ahead to look at the result.
+        + The program can go ahead to save the index (FM and SNP) while users are looking at the results. 
