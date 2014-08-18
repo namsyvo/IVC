@@ -1,0 +1,4 @@
+Calculate SNP quality after finishing alignment step.
+    + Read allele frequency from SNP profile (VCF files).
+    + Store all SNPs at each position found from read-multigenome alignment.
+    + Calculate SNP quality based on Bayesian method.
