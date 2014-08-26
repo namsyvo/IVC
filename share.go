@@ -56,19 +56,10 @@ type ParaInfo struct {
 
 //Storing read and information
 type ReadInfo struct {
-	Read1          []byte //first end read
-	Read2          []byte //second end read
-	Rev_read1      []byte //reverse of 1st end read
-	Rev_read2      []byte //reverse of 2nd end read
-	Rev_comp_read1 []byte //reverse complement of 1st end read
-	Rev_comp_read2 []byte //reverse complement of 2nd end read
-	Comp_read1     []byte //complement of 1st end read, ~ reverse of reverse complement of the read
-	Comp_read2     []byte //complement of 2nd end read, ~ reverse of reverse complement of the read
-	Read_info_1    []byte //general info of 1st read
-	Read_info_2    []byte //general info of 2nd read
-	Qual_info_1    []byte //quality info of 1st read
-	Qual_info_2    []byte //quality info of 2nd read
-	Read_len       int    //length of reads
+	Read1		[]byte //first end read
+	Read2		[]byte //second end read
+	Qual1		[]byte //quality info of 1st read
+	Qual2		[]byte //quality info of 2nd read
 }
 
 //"Global" variables used in alignment process (computing distance, snp call)
@@ -80,16 +71,13 @@ type AlignInfo struct {
 }
 
 //Assigning reads to ReadInfo.
-func (read_info *ReadInfo) AssignReads(read1, read2 []byte) {
+func (read_info *ReadInfo) AssignReads(read1, read2, qual1, qual2 []byte) {
 	read_info.Read1, read_info.Read2 = make([]byte, len(read1)), make([]byte, len(read2))
+	read_info.Qual1, read_info.Qual2 = make([]byte, len(read1)), make([]byte, len(read2))
 	copy(read_info.Read1, read1)
 	copy(read_info.Read2, read2)
-}
-
-//Calculating reverse, reverse complement, and complement of reads.
-func (read_info *ReadInfo) CalcRevComp() {
-	read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1 = RevComp(read_info.Read1)
-	read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2 = RevComp(read_info.Read2)
+	copy(read_info.Qual1, qual1)
+	copy(read_info.Qual2, qual2)
 }
 
 //Computing reverse, reverse complement, and complement of a read.

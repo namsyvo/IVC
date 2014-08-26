@@ -43,10 +43,10 @@ func main() {
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 	//-----------------------------------------------------------------//
 
-	//Aligning Reads---------------------------------------------------//
+	//Processing Reads---------------------------------------------------//
 	fmt.Println("Aligning reads to the reference mutigenome...")
 	start_time = time.Now()
-	snp_aligned_read_num := snpcaller.AlignReads()
+	snp_aligned_read_num := snpcaller.ProcessReads()
 	fmt.Println("\tNumber of aligned reads: ", snp_aligned_read_num)
 	align_time := time.Since(start_time)
 	log.Printf("ISC: time for alignment:\t%s", align_time)
@@ -58,7 +58,7 @@ func main() {
 	//Calling SNPs-----------------------------------------------------//
 	fmt.Println("Calling SNPs from alignment results...")
 	start_time = time.Now()
-	snpcaller.CallSNP()
+	snpcaller.CallSNPs()
 	callsnp_time := time.Since(start_time)
 	log.Printf("ISC: time for calling SNPs:\t%s", callsnp_time)
 	runtime.ReadMemStats(memstats)
