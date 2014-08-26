@@ -7,6 +7,7 @@ package isc
 
 import (
 	"fmt"
+	"bufio"
 	"log"
 	"math/rand"
 	"os"
@@ -20,11 +21,10 @@ import (
 
 //Global variables
 var (
-	INDEX       Index      //SNP caller Index
-	RAND_GEN    *rand.Rand //pseudo-random number generator
-	SEARCH_MODE int        //searching mode for finding seeds
-	START_POS   int        //start postion on reads to search
-	SEARCH_STEP int        //step for searching in deterministic mode
+	INPUT_INFO	InputInfo	//Input information
+	PARA_INFO	ParaInfo	//Parameters
+	RAND_GEN	*rand.Rand 	//Pseudo-random number generator
+	INDEX		Index      	//Index for alignment
 )
 
 //SNP stores SNP info
@@ -42,21 +42,12 @@ type SNPProf struct {
 }
 
 //Initialize parameters
-func (S *SNPProf) Init(input_info InputInfo, para_info ParaInfo) {
+func (S *SNPProf) InitIndex(input_info InputInfo, para_info ParaInfo) {
 
-	memstats := new(runtime.MemStats)
-
-	INDEX.Init(input_info, para_info)
+	INPUT_INFO = input_info
+	PARA_INFO = para_info
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
-	SEARCH_MODE = input_info.Search_mode
-	START_POS = input_info.Start_pos
-	SEARCH_STEP = input_info.Search_step
-	fmt.Println("SEARCH_MODE: ", SEARCH_MODE)
-	fmt.Println("START_POS: ", START_POS)
-	fmt.Println("SEARCH_STEP: ", SEARCH_STEP)
-
-	runtime.ReadMemStats(memstats)
-	log.Printf("callsnp.go: memstats after initializing indexes:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	INDEX.Init(input_info, para_info)
 
 	S.SNP_Prof = make(map[int][][]byte)
 	S.SNP_Conf = make(map[int][]float32)
@@ -67,11 +58,112 @@ func (S *SNPProf) Init(input_info InputInfo, para_info ParaInfo) {
 	for k, v := range INDEX.SNP_AF {
 		S.SNP_Conf[k] = v
 	}
-
-	runtime.ReadMemStats(memstats)
-	log.Printf("callsnp.go: memstats after initializing SNP Prof:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
 }
+
+//--------------------------------------------------------------------------------------------------
+//Read input FASTQ files and put data into data channel
+//--------------------------------------------------------------------------------------------------
+func (S *SNPProf) ReadReads(data chan ReadInfo) {
+
+	memstats := new(runtime.MemStats)
+
+	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
+	f1, err_f1 := os.Open(fn1)
+	if err_f1 != nil {
+		panic("Error opening input read file " + fn1)
+	}
+	defer f1.Close()
+	f2, err_f2 := os.Open(fn2)
+	if err_f2 != nil {
+		panic("Error opening input read file " + fn2)
+	}
+	defer f2.Close()
+
+	read_info := ReadInfo{}
+	read_num := 0
+	scanner1 := bufio.NewScanner(f1)
+	scanner2 := bufio.NewScanner(f2)
+	var line_f1, line_f2 []byte
+	for scanner1.Scan() && scanner2.Scan() { //ignore 1st lines in input FASTQ files
+		scanner1.Scan()
+		scanner2.Scan()
+		line_f1 = scanner1.Bytes() //use 2nd line in input FASTQ file 1
+		line_f2 = scanner2.Bytes() //use 2nd line in input FASTQ file 2
+		if len(line_f1) > 0 && len(line_f2) > 0 {
+			read_num++
+			read_info.AssignReads(line_f1, line_f2)
+			read_info.CalcRevComp()
+			data <- read_info
+		}
+		if read_num%10000 == 0 {
+			runtime.ReadMemStats(memstats)
+			log.Printf("isc.go: memstats after aligning each 10,000 reads:\t%d\t%d\t%d\t%d\t%d",
+				memstats.Alloc,	memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+		}
+		scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
+		scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
+		scanner1.Scan()	//ignore 4th line in 1st input FASTQ file 1
+		scanner2.Scan()	//ignore 4th line in 2nd input FASTQ file 2
+	}
+	close(data)
+}
+
+//--------------------------------------------------------------------------------------------------
+//Take data from data channel, process them (find SNPs) and put results (SNPs) into results channel
+//--------------------------------------------------------------------------------------------------
+func (S *SNPProf) ProcessReads(data chan ReadInfo, results chan []SNP, wg *sync.WaitGroup, align_info AlignInfo, match_pos []int) {
+
+	wg.Add(1)
+	defer wg.Done()
+	var read_info ReadInfo
+	var SNPs []SNP
+	for read_info = range data {
+		SNPs = S.FindSNP(read_info, align_info, match_pos)
+		if len(SNPs) > 0 {
+			results <- SNPs
+		}
+	}
+}
+
+//--------------------------------------------------------------------------------------------------
+//Align reads to the reference multigenome
+//--------------------------------------------------------------------------------------------------
+func (S *SNPProf) AlignReads() uint64 {
+
+	align_info := make([]AlignInfo, INPUT_INFO.Routine_num)
+	for i := 0; i < INPUT_INFO.Routine_num; i++ {
+		align_info[i].InitAlignInfo(PARA_INFO.Read_len)
+	}
+	match_pos := make([][]int, INPUT_INFO.Routine_num)
+	for i := 0; i < INPUT_INFO.Routine_num; i++ {
+		match_pos[i] = make([]int, PARA_INFO.Max_match)
+	}
+
+	data := make(chan ReadInfo, INPUT_INFO.Routine_num)
+	go S.ReadReads(data)
+
+	results := make(chan []SNP)
+	var wg sync.WaitGroup
+	for i := 0; i < INPUT_INFO.Routine_num; i++ {
+		go S.ProcessReads(data, results, &wg, align_info[i], match_pos[i])
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	//Collect SNPS from results channel and update SNPs
+	var has_snp_read_num uint64 = 0
+	var snp SNP
+	for SNPs := range results {
+		has_snp_read_num++
+		for _, snp = range SNPs {
+			S.SNP_Prof[snp.SNP_Idx] = append(S.SNP_Prof[snp.SNP_Idx], snp.SNP_Val)
+		}
+	}
+	return has_snp_read_num
+}
+
 
 //--------------------------------------------------------------------------------------------------
 // FindSNPProfile returns SNP profile of new genome based on SNP profile of reference multi-genomes
@@ -87,7 +179,7 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []
 	var SNPs, snps []SNP
 
 	//Find SNPs for the first end
-	p = START_POS
+	p = INPUT_INFO.Start_pos
 	loop_num = 1
 	for loop_num <= ITER_NUM {
 		//fmt.Println(loop_num, "\tread1")
@@ -115,16 +207,16 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []
 			}
 		}
 		//Take a new position to search
-		if SEARCH_MODE == 1 {
+		if INPUT_INFO.Search_mode == 1 {
 			p = RAND_GEN.Intn(read_info.Read_len-1) + 1
-		} else if SEARCH_MODE == 2 {
-			p = p + SEARCH_STEP
+		} else if INPUT_INFO.Search_mode == 2 {
+			p = p + INPUT_INFO.Search_step
 		}
 		loop_num++
 	}
 
 	//Find SNPs for the second end
-	p = START_POS
+	p = INPUT_INFO.Start_pos
 	loop_num = 1
 	for loop_num <= ITER_NUM {
 		//fmt.Println(loop_num, "\tread2")
@@ -152,10 +244,10 @@ func (S *SNPProf) FindSNP(read_info ReadInfo, align_info AlignInfo, match_pos []
 			}
 		}
 		//Take a new position to search
-		if SEARCH_MODE == 1 {
+		if INPUT_INFO.Search_mode == 1 {
 			p = RAND_GEN.Intn(read_info.Read_len-1) + 1
-		} else if SEARCH_MODE == 2 {
-			p = p + SEARCH_STEP
+		} else if INPUT_INFO.Search_mode == 2 {
+			p = p + INPUT_INFO.Search_step
 		}
 		loop_num++
 	}
@@ -200,12 +292,44 @@ func (S *SNPProf) FindSNPFromMatch(read []byte, s_pos, e_pos int, match_pos []in
 	return snps
 }
 
-/*
+//CalledSNP stores SNP Call info
+type CalledSNP struct {
+	SNPPos int //pos in ref for SNP Call
+	SNPCall []byte //SNP Call base
+	SNPProb []int //SNP Call prob
+}
+
+type BaseInfo struct {
+	Pos uint32
+	Base byte
+	Qual uint16
+}
+
 //---------------------------------------------------------------------------------------------------
 // CalcQual calculates called SNP quality.
 //---------------------------------------------------------------------------------------------------
-func (S *SNPProf) CalcQual() {
+func (S *SNPProf) CalcSNPQual(snp_pos int) CalledSNP {
 
+	SNP_Qlt := make(map[string]int)
+	for _, snp := range S.SNP_Prof[snp_pos] {
+		SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
+	}
+
+	major_num := 0
+	var major_snp string
+	for snp_val, snp_num := range SNP_Qlt {
+		if snp_num > major_num {
+			major_num = snp_num
+			major_snp = snp_val
+		}
+	}
+
+	calledSNP := CalledSNP{}
+	calledSNP.SNPPos = snp_pos
+	calledSNP.SNPCall = []byte(major_snp)
+	calledSNP.SNPProb = []int{major_num, len(S.SNP_Prof[snp_pos])}
+
+	/*
 	cond_prob := make([]float32, len(S.SNP_Conf[snp_pos]))
 	for idx, base_conf := range S.SNP_Conf[snp_pos] {
 		SNP := index.SNP_PROF[snp_pos][idx]
@@ -226,73 +350,71 @@ func (S *SNPProf) CalcQual() {
 	for idx, value := range(cond_prob) {
 		S.SNP_Conf[snp_pos][idx] = value / base_prob
 	}
-}
-*/
+	*/
 
-type CalledSNP struct {
-	SNPPos int
-	SNPCall []byte
-	SNPProb []int
+	return calledSNP
 }
 
 //-----------------------------------------------------------------------------------------------------
 // CallSNP returns called SNPs and related information based on SNP profile constructed from
 // alignment between reads and multi-genomes.
 //-----------------------------------------------------------------------------------------------------
-func (S *SNPProf) CallSNP(routine_num int) {
+func (S *SNPProf) CallSNP() {
 
-	snp_pos_chan := make(chan int, routine_num)
-	result_chan := make(chan CalledSNP)
+	snp_pos_chan := make(chan int, INPUT_INFO.Routine_num)
 	go func() {
 		for snp_pos, _ := range S.SNP_Prof {
 			snp_pos_chan <- snp_pos
 		}
 		close(snp_pos_chan)
 	}()
+	/*
+	//base_info_chan := make(chan BaseInfo, routine_num)
+	go func() {
+		base_info := []baseInfo{}
+		for snp_pos, snp_val := range S.SNP_Prof {
+			base_info.Pos = snp_pos
+			base_info.Base = snp_val[i]
+			base_info.Qual = S.SNP_Conf[snp_pos]
+			base_info_chan <- base_info
+		}
+		close(base_info_chan)
+	}()
+	*/
+	SNP_call_chan := make(chan CalledSNP)
 	var wg sync.WaitGroup
-	for i := 0; i < routine_num; i++ {
+	for i := 0; i < INPUT_INFO.Routine_num; i++ {
 		go func() {
 			wg.Add(1)
 			defer wg.Done()
-			var snp []byte
 			for snp_pos := range snp_pos_chan {
-				SNP_Qlt := make(map[string]int)
-				for _, snp = range S.SNP_Prof[snp_pos] {
-					SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
-				}
-				major_num := 0
-				var major_snp string
-				for snp_val, snp_num := range SNP_Qlt {
-					if snp_num > major_num {
-						major_num = snp_num
-						major_snp = snp_val
-					}
-				}
-				calledSNP := new(CalledSNP)
-				calledSNP.SNPPos = snp_pos
-				calledSNP.SNPCall = []byte(major_snp)
-				calledSNP.SNPProb = []int{major_num, len(S.SNP_Prof[snp_pos])}
-				result_chan <- *calledSNP
+				SNP_call_chan <- S.CalcSNPQual(snp_pos)
 			}
+			/*
+			for base_info := range base_info_chan {
+				SNP_call_chan <- CalcSNPQual(base_info)
+			}
+			*/
 		}()
 	}
 	go func() {
 		wg.Wait()
-		close(result_chan)
+		close(SNP_call_chan)
 	}()
 
-	for snp_prof := range result_chan {
-		S.SNP_Call[snp_prof.SNPPos] = snp_prof.SNPCall
-		S.SNP_Prob[snp_prof.SNPPos] = snp_prof.SNPProb
+	for snp_call := range SNP_call_chan {
+		S.SNP_Call[snp_call.SNPPos] = snp_call.SNPCall
+		S.SNP_Prob[snp_call.SNPPos] = snp_call.SNPProb
 	}
 }
+
 
 //-------------------------------------------------------------------------------------------------------
 // SNPCall_tofile writes called SNPs and related information to given output file in tab-delimited format
 //-------------------------------------------------------------------------------------------------------
-func (S *SNPProf) SNPCall_tofile(file_name string) {
+func (S *SNPProf) WriteSNPCalls() {
 
-	file, err := os.Create(file_name)
+	file, err := os.Create(INPUT_INFO.SNP_call_file)
 	if err != nil {
 		return
 	}
