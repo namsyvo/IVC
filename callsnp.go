@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"time"
 	"sort"
-	"bytes"
 	"sync"
 )
 
@@ -27,10 +26,23 @@ var (
 	INDEX		Index      	//Index for alignment
 )
 
-//SNP stores SNP info
+//Aligned base at each position on reference multigenome
+type BaseInfo struct {
+	Pos uint32
+	Base byte
+	Qual uint16
+}
+
+//SNP info at each position on reference multigenome
 type SNP struct {
 	SNP_Idx int
 	SNP_Val []byte
+}
+
+//SNP call at each position on reference multigenome
+type CalledSNP struct {
+	SNPVal SNP		//SNP info
+	SNPQual float32 //SNP quality
 }
 
 //SNPProf stores SNP Calling information and defines SNP calling functions
@@ -38,7 +50,7 @@ type SNPProf struct {
 	SNP_Prof map[int][][]byte  // to store all possible SNPs at each position
 	SNP_Conf map[int][]float32 // to store quality of all possible SNPS at each position
 	SNP_Call map[int][]byte    // to store SNP call at each position
-	SNP_Prob map[int][]int     // to store percentage of called SNP among all possilbe SNPs at each position
+	SNP_Qual map[int]float32     // to store quality score of called SNP at each position
 }
 
 //Initialize parameters
@@ -51,13 +63,12 @@ func (S *SNPProf) InitIndex(input_info InputInfo, para_info ParaInfo) {
 
 	S.SNP_Prof = make(map[int][][]byte)
 	S.SNP_Conf = make(map[int][]float32)
-	S.SNP_Call = make(map[int][]byte)
-	S.SNP_Prob = make(map[int][]int)
-	S.SNP_Conf = make(map[int][]float32)
-
 	for k, v := range INDEX.SNP_AF {
 		S.SNP_Conf[k] = v
 	}
+
+	S.SNP_Call = make(map[int][]byte)
+	S.SNP_Qual = make(map[int]float32)
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -292,19 +303,6 @@ func (S *SNPProf) FindSNPFromMatch(read []byte, s_pos, e_pos int, match_pos []in
 	return snps
 }
 
-//CalledSNP stores SNP Call info
-type CalledSNP struct {
-	SNPPos int //pos in ref for SNP Call
-	SNPCall []byte //SNP Call base
-	SNPProb []int //SNP Call prob
-}
-
-type BaseInfo struct {
-	Pos uint32
-	Base byte
-	Qual uint16
-}
-
 //---------------------------------------------------------------------------------------------------
 // CalcQual calculates called SNP quality.
 //---------------------------------------------------------------------------------------------------
@@ -325,9 +323,12 @@ func (S *SNPProf) CalcSNPQual(snp_pos int) CalledSNP {
 	}
 
 	calledSNP := CalledSNP{}
-	calledSNP.SNPPos = snp_pos
-	calledSNP.SNPCall = []byte(major_snp)
-	calledSNP.SNPProb = []int{major_num, len(S.SNP_Prof[snp_pos])}
+	calledSNP.SNPVal = SNP{}
+	calledSNP.SNPVal.SNP_Idx = snp_pos
+	calledSNP.SNPVal.SNP_Val = []byte(major_snp)
+	calledSNP.SNPQual = float32(major_num)/float32(len(S.SNP_Prof[snp_pos]))
+
+	return calledSNP
 
 	/*
 	cond_prob := make([]float32, len(S.SNP_Conf[snp_pos]))
@@ -352,7 +353,6 @@ func (S *SNPProf) CalcSNPQual(snp_pos int) CalledSNP {
 	}
 	*/
 
-	return calledSNP
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -403,11 +403,10 @@ func (S *SNPProf) CallSNP() {
 	}()
 
 	for snp_call := range SNP_call_chan {
-		S.SNP_Call[snp_call.SNPPos] = snp_call.SNPCall
-		S.SNP_Prob[snp_call.SNPPos] = snp_call.SNPProb
+		S.SNP_Call[snp_call.SNPVal.SNP_Idx] = snp_call.SNPVal.SNP_Val
+		S.SNP_Qual[snp_call.SNPVal.SNP_Idx] = snp_call.SNPQual
 	}
 }
-
 
 //-------------------------------------------------------------------------------------------------------
 // SNPCall_tofile writes called SNPs and related information to given output file in tab-delimited format
@@ -420,9 +419,8 @@ func (S *SNPProf) WriteSNPCalls() {
 	}
 	defer file.Close()
 
-	var nums []int
 	var snp_pos int
-	var str_snp_pos, str_snp, str_snp_num1, str_snp_num2, str_snp_prob string
+	var str_snp_pos, str_snp_val, str_snp_qual string
 
 	SNP_Pos := make([]int, 0, len(S.SNP_Prof))
 	for snp_pos, _ = range S.SNP_Call {
@@ -430,46 +428,16 @@ func (S *SNPProf) WriteSNPCalls() {
 	}
 	sort.Ints(SNP_Pos)
 
-	var flag bool
-	var idx int
-	var value []byte
-	var str_snp_conf string
-
-	//log.Printf("New Alleles:\n")
 	for _, snp_pos = range SNP_Pos {
 		str_snp_pos = strconv.Itoa(snp_pos)
-		str_snp = string(S.SNP_Call[snp_pos])
-		nums = S.SNP_Prob[snp_pos]
-		str_snp_num1, str_snp_num2 = strconv.Itoa(nums[0]), strconv.Itoa(nums[1])
-		str_snp_prob = strconv.FormatFloat(float64(nums[0])/float64(nums[1]), 'f', 5, 32)
+		str_snp_val = string(S.SNP_Call[snp_pos])
+		str_snp_qual = strconv.FormatFloat(float64(S.SNP_Qual[snp_pos]), 'f', 5, 32)
 
-		if str_snp != "" {
-			_, err = file.WriteString(str_snp_pos + "\t" + str_snp + "\t" +
-				str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t")
+		if str_snp_val != "" {
+			_, err = file.WriteString(str_snp_pos + "\t" + str_snp_val + "\t" + str_snp_qual + "\n")
 		} else {
-			_, err = file.WriteString(str_snp_pos + "\t.\t" +
-				str_snp_num1 + "\t" + str_snp_num2 + "\t" + str_snp_prob + "\t")
+			_, err = file.WriteString(str_snp_pos + "\t" + "."		   + "\t" + str_snp_qual + "\n")
 		}
-
-		//Write SNP Qual - testing////////////////////////////
-		flag = false
-		for idx, value = range INDEX.SNP_PROF[snp_pos] {
-			if bytes.Equal(value, S.SNP_Call[snp_pos]) {
-				str_snp_conf = strconv.FormatFloat(float64(S.SNP_Conf[snp_pos][idx]), 'f', 5, 32)
-				_, err = file.WriteString(str_snp_conf + "\n")
-				flag = true
-			}
-		}
-		if !flag {
-			//_, err = file.WriteString(".\n")
-			//log.Printf("%s\t%s\n", str_snp_pos, str_snp)
-			//for _, val := range INDEX.SNP_PROF[snp_pos] {
-			//	log.Printf("%s\t", string(val))
-			//}
-			//log.Printf("\n")
-		}
-		//////////////////////////////////////////////////////
-
 		if err != nil {
 			fmt.Println(err)
 			break

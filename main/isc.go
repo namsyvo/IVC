@@ -37,9 +37,9 @@ func main() {
 	start_time := time.Now()
 	snpcaller.InitIndex(input_info, para_info)
 	index_time := time.Since(start_time)
-	log.Printf("ISC: time for SNP caller init:\t%s", index_time)
+	log.Printf("ISC: time for initializing SNP caller:\t%s", index_time)
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats after SNP caller init:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
+	log.Printf("ISC: memstats after initializing SNP caller:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 	//-----------------------------------------------------------------//
 
