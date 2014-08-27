@@ -74,7 +74,7 @@ func (S *SNPProf) Init(input_info InputInfo) {
 	for k, v := range INDEX.SNP_AF {
 		S.SNP_Conf[k] = v
 	}
-
+	
 	S.SNP_Prof = make(map[int][][]byte)
 	S.SNP_BaseQ = make(map[int][]float64)
 
@@ -139,8 +139,10 @@ func (S *SNPProf) ProcessReads() uint64 {
 	for SNPs := range results {
 		has_snp_read_num++
 		for _, snp = range SNPs {
-			S.SNP_Prof[snp.SNP_Pos] = append(S.SNP_Prof[snp.SNP_Pos], snp.SNP_Val)
-			S.SNP_BaseQ[snp.SNP_Pos] = append(S.SNP_BaseQ[snp.SNP_Pos], snp.SNP_Qual)
+			if len(snp.SNP_Val) > 0 {
+				S.SNP_Prof[snp.SNP_Pos] = append(S.SNP_Prof[snp.SNP_Pos], snp.SNP_Val)
+				S.SNP_BaseQ[snp.SNP_Pos] = append(S.SNP_BaseQ[snp.SNP_Pos], snp.SNP_Qual)
+			}
 		}
 	}
 	return has_snp_read_num
@@ -230,7 +232,6 @@ func (S *SNPProf) FindSNPsFromReads(read_info ReadInfo, align_info AlignInfo, ma
 
 	SNPs = append(SNPs, SNP1...)
 	SNPs = append(SNPs, SNP2...)
-
 	return SNPs
 }
 
@@ -356,7 +357,7 @@ func (S *SNPProf) CallSNPForEachPos(snp_pos int) CalledSNP {
 	} else {
 		var a []byte
 		for _, a_base := range S.SNP_Prof[snp_pos] {
-			fmt.Println(snp_pos, "\t", string(a_base))
+			//fmt.Println(snp_pos, "\t", string(a_base))
 			a = append(a, a_base[0])
 		}
 		var b []byte
@@ -420,6 +421,24 @@ func CalcSNPQual(a []byte, e []float64, bases []byte, p_b []float32) (byte, floa
 // CallSNPs returns called SNPs and related information.
 //-----------------------------------------------------------------------------------------------------
 func (S *SNPProf) CallSNPs() {
+	/*
+	for _, snp := range S.SNP_Prof[60800313] {
+		println("snp", string(snp))
+	}
+	*/
+	var snp_call CalledSNP
+	for snp_pos, _ := range S.SNP_Prof {
+		snp_call = S.CallSNPForEachPos(snp_pos)
+		S.SNP_Call[snp_call.SNPVal.SNP_Pos] = snp_call.SNPVal.SNP_Val
+		S.SNP_SnpQ[snp_call.SNPVal.SNP_Pos] = snp_call.SNPQual
+	}
+}
+
+/*
+//-----------------------------------------------------------------------------------------------------
+// CallSNPs returns called SNPs and related information.
+//-----------------------------------------------------------------------------------------------------
+func (S *SNPProf) CallSNPs() {
 
 	snp_pos_chan := make(chan int, INPUT_INFO.Routine_num)
 	go func() {
@@ -449,7 +468,7 @@ func (S *SNPProf) CallSNPs() {
 		S.SNP_SnpQ[snp_call.SNPVal.SNP_Pos] = snp_call.SNPQual
 	}
 }
-
+*/
 //-------------------------------------------------------------------------------------------------------
 // SNPCall_tofile writes called SNPs and related information to output file in tab-delimited format
 //-------------------------------------------------------------------------------------------------------
