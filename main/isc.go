@@ -29,9 +29,9 @@ func main() {
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
 	var snpcaller isc.SNPProf
-	//-----------------------------------------------------------------//
+	//--------------------------------------------------------------------------//
 
-	//Initializing Indexes----------------------------------------------//
+	//Initializing Indexes------------------------------------------------------//
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
 	snpcaller.Init(input_info)
@@ -40,9 +40,9 @@ func main() {
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC: memstats after initializing SNP caller:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-	//-----------------------------------------------------------------//
+	//-------------------------------------------------------------------------//
 
-	//Processing Reads---------------------------------------------------//
+	//Processing Reads---------------------------------------------------------//
 	fmt.Println("Aligning reads to the reference mutigenome...")
 	start_time = time.Now()
 	snp_aligned_read_num := snpcaller.ProcessReads()
@@ -52,9 +52,9 @@ func main() {
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC: memstats after alignment:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-	//-----------------------------------------------------------------//
+	//-------------------------------------------------------------------------//
 
-	//Calling SNPs-----------------------------------------------------//
+	//Calling SNPs-------------------------------------------------------------//
 	fmt.Println("Calling SNPs from alignment results...")
 	start_time = time.Now()
 	snpcaller.CallSNPs()
@@ -63,9 +63,9 @@ func main() {
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC: memstats after calling SNPs:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-	//----------------------------------------------------------------//
+	//------------------------------------------------------------------------//
 
-	//Writing SNPs-----------------------------------------------------//
+	//Writing SNPs------------------------------------------------------------//
 	fmt.Println("Writing SNPs to output file...")
 	start_time = time.Now()
 	snpcaller.WriteSNPCalls()
@@ -74,9 +74,9 @@ func main() {
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC: memstats after writing SNPs:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-	//----------------------------------------------------------------//
+	//------------------------------------------------------------------------//
 
-	//Finishing Program-----------------------------------------------------------//
+	//Finishing Program-------------------------------------------------------//
 	WriteOutputInfo(input_info)
 	fmt.Println("ISC - Finish SNP calling process!")
 
@@ -84,6 +84,7 @@ func main() {
 	log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	log.Printf("ISC: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	//------------------------------------------------------------------------//
 }
 
 //--------------------------------------------------------------------------------------------------

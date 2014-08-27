@@ -100,9 +100,9 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep-rev_sp+1 <= PARA_INFO.Max_match {
+		if rev_ep - rev_sp + 1 <= PARA_INFO.Max_match {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				match_pos[idx-rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
+				match_pos[idx - rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}
@@ -115,7 +115,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info AlignInfo) (int, []int, [][]byte, []int, [][]byte) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info AlignInfo) (int, []int, [][]byte, []int, []int, [][]byte, []int) {
 
 	var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
 	var lcs_len int = s_pos - e_pos + 1
@@ -130,7 +130,7 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
 			left_ext_add_len++
 		}
 	}
-	for i = match_pos + lcs_len; i < (match_pos+lcs_len)+(len(read)-s_pos)-1; i++ {
+	for i = match_pos + lcs_len; i < (match_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
 		_, isSNP = I.SNP_PROF[i]
 		_, isSameLenSNP = I.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
@@ -141,7 +141,7 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
 	if left_most_pos >= 0 {
 		ref_left_flank = I.SEQ[left_most_pos:match_pos]
 	} else {
-		ref_left_flank = I.SEQ[0:match_pos]
+		ref_left_flank = I.SEQ[0 : match_pos]
 	}
 	right_most_pos := (match_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
 	if right_most_pos <= len(I.SEQ) {
@@ -150,24 +150,26 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
 		ref_right_flank = I.SEQ[match_pos+lcs_len : len(I.SEQ)]
 	}
 
-	read_left_flank = read[:e_pos]
-	left_d, left_D, left_m, left_n, left_snp_idx, left_snp_val :=
+	read_left_flank = read[ : e_pos]
+	left_d, left_D, left_m, left_n, left_snp_pos, left_snp_val, left_snp_idx :=
 		I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
 
-	read_right_flank = read[s_pos+1:]
-	right_d, right_D, right_m, right_n, right_snp_idx, right_snp_val :=
+	read_right_flank = read[s_pos + 1 : ]
+	right_d, right_D, right_m, right_n, right_snp_pos, right_snp_val, right_snp_idx :=
 		I.ForwardDistance(read_right_flank, ref_right_flank, match_pos+lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
 	dis := left_d + right_d + left_D + right_D
 	if dis <= PARA_INFO.Dist_thres {
-		left_idx, left_val := I.BackwardTraceBack(read_left_flank, ref_left_flank,
+		left_pos, left_val, left_idx := I.BackwardTraceBack(read_left_flank, ref_left_flank,
 			left_m, left_n, left_most_pos, align_info.Bw_Trace)
-		right_idx, right_val := I.ForwardTraceBack(read_right_flank, ref_right_flank,
-			right_m, right_n, match_pos+lcs_len, align_info.Fw_Trace)
-		left_snp_idx = append(left_snp_idx, left_idx...)
-		right_snp_idx = append(right_snp_idx, right_idx...)
+		right_pos, right_val, right_idx := I.ForwardTraceBack(read_right_flank, ref_right_flank,
+			right_m, right_n, match_pos + lcs_len, align_info.Fw_Trace)
+		left_snp_pos = append(left_snp_pos, left_pos...)
+		right_snp_pos = append(right_snp_pos, right_pos...)
 		left_snp_val = append(left_snp_val, left_val...)
 		right_snp_val = append(right_snp_val, right_val...)
+		left_snp_idx = append(left_snp_idx, left_idx...)
+		right_snp_idx = append(right_snp_idx, right_idx...)
 	}
-	return dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val
+	return dis, left_snp_pos, left_snp_val, left_snp_idx, right_snp_pos, right_snp_val, right_snp_idx
 }
