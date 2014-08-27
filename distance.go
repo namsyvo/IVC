@@ -69,8 +69,8 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 		} else {
 			break
 		}
-		if d > DIST_THRES {
-			return DIST_THRES + 1, 0, m, n, snp_idx, snp_val
+		if d > PARA_INFO.Dist_thres {
+			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_idx, snp_val
 		}
 	}
 
@@ -209,8 +209,8 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 		} else {
 			break
 		}
-		if d > DIST_THRES {
-			return DIST_THRES + 1, 0, m, n, snp_idx, snp_val
+		if d > PARA_INFO.Dist_thres {
+			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_idx, snp_val
 		}
 	}
 

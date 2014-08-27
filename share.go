@@ -48,10 +48,10 @@ type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
 	Iter_num        int     //number of random iterations to find proper seeds
 	Max_match       int     //maximum number of matches
-	Err_var_factor  int     //factor for standard variation for sequencing error
-	Iter_num_factor int     //factor for
-	Seq_err         float32 //average sequencing error, estimated from read if real reads
-	Read_len        int     //read length
+	Seq_err         float32 //average sequencing error, estmated from reads with real reads
+	Err_var_factor  int     //factor for standard variation of sequencing error
+	Iter_num_factor int     //factor for number of iterations 
+	Read_len        int     //read length, calculated from read files
 }
 
 //Storing read and information

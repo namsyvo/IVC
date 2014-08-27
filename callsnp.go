@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"bufio"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"runtime"
@@ -56,12 +57,12 @@ type SNPProf struct {
 //--------------------------------------------------------------------------------------------------
 //InitIndex initializes indexes and parameters
 //--------------------------------------------------------------------------------------------------
-func (S *SNPProf) InitIndex(input_info InputInfo, para_info ParaInfo) {
+func (S *SNPProf) Init(input_info InputInfo) {
 
 	INPUT_INFO = input_info
-	PARA_INFO = para_info
+	PARA_INFO = SetPara(100, 0.01)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
-	INDEX.Init(input_info, para_info)
+	INDEX.Init()
 
 	S.SNP_Prof = make(map[int][][]byte)
 	S.SNP_Conf = make(map[int][]float32)
@@ -71,6 +72,30 @@ func (S *SNPProf) InitIndex(input_info InputInfo, para_info ParaInfo) {
 
 	S.SNP_Call = make(map[int][]byte)
 	S.SNP_Qual = make(map[int]float32)
+}
+
+//--------------------------------------------------------------------------------------------------
+//Set values for parameters
+//--------------------------------------------------------------------------------------------------
+func SetPara(read_len int, seq_err float32) ParaInfo {
+	para_info := ParaInfo{}
+	para_info.Max_match = 32
+	para_info.Err_var_factor = 4
+	para_info.Iter_num_factor = 1
+	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
+	para_info.Read_len = read_len //will be replaced by read length taken from input reads
+
+	//Const for computing distance
+	err := float64(para_info.Seq_err)
+	rlen := float64(para_info.Read_len)
+	k := float64(para_info.Err_var_factor)
+	para_info.Dist_thres = int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
+
+	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
+	fmt.Println("ITER_NUM: ", para_info.Iter_num)
+
+	return para_info
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -216,7 +241,7 @@ func (S *SNPProf) FindSNPsFromEachEnd(read []byte, align_info AlignInfo, match_p
 
 	p = INPUT_INFO.Start_pos
 	loop_num = 1
-	for loop_num <= ITER_NUM {
+	for loop_num <= PARA_INFO.Iter_num {
 		//fmt.Println(loop_num, "\tread2")
 		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read, rev_read, p, match_pos)
 		if has_seeds {
@@ -264,7 +289,7 @@ func (S *SNPProf) FindSNPsFromMatch(read []byte, s_pos, e_pos int, match_pos []i
 	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
 		dis, left_snp_idx, left_snp_val, right_snp_idx, right_snp_val = INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
-		if dis <= DIST_THRES {
+		if dis <= PARA_INFO.Dist_thres {
 			if len(left_snp_idx) == 0 && len(right_snp_idx) == 0 {
 				continue
 			} else {

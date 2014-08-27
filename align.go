@@ -11,32 +11,24 @@
 package isc
 
 import (
-	"fmt"
 	"github.com/vtphan/fmi" //to use FM index
 	"log"
-	"math"
 	"runtime"
 	"sort"
-)
-
-var (
-	DIST_THRES    int = INF //threshold for distances between reads and multigenomes
-	ITER_NUM      int = INF //number of random iterations to find proper seeds
-	MAXIMUM_MATCH int = INF //maximum number of matches
 )
 
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
-func (I *Index) Init(input_info InputInfo, para_info ParaInfo) {
+func (I *Index) Init() {
 
 	memstats := new(runtime.MemStats)
 
-	I.SEQ = LoadMultigenome(input_info.Genome_file)
+	I.SEQ = LoadMultigenome(INPUT_INFO.Genome_file)
 	runtime.ReadMemStats(memstats)
 	log.Printf("align.go: memstats after loading multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-	I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(input_info.SNP_file)
+	I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(INPUT_INFO.SNP_file)
 	runtime.ReadMemStats(memstats)
 	log.Printf("align.go: memstats after loading SNP profile:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
@@ -48,22 +40,11 @@ func (I *Index) Init(input_info InputInfo, para_info ParaInfo) {
 	runtime.ReadMemStats(memstats)
 	log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-	I.REV_FMI = *fmi.Load(input_info.Rev_index_file)
+	I.REV_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
 	runtime.ReadMemStats(memstats)
 	log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-	//Const for computing distance
-	err := float64(para_info.Seq_err)
-	rlen := float64(para_info.Read_len)
-	k := float64(para_info.Err_var_factor)
-	DIST_THRES = int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
-	ITER_NUM = para_info.Iter_num_factor * (DIST_THRES + 1)
-	MAXIMUM_MATCH = para_info.Max_match
-
-	fmt.Println("DIST_THRES: ", DIST_THRES)
-	fmt.Println("ITER_NUM: ", ITER_NUM)
-	fmt.Println("MAXIMUM_MATCH: ", MAXIMUM_MATCH)
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -109,7 +90,7 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 //--------------------------------------------------------------------------------------------------
 func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, int, int, bool) {
 
-	var rev_sp, rev_ep int = 0, MAXIMUM_MATCH
+	var rev_sp, rev_ep int = 0, PARA_INFO.Max_match
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
 
 	rev_s_pos = len(read) - 1 - p
@@ -119,7 +100,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep-rev_sp+1 <= MAXIMUM_MATCH {
+		if rev_ep-rev_sp+1 <= PARA_INFO.Max_match {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
 				match_pos[idx-rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
 			}
@@ -178,7 +159,7 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
 		I.ForwardDistance(read_right_flank, ref_right_flank, match_pos+lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
 	dis := left_d + right_d + left_D + right_D
-	if dis <= DIST_THRES {
+	if dis <= PARA_INFO.Dist_thres {
 		left_idx, left_val := I.BackwardTraceBack(read_left_flank, ref_left_flank,
 			left_m, left_n, left_most_pos, align_info.Bw_Trace)
 		right_idx, right_val := I.ForwardTraceBack(read_right_flank, ref_right_flank,

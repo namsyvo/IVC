@@ -26,7 +26,6 @@ func main() {
 	log.Printf("ISC: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
 
-	para_info := SetPara(100, 0.01)
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
 	var snpcaller isc.SNPProf
@@ -35,7 +34,7 @@ func main() {
 	//Initializing Indexes----------------------------------------------//
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
-	snpcaller.InitIndex(input_info, para_info)
+	snpcaller.Init(input_info)
 	index_time := time.Since(start_time)
 	log.Printf("ISC: time for initializing SNP caller:\t%s", index_time)
 	runtime.ReadMemStats(memstats)
@@ -85,19 +84,6 @@ func main() {
 	log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	log.Printf("ISC: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-}
-
-//--------------------------------------------------------------------------------------------------
-//Set values for parameters
-//--------------------------------------------------------------------------------------------------
-func SetPara(read_len int, seq_err float32) isc.ParaInfo {
-	para_info := isc.ParaInfo{}
-	para_info.Max_match = 32
-	para_info.Err_var_factor = 4
-	para_info.Iter_num_factor = 1
-	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
-	para_info.Read_len = read_len //will be replaced by read length taken from input reads
-	return para_info
 }
 
 //--------------------------------------------------------------------------------------------------
