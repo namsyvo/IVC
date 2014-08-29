@@ -72,12 +72,10 @@ type AlignInfo struct {
 
 //Assigning reads to ReadInfo.
 func (read_info *ReadInfo) AssignReads(read1, read2, qual1, qual2 []byte) {
-	read_info.Read1, read_info.Read2 = make([]byte, len(read1)), make([]byte, len(read2))
-	read_info.Qual1, read_info.Qual2 = make([]byte, len(read1)), make([]byte, len(read2))
-	copy(read_info.Read1, read1)
-	copy(read_info.Read2, read2)
-	copy(read_info.Qual1, qual1)
-	copy(read_info.Qual2, qual2)
+	read_info.Read1 = read1
+	read_info.Read2 = read2
+	read_info.Qual1 = qual1
+	read_info.Qual2 = qual2
 }
 
 //Computing reverse, reverse complement, and complement of a read.

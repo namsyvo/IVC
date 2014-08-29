@@ -78,12 +78,10 @@ func main() {
 
 	//Finishing Program-------------------------------------------------------//
 	WriteOutputInfo(input_info)
-	fmt.Println("ISC - Finish SNP calling process!")
-
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	log.Printf("ISC: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
 		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	fmt.Println("ISC - Finish SNP calling process!")
 	//------------------------------------------------------------------------//
 }
 
