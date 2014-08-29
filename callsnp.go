@@ -26,7 +26,6 @@ var (
 	PARA_INFO	ParaInfo	//Parameters
 	RAND_GEN	*rand.Rand 	//Pseudo-random number generator
 	INDEX		Index      	//Index for alignment
-	BASES		[]byte
 )
 
 //BaseInfo stores aligned bases at each position on reference multigenome
@@ -120,13 +119,16 @@ func (S *SNPProf) ProcessReads() uint64 {
 		match_pos[i] = make([]int, PARA_INFO.Max_match)
 	}
 
-	data := make(chan ReadInfo, INPUT_INFO.Routine_num)
+	data := make([]chan ReadInfo, INPUT_INFO.Routine_num)
+	for i := range data {
+		data[i] = make(chan ReadInfo)
+	}
 	go S.ReadReads(data)
 
 	results := make(chan []SNP)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
-		go S.FindSNPs(data, results, &wg, align_info[i], match_pos[i])
+		go S.FindSNPs(data[i], results, &wg, align_info[i], match_pos[i])
 	}
 	go func() {
 		wg.Wait()
@@ -151,7 +153,7 @@ func (S *SNPProf) ProcessReads() uint64 {
 //--------------------------------------------------------------------------------------------------
 //ReadReads reads all reads from input FASTQ files and put them into data channel
 //--------------------------------------------------------------------------------------------------
-func (S *SNPProf) ReadReads(data chan ReadInfo) {
+func (S *SNPProf) ReadReads(data []chan ReadInfo) {
 
 	memstats := new(runtime.MemStats)
 
@@ -167,34 +169,51 @@ func (S *SNPProf) ReadReads(data chan ReadInfo) {
 	}
 	defer f2.Close()
 
-	read_info := ReadInfo{}
+	read_info := make([]ReadInfo, INPUT_INFO.Routine_num)
+	r_len1, r_len2 := 100, 100
+	for i := 0; i < INPUT_INFO.Routine_num; i++ {
+		read_info[i].Rev_read1, read_info[i].Rev_comp_read1, read_info[i].Comp_read1 =
+			make([]byte, r_len1), make([]byte, r_len1), make([]byte, r_len1)
+		read_info[i].Rev_read2, read_info[i].Rev_comp_read2, read_info[i].Comp_read2 =
+			make([]byte, r_len2), make([]byte, r_len2), make([]byte, r_len2)
+	}
 	read_num := 0
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
 	var read1, read2, qual1, qual2 []byte
-	for scanner1.Scan() && scanner2.Scan() { //ignore 1st lines in input FASTQ files
-		scanner1.Scan()
-		scanner2.Scan()
-		read1 = scanner1.Bytes() //use 2nd line in input FASTQ file 1
-		read2 = scanner2.Bytes() //use 2nd line in input FASTQ file 2
-		scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
-		scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
-		scanner1.Scan()
-		scanner2.Scan()
-		qual1 = scanner1.Bytes() //use 4th line in input FASTQ file 1
-		qual2 = scanner2.Bytes() //use 4th line in input FASTQ file 2
-		if len(read1) > 0 && len(read2) > 0 {
-			read_num++
-			read_info.AssignReads(read1, read2, qual1, qual2)
-			data <- read_info
-		}
-		if read_num%10000 == 0 {
-			runtime.ReadMemStats(memstats)
-			log.Printf("isc.go: memstats after aligning each 10,000 reads:\t%d\t%d\t%d\t%d\t%d",
-				memstats.Alloc,	memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	Loop:
+	for {
+		for i := 0; i < INPUT_INFO.Routine_num; i++ {
+			if !(scanner1.Scan() && scanner2.Scan()) {
+				break Loop
+			}
+			//ignore 1st lines in input FASTQ files
+			scanner1.Scan()
+			scanner2.Scan()
+			read1 = scanner1.Bytes() //use 2nd line in input FASTQ file 1
+			read2 = scanner2.Bytes() //use 2nd line in input FASTQ file 2
+			scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
+			scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
+			scanner1.Scan()
+			scanner2.Scan()
+			qual1 = scanner1.Bytes() //use 4th line in input FASTQ file 1
+			qual2 = scanner2.Bytes() //use 4th line in input FASTQ file 2
+			if len(read1) > 0 && len(read2) > 0 {
+				read_num++
+				read_info[i].AssignReads(read1, read2, qual1, qual2)
+				data[i] <- read_info[i]
+			}
+			if read_num%10000 == 0 {
+				runtime.ReadMemStats(memstats)
+				log.Printf("isc.go: memstats after distributing 10,000 more reads:\t%d\t%d\t%d\t%d\t%d",
+					memstats.Alloc,	memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+			}
 		}
 	}
-	close(data)
+	fmt.Println("Number of reads: ", read_num)
+	for i := 0; i < INPUT_INFO.Routine_num; i++ {
+		close(data[i])
+	}
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -206,6 +225,8 @@ func (S *SNPProf) FindSNPs(data chan ReadInfo, results chan []SNP, wg *sync.Wait
 	defer wg.Done()
 	var SNPs []SNP
 	for read_info := range data {
+		RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
+		RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
 		SNPs = S.FindSNPsFromReads(read_info, align_info, match_pos)
 		if len(SNPs) > 0 {
 			results <- SNPs
@@ -222,10 +243,10 @@ func (S *SNPProf) FindSNPsFromReads(read_info ReadInfo, align_info AlignInfo, ma
 
 	var SNPs []SNP
 	//Find SNPs for the first end
-	SNP1 := S.FindSNPsFromEachEnd(read_info.Read1, align_info, match_pos)
+	SNP1 := S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, align_info, match_pos)
 
 	//Find SNPs for the second end
-	SNP2 := S.FindSNPsFromEachEnd(read_info.Read2, align_info, match_pos)
+	SNP2 := S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, align_info, match_pos)
 
 	//Will process constrants of two ends here
 	//...
@@ -238,16 +259,11 @@ func (S *SNPProf) FindSNPsFromReads(read_info ReadInfo, align_info AlignInfo, ma
 //---------------------------------------------------------------------------------------------------
 // FindSNPsFromEachEnd find SNP Call from matches between read and multigenome.
 //---------------------------------------------------------------------------------------------------
-func (S *SNPProf) FindSNPsFromEachEnd(read []byte, align_info AlignInfo, match_pos []int) []SNP {
+func (S *SNPProf) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read []byte, align_info AlignInfo, match_pos []int) []SNP {
 	var has_seeds bool
 	var p, s_pos, e_pos int
 	var loop_num, match_num int
 	var SNPs, snps []SNP
-
-	//Rev_read: reverse of read
-	//Rev_comp_read: reverse complement of read
-	//Comp_read: complement of read, ~ reverse of reverse complement
-	rev_read, rev_comp_read, comp_read := RevComp(read)
 
 	p = INPUT_INFO.Start_pos
 	loop_num = 1

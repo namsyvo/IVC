@@ -60,6 +60,12 @@ type ReadInfo struct {
 	Read2		[]byte //second end read
 	Qual1		[]byte //quality info of 1st read
 	Qual2		[]byte //quality info of 2nd read
+	Rev_read1 []byte
+	Rev_comp_read1 []byte
+	Comp_read1 []byte
+	Rev_read2 []byte
+	Rev_comp_read2 []byte
+	Comp_read2 []byte
 }
 
 //"Global" variables used in alignment process (computing distance, snp call)
@@ -79,12 +85,10 @@ func (read_info *ReadInfo) AssignReads(read1, read2, qual1, qual2 []byte) {
 }
 
 //Computing reverse, reverse complement, and complement of a read.
-func RevComp(read []byte) ([]byte, []byte, []byte) {
+func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
 	read_len := len(read)
-	rev_read, rev_comp_read, comp_read :=
-		make([]byte, read_len), make([]byte, read_len), make([]byte, read_len)
 	for i, elem := range read {
-		rev_read[i] = read[read_len-1-i]
+		copy(rev_read[i:i+1], read[read_len-1-i:read_len-i])
 		if elem == 'A' {
 			rev_comp_read[read_len-1-i] = 'T'
 			comp_read[i] = 'T'
@@ -102,7 +106,6 @@ func RevComp(read []byte) ([]byte, []byte, []byte) {
 			comp_read[i] = elem
 		}
 	}
-	return rev_read, rev_comp_read, comp_read
 }
 
 //Allocating memory for share variables for alignment process
