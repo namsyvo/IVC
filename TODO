@@ -1,4 +1,8 @@
-Calculate SNP quality after finishing alignment step.
+- Calculate SNP quality after finishing alignment step.
     + Read allele frequency from SNP profile (VCF files).
     + Store all SNPs at each position found from read-multigenome alignment.
     + Calculate SNP quality based on Bayesian method.
+- Work with fmi package:
+    + Integrate new fmi package to reduce memory usge and test it.
+    + Implement goroutines for saving indexes in new fmi package.
+- Reduce memory usage of alignment phase
