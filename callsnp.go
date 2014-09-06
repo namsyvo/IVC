@@ -188,11 +188,11 @@ func (S *SNPProf) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 			read_data <- read_info
 			read_signal <- true
 		}
-		
+		/*
 		if read_num%10000 == 0 {
 			PrintMemStats("Memstats after distributing 10,000 more reads")
 		}
-		
+		*/
 	}
 	close(read_data)
 }
@@ -221,6 +221,7 @@ func (S *SNPProf) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_r
 		<- read_signal
 		RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
 		RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
+		PrintMemStats("Start to process read:" + string(read_info.Read1))
 		SNPs = S.FindSNPsFromReads(read_info, align_info, match_pos)
 		if len(SNPs) > 0 {
 			snp_results <- SNPs
@@ -238,11 +239,14 @@ func (S *SNPProf) FindSNPsFromReads(read_info ReadInfo, align_info AlignInfo, ma
 	var SNPs, SNP1, SNP2 []SNP
 
 	//Find SNPs for the first end
+	PrintMemStats("FindSNPsFromEnd1, Begin.")
 	SNP1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, align_info, match_pos)
-	PrintMemStats("FindSNPsFromEnd1")
+	PrintMemStats("FindSNPsFromEnd1, End.")
 
 	//Find SNPs for the second end
+	PrintMemStats("FindSNPsFromEnd2, Begin.")
 	SNP2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, align_info, match_pos)
+	PrintMemStats("FindSNPsFromEnd2, End.")
 
 	//Will process constrants of two ends here
 	//...
@@ -266,7 +270,7 @@ func (S *SNPProf) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read [
 	for loop_num <= PARA_INFO.Iter_num {
 		//fmt.Println(loop_num, "\tread2")
 		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read, rev_read, p, match_pos)
-		PrintMemStats(string(loop_num) + "FindSeeds1")
+		PrintMemStats(strconv.Itoa(loop_num) + " FindSeeds1")
 		if has_seeds {
 			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			snps = S.FindSNPsFromMatch(read, s_pos, e_pos, match_pos, match_num, align_info)
@@ -278,7 +282,7 @@ func (S *SNPProf) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read [
 		}
 		//Find SNPs for the reverse complement of the second end
 		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(rev_comp_read, comp_read, p, match_pos)
-		PrintMemStats(string(loop_num) + "FindSeeds2")
+		PrintMemStats(strconv.Itoa(loop_num) + " FindSeeds2")
 		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			snps = S.FindSNPsFromMatch(rev_comp_read, s_pos, e_pos, match_pos, match_num, align_info)
@@ -315,7 +319,7 @@ func (S *SNPProf) FindSNPsFromMatch(read []byte, s_pos, e_pos int, match_pos []i
 		pos = match_pos[i]
 		dis, left_snp_pos, left_snp_val, _, right_snp_pos, right_snp_val, _ =
 			 INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
-		PrintMemStats(string(i) + "FindExtensions")
+		PrintMemStats(strconv.Itoa(i) + "FindExtensions")
 		if dis <= PARA_INFO.Dist_thres {
 			if len(left_snp_pos) == 0 && len(right_snp_pos) == 0 {
 				continue
@@ -325,14 +329,14 @@ func (S *SNPProf) FindSNPsFromMatch(read []byte, s_pos, e_pos int, match_pos []i
 					q = 0.01
 					snp.SNP_Pos, snp.SNP_Val, snp.SNP_Qual = uint32(left_snp_pos[k]), left_snp_val[k], q
 					snps = append(snps, snp)
-					PrintMemStats(string(k) + "GetSNPleft")
+					PrintMemStats(strconv.Itoa(k) + "GetSNPleft")
 				}
 				for k = 0; k < len(right_snp_pos); k++ {
 					//q = rev_phred(read[right_snp_idx])
 					q = 0.01
 					snp.SNP_Pos, snp.SNP_Val, snp.SNP_Qual = uint32(right_snp_pos[k]), right_snp_val[k], q
 					snps = append(snps, snp)
-					PrintMemStats(string(k) + "GetSNPright")
+					PrintMemStats(strconv.Itoa(k) + "GetSNPright")
 				}
 			}
 		}
