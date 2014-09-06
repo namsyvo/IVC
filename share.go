@@ -8,6 +8,7 @@ package isc
 import (
 	"github.com/vtphan/fmi"
 	"math"
+	"fmt"
 )
 
 //Global constants and variables
@@ -76,32 +77,35 @@ type AlignInfo struct {
 	Fw_Trace [][][]byte // SNP trace matrix for forward alignment
 }
 
-//Assigning reads to ReadInfo.
-func (read_info *ReadInfo) AssignReads(read1, read2, qual1, qual2 []byte) {
-	read_info.Read1 = read1
-	read_info.Read2 = read2
-	read_info.Qual1 = qual1
-	read_info.Qual2 = qual2
+func (read_info *ReadInfo) PrintReads() {
+	fmt.Println("read1: ", string(read_info.Read1))
+	fmt.Println("read2: ", string(read_info.Read2))
+	fmt.Println("qual1: ", string(read_info.Qual1))
+	fmt.Println("qual1: ", string(read_info.Qual2))
 }
 
 //Computing reverse, reverse complement, and complement of a read.
 func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
 	read_len := len(read)
 	for i, elem := range read {
-		copy(rev_read[i:i+1], read[read_len-1-i:read_len-i])
 		if elem == 'A' {
+			rev_read[read_len-i-1] = 'A'
 			rev_comp_read[read_len-1-i] = 'T'
 			comp_read[i] = 'T'
 		} else if elem == 'T' {
+			rev_read[read_len-i-1] = 'T'
 			rev_comp_read[read_len-1-i] = 'A'
 			comp_read[i] = 'A'
 		} else if elem == 'C' {
+			rev_read[read_len-i-1] = 'C'
 			rev_comp_read[read_len-1-i] = 'G'
 			comp_read[i] = 'G'
 		} else if elem == 'G' {
+			rev_read[read_len-i-1] = 'G'
 			rev_comp_read[read_len-1-i] = 'C'
 			comp_read[i] = 'C'
 		} else {
+			rev_read[read_len-i-1] = elem
 			rev_comp_read[read_len-1-i] = elem
 			comp_read[i] = elem
 		}
