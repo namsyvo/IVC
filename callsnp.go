@@ -8,11 +8,9 @@ package isc
 import (
 	"fmt"
 	"bufio"
-	"log"
 	"math"
 	"math/rand"
 	"os"
-	"runtime"
 	"strconv"
 	"bytes"
 	"time"
@@ -20,7 +18,7 @@ import (
 	"sync"
 )
 
-//Global variables
+//Global variables for alignment
 var (
 	INPUT_INFO	InputInfo	//Input information
 	PARA_INFO	ParaInfo	//Parameters
@@ -59,8 +57,6 @@ type SNPProf struct {
 	SNP_SnpQ map[int]float64    // to store SNP call quality at each position
 }
 
-var Memstats *runtime.MemStats
-
 //--------------------------------------------------------------------------------------------------
 //InitIndex initializes indexes and parameters
 //--------------------------------------------------------------------------------------------------
@@ -81,9 +77,6 @@ func (S *SNPProf) Init(input_info InputInfo) {
 
 	S.SNP_Call = make(map[int][]byte)
 	S.SNP_SnpQ = make(map[int]float64)
-
-	Memstats = new(runtime.MemStats)
-
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -163,8 +156,6 @@ func (S *SNPProf) ProcessReads() uint64 {
 //--------------------------------------------------------------------------------------------------
 func (S *SNPProf) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 
-	memstats := new(runtime.MemStats)
-
 	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
 	f1, err_f1 := os.Open(fn1)
 	if err_f1 != nil {
@@ -199,9 +190,7 @@ func (S *SNPProf) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 		}
 		
 		if read_num%10000 == 0 {
-			runtime.ReadMemStats(memstats)
-			log.Printf("isc.go: memstats after distributing 10,000 more reads:\t%d\t%d\t%d\t%d\t%d",
-				memstats.Alloc,	memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+			PrintMemStats("Memstats after distributing 10,000 more reads")
 		}
 		
 	}
@@ -223,12 +212,12 @@ func (S *SNPProf) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_r
 	read_info.Rev_read1, read_info.Rev_read2 = make([]byte, r_len), make([]byte, r_len)
 	read_info.Rev_comp_read1, read_info.Rev_comp_read2 = make([]byte, r_len), make([]byte, r_len)
 	read_info.Comp_read1, read_info.Comp_read2 = make([]byte, r_len), make([]byte, r_len)
-	var read_datum ReadInfo
-	for read_datum = range read_data {
-		copy(read_info.Read1, read_datum.Read1)
-		copy(read_info.Read2, read_datum.Read2)
-		copy(read_info.Qual1, read_datum.Qual1)
-		copy(read_info.Qual2, read_datum.Qual2)
+	var read ReadInfo
+	for read = range read_data {
+		copy(read_info.Read1, read.Read1)
+		copy(read_info.Read2, read.Read2)
+		copy(read_info.Qual1, read.Qual1)
+		copy(read_info.Qual2, read.Qual2)
 		<- read_signal
 		RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
 		RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
@@ -250,11 +239,10 @@ func (S *SNPProf) FindSNPsFromReads(read_info ReadInfo, align_info AlignInfo, ma
 
 	//Find SNPs for the first end
 	SNP1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, align_info, match_pos)
-	//runtime.ReadMemStats(Memstats)
-	//log.Printf("%d\tFindSNPsFromEnd1", Memstats.Sys)
+	PrintMemStats("FindSNPsFromEnd1")
 
 	//Find SNPs for the second end
-	//SNP2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, align_info, match_pos)
+	SNP2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, align_info, match_pos)
 
 	//Will process constrants of two ends here
 	//...
@@ -278,8 +266,7 @@ func (S *SNPProf) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read [
 	for loop_num <= PARA_INFO.Iter_num {
 		//fmt.Println(loop_num, "\tread2")
 		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(read, rev_read, p, match_pos)
-		//runtime.ReadMemStats(Memstats)
-		//log.Printf("%d\t%d\tFindSeeds1", Memstats.Sys, loop_num)
+		PrintMemStats(string(loop_num) + "FindSeeds1")
 		if has_seeds {
 			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			snps = S.FindSNPsFromMatch(read, s_pos, e_pos, match_pos, match_num, align_info)
@@ -291,8 +278,7 @@ func (S *SNPProf) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read [
 		}
 		//Find SNPs for the reverse complement of the second end
 		s_pos, e_pos, match_num, has_seeds = INDEX.FindSeeds(rev_comp_read, comp_read, p, match_pos)
-		//runtime.ReadMemStats(Memstats)
-		//log.Printf("%d\t%d\tFindSeeds2", Memstats.Sys, loop_num)
+		PrintMemStats(string(loop_num) + "FindSeeds2")
 		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			snps = S.FindSNPsFromMatch(rev_comp_read, s_pos, e_pos, match_pos, match_num, align_info)
@@ -329,8 +315,7 @@ func (S *SNPProf) FindSNPsFromMatch(read []byte, s_pos, e_pos int, match_pos []i
 		pos = match_pos[i]
 		dis, left_snp_pos, left_snp_val, _, right_snp_pos, right_snp_val, _ =
 			 INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
-		//runtime.ReadMemStats(Memstats)
-		//log.Printf("%d\t%d\tFindExtensions", Memstats.Sys, i)
+		PrintMemStats(string(i) + "FindExtensions")
 		if dis <= PARA_INFO.Dist_thres {
 			if len(left_snp_pos) == 0 && len(right_snp_pos) == 0 {
 				continue
@@ -340,16 +325,14 @@ func (S *SNPProf) FindSNPsFromMatch(read []byte, s_pos, e_pos int, match_pos []i
 					q = 0.01
 					snp.SNP_Pos, snp.SNP_Val, snp.SNP_Qual = uint32(left_snp_pos[k]), left_snp_val[k], q
 					snps = append(snps, snp)
-					//runtime.ReadMemStats(Memstats)
-					//log.Printf("%d\t%d\tGetSNPleft", Memstats.Sys, k)
+					PrintMemStats(string(k) + "GetSNPleft")
 				}
 				for k = 0; k < len(right_snp_pos); k++ {
 					//q = rev_phred(read[right_snp_idx])
 					q = 0.01
 					snp.SNP_Pos, snp.SNP_Val, snp.SNP_Qual = uint32(right_snp_pos[k]), right_snp_val[k], q
 					snps = append(snps, snp)
-					//runtime.ReadMemStats(Memstats)
-					//log.Printf("%d\t%d\tGetSNPright", Memstats.Sys, k)
+					PrintMemStats(string(k) + "GetSNPright")
 				}
 			}
 		}

@@ -7,6 +7,8 @@ package isc
 
 import (
 	"github.com/vtphan/fmi"
+	"runtime"
+	"log"
 	"math"
 	"fmt"
 )
@@ -77,13 +79,6 @@ type AlignInfo struct {
 	Fw_Trace [][][]byte // SNP trace matrix for forward alignment
 }
 
-func (read_info *ReadInfo) PrintReads() {
-	fmt.Println("read1: ", string(read_info.Read1))
-	fmt.Println("read2: ", string(read_info.Read2))
-	fmt.Println("qual1: ", string(read_info.Qual1))
-	fmt.Println("qual1: ", string(read_info.Qual2))
-}
-
 //Computing reverse, reverse complement, and complement of a read.
 func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
 	read_len := len(read)
@@ -112,6 +107,14 @@ func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
 	}
 }
 
+//Printing read information
+func (read_info *ReadInfo) PrintReads() {
+	fmt.Println("read1: ", string(read_info.Read1))
+	fmt.Println("read2: ", string(read_info.Read2))
+	fmt.Println("qual1: ", string(read_info.Qual1))
+	fmt.Println("qual1: ", string(read_info.Qual2))
+}
+
 //Allocating memory for share variables for alignment process
 func (align_info *AlignInfo) InitAlignInfo(arr_len int) {
 	InitMatrix(arr_len, &align_info.Bw_Dis, &align_info.Bw_Trace)
@@ -128,6 +131,16 @@ func InitMatrix(arr_len int, dis_mtr *[][]int, trace_mtr *[][][]byte) {
 	for i := 0; i < arr_len; i++ {
 		(*trace_mtr)[i] = make([][]byte, arr_len)
 	}
+}
+
+//Global variable for memory profiling
+var Memstats = new(runtime.MemStats)
+
+func PrintMemStats(mesg string) {
+    runtime.ReadMemStats(Memstats)
+    log.Printf(mesg + "\t%d\t%d\t%d\t%d\t%d\t%.2f",
+		Memstats.Alloc, Memstats.TotalAlloc, Memstats.Sys, Memstats.HeapAlloc, Memstats.HeapSys,
+		float64(Memstats.Sys)/(math.Pow(1024, 3)))
 }
 
 //--------------------------------------------------------------------------------------------------
