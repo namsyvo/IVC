@@ -20,68 +20,55 @@ func main() {
 	//Starting Program-----------------------------------------------------------//
 	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
 
-	memstats := new(runtime.MemStats)
-	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
-	log.Printf("ISC: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
+	isc.PrintMemStats("memstats at the beginning")
 
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
-	var snpcaller isc.SNP_Prof
+	var snp_prof isc.SNP_Prof
 	//--------------------------------------------------------------------------//
 
 	//Initializing Indexes------------------------------------------------------//
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
-	snpcaller.Init(input_info)
+	snp_prof.Init(input_info)
 	index_time := time.Since(start_time)
-	log.Printf("ISC: time for initializing SNP caller:\t%s", index_time)
-	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats after initializing SNP caller:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("time for initializing SNP caller\t%s", index_time)
+	isc.PrintMemStats("memstats after initializing SNP caller")
 	//-------------------------------------------------------------------------//
 
 	//Processing Reads---------------------------------------------------------//
 	fmt.Println("Aligning reads to the reference mutigenome...")
 	start_time = time.Now()
-	snp_aligned_read_num := snpcaller.ProcessReads()
-	fmt.Println("\tNumber of aligned reads: ", snp_aligned_read_num)
+	read_has_snp_num := snp_prof.ProcessReads()
+	fmt.Println("\tNumber of aligned reads: ", read_has_snp_num)
 	align_time := time.Since(start_time)
-	log.Printf("ISC: time for alignment:\t%s", align_time)
-	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats after alignment:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("time for alignment:\t%s", align_time)
+	isc.PrintMemStats("memstats after alignment")
 	//-------------------------------------------------------------------------//
 
 	//Calling SNPs-------------------------------------------------------------//
 	fmt.Println("Calling SNPs from alignment results...")
 	start_time = time.Now()
-	snpcaller.CallSNPs()
+	snp_prof.CallSNPs()
 	callsnp_time := time.Since(start_time)
-	log.Printf("ISC: time for calling SNPs:\t%s", callsnp_time)
-	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats after calling SNPs:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("time for calling SNPs:\t%s", callsnp_time)
+	isc.PrintMemStats("memstats after calling SNPs")
 	//------------------------------------------------------------------------//
 
 	//Writing SNPs------------------------------------------------------------//
 	fmt.Println("Writing SNPs to output file...")
 	start_time = time.Now()
-	snpcaller.WriteSNPCalls()
+	snp_prof.WriteSNPCalls()
 	writetofile_time := time.Since(start_time)
-	log.Printf("ISC: time for writing SNPs to file:\t%s", writetofile_time)
-	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats after writing SNPs:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	log.Printf("time for writing SNPs to file:\t%s", writetofile_time)
+	isc.PrintMemStats("memstats after writing SNPs")
 	//------------------------------------------------------------------------//
 
 	//Finishing Program-------------------------------------------------------//
 	WriteOutputInfo(input_info)
-	runtime.ReadMemStats(memstats)
-	log.Printf("ISC: memstats at the end:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-	fmt.Println("ISC - Finish SNP calling process!")
+	isc.PrintMemStats("memstats at the end")
+	fmt.Println("Finish SNP calling process.")
 	//------------------------------------------------------------------------//
 }
 
