@@ -28,7 +28,7 @@ func main() {
 
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
-	var snpcaller isc.SNPProf
+	var snpcaller isc.SNP_Prof
 	//--------------------------------------------------------------------------//
 
 	//Initializing Indexes------------------------------------------------------//

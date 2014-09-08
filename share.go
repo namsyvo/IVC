@@ -143,6 +143,11 @@ func PrintMemStats(mesg string) {
 		float64(Memstats.Sys)/(math.Pow(1024, 3)))
 }
 
+//Convert base quality (in ASCII code) to probability (in float number)
+func QualtoProb(e byte) float64 {
+	return math.Pow(10, -(float64(e) - 30)/10.0)
+}
+
 //--------------------------------------------------------------------------------------------------
 // IntervalHasSNP determines whether [i, j] contains SNP positions which are stores in array A.
 // This function impelements interpolation search. The array A must be sorted in increasing order.
