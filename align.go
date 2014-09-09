@@ -12,8 +12,6 @@ package isc
 
 import (
 	"github.com/vtphan/fmi" //to use FM index
-	"log"
-	"runtime"
 	"sort"
 )
 
@@ -22,29 +20,21 @@ import (
 //--------------------------------------------------------------------------------------------------
 func (I *Index) Init() {
 
-	memstats := new(runtime.MemStats)
-
 	I.SEQ = LoadMultigenome(INPUT_INFO.Genome_file)
-	runtime.ReadMemStats(memstats)
-	log.Printf("align.go: memstats after loading multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	PrintMemStats("memstats after loading multigenome")
 
 	I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(INPUT_INFO.SNP_file)
-	runtime.ReadMemStats(memstats)
-	log.Printf("align.go: memstats after loading SNP profile:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	PrintMemStats("memstats after loading SNP profile")
 
 	I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROF))
 	for k := range I.SNP_PROF {
 		I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)
 	}
 	sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
-	runtime.ReadMemStats(memstats)
-	log.Printf("align.go: memstats after loading sorted SNP postions:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	PrintMemStats("memstats after loading sorted SNP postions")
 
 	I.REV_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
-	runtime.ReadMemStats(memstats)
-	log.Printf("align.go: memstats after loading index of reverse multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc,
-		memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-
+	PrintMemStats("memstats after loading index of reverse multigenome")
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -61,7 +51,6 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 	}
 	ep = index.EP[c]
 	var sp0, ep0 uint32
-	// if Debug { fmt.Println("pattern: ", string(pattern), "\n\t", string(c), sp, ep) }
 	for i := start_pos - 1; i >= 0; i-- {
 		//fmt.Println("pos, # candidates: ", i, ep - sp + 1)
 		c = pattern[i]
@@ -79,7 +68,6 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 			return int(sp), int(ep), i + 1
 			//return 0, -1, -1
 		}
-		// if Debug { fmt.Println("\t", string(c), sp, ep) }
 	}
 	return int(sp), int(ep), 0
 }
@@ -115,7 +103,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info AlignInfo) (int, []int, [][]byte, []int, []int, [][]byte, []int) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info *AlignInfo) (int, []int, [][]byte, []int, []int, [][]byte, []int) {
 
 	var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
 	var lcs_len int = s_pos - e_pos + 1

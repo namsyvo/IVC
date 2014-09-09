@@ -40,8 +40,8 @@ func main() {
 	//Processing Reads---------------------------------------------------------//
 	fmt.Println("Aligning reads to the reference mutigenome...")
 	start_time = time.Now()
-	read_has_snp_num := snp_prof.ProcessReads()
-	fmt.Println("\tNumber of aligned reads: ", read_has_snp_num)
+	aligned_num, hit_num, miss_num := snp_prof.ProcessReads()
+	fmt.Println("\tNumber of aligned reads, hit read, miss reads: ", aligned_num, hit_num, miss_num)
 	align_time := time.Since(start_time)
 	log.Printf("time for alignment:\t%s", align_time)
 	isc.PrintMemStats("memstats after alignment")
