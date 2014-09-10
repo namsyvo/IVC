@@ -56,14 +56,14 @@ type SNP_Call struct {
 //--------------------------------------------------------------------------------------------------
 type SNP_Prof struct {
 	//Prior information, obtained from ref data, without incorporating info from input reads/alignment
-	pProb 			map[int][]float32 //to store prior probability of all SNPs at each position
+	pProb 			map[uint32][]float32 //to store prior probability of all SNPs at each position
 
 	//Poterior information, obtained from both ref data and input reads/alignment
-	SNP_Bases 		map[int][][]byte //to store all possible SNPs at each position
-	SNP_BaseQ 		map[int][][]byte //to store base quality of SNPs at each position
+	SNP_Bases 		map[uint32][][]byte //to store all possible SNPs at each position
+	SNP_BaseQ 		map[uint32][][]byte //to store base quality of SNPs at each position
 
-	SNP_Call_Bases 	map[int][]byte //to store SNP call at each position
-	SNP_Call_Qual 	map[int]float32 //to store SNP call quality at each position
+	SNP_Call_Bases 	map[uint32][]byte //to store SNP call at each position
+	SNP_Call_Qual 	map[uint32]float32 //to store SNP call quality at each position
 }
 
 
@@ -85,16 +85,16 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	INDEX.Init()
 
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
-	S.pProb = make(map[int][]float32)
+	S.pProb = make(map[uint32][]float32)
 	for k, v := range INDEX.SNP_AF {
-		S.pProb[k] = v
+		S.pProb[uint32(k)] = v
 	}
 	
-	S.SNP_Bases = make(map[int][][]byte)
-	S.SNP_BaseQ = make(map[int][][]byte)
+	S.SNP_Bases = make(map[uint32][][]byte)
+	S.SNP_BaseQ = make(map[uint32][][]byte)
 
-	S.SNP_Call_Bases = make(map[int][]byte)
-	S.SNP_Call_Qual = make(map[int]float32)
+	S.SNP_Call_Bases = make(map[uint32][]byte)
+	S.SNP_Call_Qual = make(map[uint32]float32)
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -175,11 +175,11 @@ func (S *SNP_Prof) ProcessReads() (uint32, uint32) {
 		snp_call_num++
 		for _, snp = range SNPs {
 			if len(snp.Bases) > 0 {
-				S.SNP_Bases[int(snp.Pos)] = append(S.SNP_Bases[int(snp.Pos)], snp.Bases)
-				S.SNP_BaseQ[int(snp.Pos)] = append(S.SNP_BaseQ[int(snp.Pos)], snp.BaseQ)
+				S.SNP_Bases[snp.Pos] = append(S.SNP_Bases[snp.Pos], snp.Bases)
+				S.SNP_BaseQ[snp.Pos] = append(S.SNP_BaseQ[snp.Pos], snp.BaseQ)
 			} else {
-				S.SNP_Bases[int(snp.Pos)] = append(S.SNP_Bases[int(snp.Pos)], []byte{'.'})
-				S.SNP_BaseQ[int(snp.Pos)] = append(S.SNP_BaseQ[int(snp.Pos)], []byte{'.'})
+				S.SNP_Bases[snp.Pos] = append(S.SNP_Bases[snp.Pos], []byte{'.'})
+				S.SNP_BaseQ[snp.Pos] = append(S.SNP_BaseQ[snp.Pos], []byte{'.'})
 				del_num++
 			}
 		}
@@ -348,7 +348,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int, 
 	match_pos []int, match_num int, align_info *AlignInfo) []SNP {
 
-	var pos, dis, k int
+	var pos, k, dis int
 	var left_snp_pos, right_snp_pos, left_snp_idx, right_snp_idx []int
 	var left_snp_val, right_snp_val [][]byte
 	var snps []SNP
@@ -435,20 +435,21 @@ func (S *SNP_Prof) CallSNPs() {
 //-----------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) CallSNPs() {
 	var snp_call SNP_Call
-	for snp_pos, _ := range S.SNP_Bases {
+	var snp_pos uint32
+	for snp_pos, _ = range S.SNP_Bases {
 		snp_call = S.CallSNPForEachPos(snp_pos)
-		S.SNP_Call_Bases[int(snp_call.Pos)] = snp_call.Bases
-		S.SNP_Call_Qual[int(snp_call.Pos)] = snp_call.Qual
+		S.SNP_Call_Bases[snp_call.Pos] = snp_call.Bases
+		S.SNP_Call_Qual[snp_call.Pos] = snp_call.Qual
 	}
 }
 
 //---------------------------------------------------------------------------------------------------
 // CallSNPForEachPos finds SNP calls and calculates SNP call quality for each postion.
 //---------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) CallSNPForEachPos(snp_pos int) SNP_Call {
+func (S *SNP_Prof) CallSNPForEachPos(snp_pos uint32) SNP_Call {
 
 	var snp_call SNP_Call
-	snp_call.Pos = uint32(snp_pos)
+	snp_call.Pos = snp_pos
 
 	has_indels := false
 	for _, snp := range S.SNP_Bases[snp_pos] {
@@ -458,11 +459,11 @@ func (S *SNP_Prof) CallSNPForEachPos(snp_pos int) SNP_Call {
 		}
 	}
 	if has_indels {
-		SNP_Qlt := make(map[string]int)
+		SNP_Qlt := make(map[string]uint32)
 		for _, snp := range S.SNP_Bases[snp_pos] {
 			SNP_Qlt[string(snp)] = SNP_Qlt[string(snp)] + 1
 		}
-		major_num := 0
+		var major_num uint32 = 0
 		var major_snp string
 		for snp_val, snp_num := range SNP_Qlt {
 			if snp_num > major_num {
@@ -483,7 +484,7 @@ func (S *SNP_Prof) CallSNPForEachPos(snp_pos int) SNP_Call {
 			e = append(e, e_val[0])
 		}
 		var b []byte
-		for _, b_base := range INDEX.SNP_PROF[snp_pos] {
+		for _, b_base := range INDEX.SNP_PROF[int(snp_pos)] {
 			b = append(b, b_base[0])
 		}
 		var p_b []float32
@@ -551,17 +552,17 @@ func (S *SNP_Prof) WriteSNPCalls() {
 	}
 	defer file.Close()
 
-	var snp_pos int
+	var snp_pos uint32
 	var str_snp_pos, str_snp_val, str_snp_qual string
 
 	SNP_Pos := make([]int, 0, len(S.SNP_Bases))
 	for snp_pos, _ = range S.SNP_Call_Bases {
-		SNP_Pos = append(SNP_Pos, snp_pos)
+		SNP_Pos = append(SNP_Pos, int(snp_pos))
 	}
 	sort.Ints(SNP_Pos)
-
-	for _, snp_pos = range SNP_Pos {
-		str_snp_pos = strconv.Itoa(snp_pos)
+	for _, pos := range SNP_Pos {
+		snp_pos = uint32(pos)
+		str_snp_pos = strconv.Itoa(pos)
 		str_snp_val = string(S.SNP_Call_Bases[snp_pos])
 		str_snp_qual = strconv.FormatFloat(float64(S.SNP_Call_Qual[snp_pos]), 'f', 5, 32)
 		if str_snp_qual != "+Inf" {
