@@ -225,8 +225,7 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 			//PrintMemStats("After putting read to data " + string(read_info.Read1))
 			read_signal <- true
 		}
-		
-		if read_num == 10000 {
+		if read_num%10000 == 0 {
 			PrintMemStats("Memstats after distributing 10000 reads")
 		}
 	}
