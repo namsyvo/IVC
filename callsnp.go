@@ -38,17 +38,7 @@ type SNP struct {
 	BaseQ 	[]byte //quality of bases of SNP
 }
 
-//--------------------------------------------------------------------------------------------------
-// SNP_Call represents SNP call obtained during SNP calling phase
-// Each variable of type SNP_Call present SNPs at each position on reference multigenome (temporary variable).
-//--------------------------------------------------------------------------------------------------
-type SNP_Call struct {
-	Pos 	uint32 //SNP postion on ref
-	Bases 	[]byte //bases of SNP
-	Qual 	float32 //quality of SNP
-}
 
-//--------------------------------------------------------------------------------------------------
 // SNP_Prof represents SNP calls at all positions on reference multigenome.
 // One variable of type SNP_Prof is created in initialization phase and stores SNP calls information
 // through whole program, i.e., all phases alignment, calling SNPs, and writing SNP calls to file (permanent varialbe).
@@ -60,10 +50,7 @@ type SNP_Prof struct {
 
 	//Poterior information, obtained from both ref data and input reads/alignment
 	SNP_Bases 		map[uint32][][]byte //to store all possible SNPs at each position
-	SNP_BaseQ 		map[uint32][][]byte //to store base quality of SNPs at each position
-
-	SNP_Call_Bases 	map[uint32][]byte //to store SNP call at each position
-	SNP_Call_Qual 	map[uint32]float32 //to store SNP call quality at each position
+	SNP_Qual 		map[uint32][]float64 //to store base quality of SNPs at each position
 }
 
 
