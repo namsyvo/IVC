@@ -6,11 +6,11 @@
 package isc_test
 
 import (
-	"fmt"
-	"testing"
-    "github.com/namsyvo/ISC"
+	//"fmt"
+	//"testing"
+    //"github.com/namsyvo/ISC"
 )
-
+/*
 func TestMultiGenomeBuild(t *testing.T) {
     defer __(o_())
 
@@ -28,3 +28,4 @@ func TestMultiGenomeBuild(t *testing.T) {
 	fmt.Println(len(saved_SNP_array))
 	fmt.Println(len(saved_SameLen_SNP))
 }
+*/
