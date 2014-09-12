@@ -140,7 +140,7 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 	go S.ReadReads(read_data, read_signal)
 
 	//Call goroutines to find SNPs, pass shared variable to each goroutine
-	snp_results := make(chan SNP)
+	snp_results := make(chan SNP, INPUT_INFO.Routine_num)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
 		go S.FindSNPs(read_data, read_signal, snp_results, &wg, &read_info[i], &align_info[i], match_pos[i])
