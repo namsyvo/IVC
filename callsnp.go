@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-	//"bytes"
 	"time"
 	"sort"
 	"sync"
@@ -140,7 +139,7 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 	go S.ReadReads(read_data, read_signal)
 
 	//Call goroutines to find SNPs, pass shared variable to each goroutine
-	snp_results := make(chan SNP, INPUT_INFO.Routine_num)
+	snp_results := make(chan SNP)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
 		go S.FindSNPs(read_data, read_signal, snp_results, &wg, &read_info[i], &align_info[i], match_pos[i])
@@ -379,9 +378,9 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	}
 	for b, p_b := range(S.SNP_Calls[pos]) {
 		if a == b {
-			p = 1.0 - math.Pow(10, -(float64(q) - 33) / 10.0) //factor 33 need to be estimated from input data
+			p = 1.0 - math.Pow(10, -(float64(q) - 33) / 10.0) //Phred-encoding factor (33) need to be estimated from input data
 		} else {
-			p = math.Pow(10, -(float64(q) - 33) / 10.0) / 3 //need to be checked with diff cases (snp vs. indel)
+			p = math.Pow(10, -(float64(q) - 33) / 10.0) / 3 //need to be refined, e.g., checked with diff cases (snp vs. indel)
 		}
 		p_ab[b] = p
 		p_a += p_b * p_ab[b]
@@ -416,11 +415,11 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		p = 1
 		if a == b {
 			for _, qi = range q {
-				p *= (1.0 - math.Pow(10, -(float64(qi) - 33) / 10.0)) //factor 33 need to be estimated from input data
+				p *= (1.0 - math.Pow(10, -(float64(qi) - 33) / 10.0)) //Phred-encoding factor (33) need to be estimated from input data
 			}
 		} else {
 			for _, qi = range q {
-				p *= (math.Pow(10, -(float64(qi) - 33) / 10.0) / 3) //need to be refined, check with diff cases (snp vs. indel)
+				p *= (math.Pow(10, -(float64(qi) - 33) / 10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
 			}
 		}
 		p_ab[b] = p
@@ -432,9 +431,10 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 }
 
 //-------------------------------------------------------------------------------------------------------
-// WriteSNPCalls writes SNP calls and related information to output file in tab-delimited format.
+// OutputSNPCalls determines SNP calls, convert their probabilities to Phred scores, and writes them to file
+// in proper format (VCF-like format in this version).
 //-------------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) WriteSNPCalls() {
+func (S *SNP_Prof) OutputSNPCalls() {
 
 	file, err := os.Create(INPUT_INFO.SNP_call_file)
 	if err != nil {

@@ -38,22 +38,22 @@ func main() {
 	//-------------------------------------------------------------------------//
 
 	//Call SNPs from read-multigenome alignment--------------------------------//
-	fmt.Println("Aligning reads to the reference mutigenome...")
+	fmt.Println("Calling SNPs based on aligning reads to the mutigenome...")
 	start_time = time.Now()
 	snp_call_num, del_num := snp_prof.CallSNPs()
 	fmt.Println("\tNumber of SNP calls, DEL calls: ", snp_call_num, del_num)
 	align_time := time.Since(start_time)
-	log.Printf("time for alignment:\t%s", align_time)
+	log.Printf("time for calling SNPs:\t%s", align_time)
 	isc.PrintMemStats("memstats after calling SNPs")
 	//-------------------------------------------------------------------------//
 
-	//Writing SNPs-------------------------------------------------------------//
-	fmt.Println("Writing SNPs to output file...")
+	//Outputing SNPs-----------------------------------------------------------//
+	fmt.Println("Outputing SNPs...")
 	start_time = time.Now()
-	snp_prof.WriteSNPCalls()
-	writetofile_time := time.Since(start_time)
-	log.Printf("time for writing SNPs to file:\t%s", writetofile_time)
-	isc.PrintMemStats("memstats after writing SNPs")
+	snp_prof.OutputSNPCalls()
+	output_time := time.Since(start_time)
+	log.Printf("time for outputing SNPs:\t%s", output_time)
+	isc.PrintMemStats("memstats after outputing SNPs")
 	//-------------------------------------------------------------------------//
 
 	//Finishing Program--------------------------------------------------------//
