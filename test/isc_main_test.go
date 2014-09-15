@@ -7,12 +7,12 @@ package isc_test
 
 import (
 	"fmt"
-	"os"
-	"bufio"
-	"runtime"
-	"strings"
-	"testing"
-    "github.com/namsyvo/ISC"
+    "runtime"
+    "strings"
+	//"os"
+	//"bufio"
+	//"testing"
+    //"github.com/namsyvo/ISC"
 )
 
 func o_() string {
@@ -30,7 +30,7 @@ func __(name string) {
 	fmt.Println("== END", name, "===")
 	fmt.Println()
 }
-
+/*
 func TestISC_NC007194(t *testing.T) {
 	defer __(o_())
 
@@ -98,3 +98,31 @@ func TestISC_NC007194(t *testing.T) {
     snpcaller.SNPCall_tofile("../test_data/results/test_called_snps.txt")
     fmt.Println("@@@-Finish ----------------------------------------")
 }
+
+func TestMem(t *testing.T) {
+    var a, b, c, d []byte
+    memstats := new(runtime.MemStats)
+    a = make([]byte, 100)
+    for i:= 0 ; i < 100 ; i++ {
+        a[i] = 'A'
+    }
+    for i:= 0 ; i < 1000000 ; i++ {
+        b, c, d = MakeMem(a)
+        if len(b) == 0 && len(c) == 0 && len(d) == 0 {
+            println("Error!")
+        }
+        if i%10000 == 0 {
+            runtime.ReadMemStats(memstats)
+            fmt.Println(memstats.Alloc)
+        }
+    }
+}
+
+func MakeMem(a []byte) ([]byte, []byte, []byte) {
+    b, c, d := make([]byte, 100), make([]byte, 100), make([]byte, 100)
+    for i, v := range a {
+        b[i], c[i], d[i] = v, v, v
+    }
+    return b, c, d
+}
+*/

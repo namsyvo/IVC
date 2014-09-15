@@ -6,11 +6,11 @@
 package isc_test
 
 import (
-	"fmt"
-	"testing"
-    "github.com/namsyvo/ISC"
+	//"fmt"
+	//"testing"
+    //"github.com/namsyvo/ISC"
 )
-
+/*
 type type_snpprofile map[int][][]byte
 type type_samelensnp map[int]int
 type TestCase struct {
@@ -78,7 +78,7 @@ func TestBackwarddistance2MultiAlignment(t *testing.T) {
 		//index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 		//Init(DIST_THRES, test_cases[i].Profile, test_cases[i].SNPlen, 100)
 		read, genome := []byte(test_cases[i].read), []byte(test_cases[i].genome)
-		d, D, m, n, S, T, _ := index.BackwardDistanceMulti(read, genome, 0)
+		d, D, m, n, S, T, _ := index.BackwardDistance(read, genome, 0)
 		if d + D != test_cases[i].d {
 			t.Errorf("Fail alignment (case, read, genome, calculated distance2, true distance2, d, m, n):",
 			 i, string(read), string(genome), d + D, test_cases[i].d, m, n)
@@ -147,7 +147,7 @@ func TestForwarddistance2MultiAlignment(t *testing.T) {
 		//index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 		//Init(DIST_THRES, test_cases[i].Profile, test_cases[i].SNPlen, 100)
 		read, genome := []byte(test_cases[i].read), []byte(test_cases[i].genome)
-		d, D, m, n, S, T, _ := index.ForwardDistanceMulti(read, genome, 0)
+		d, D, m, n, S, T, _ := index.ForwardDistance(read, genome, 0)
 		if d + D != test_cases[i].d {
 			t.Errorf("Fail alignment (read, genome, calculated distance2, true distance2, m, n, case):",
 			 string(read), string(genome), d + D, test_cases[i].d, m, n, i)
@@ -177,7 +177,7 @@ func TestBackwarddistance2MultiAlignment2(t *testing.T) {
 		//index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 		//Init(DIST_THRES, test_cases[i].Profile, test_cases[i].SNPlen, 100)
 		read, genome := []byte(test_cases[i].read), []byte(test_cases[i].genome)
-		d, D, m, n, S, T, _ := index.BackwardDistanceMulti(read, genome, 26042383)
+		d, D, m, n, S, T, _ := index.BackwardDistance(read, genome, 26042383)
 		if d + D != test_cases[i].d {
 			t.Errorf("Fail alignment (read, genome, calculated distance2, true distance2, m, n, case):",
 			 string(read), string(genome), d + D, test_cases[i].d, m, n, i)
@@ -208,7 +208,7 @@ func TestForwarddistance2MultiAlignment2(t *testing.T) {
 		//index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
 		//Init(DIST_THRES, test_cases[i].Profile, test_cases[i].SNPlen, 100)
 		read, genome := []byte(test_cases[i].read), []byte(test_cases[i].genome)
-		d, D, m, n, S, T, _ := index.ForwardDistanceMulti(read, genome, 26042372)
+		d, D, m, n, S, T, _ := index.ForwardDistance(read, genome, 26042372)
 		if d + D != test_cases[i].d {
 			t.Errorf("Fail alignment (read, genome, calculated distance2, true distance2, m, n, case):",
 			 string(read), string(genome), d + D, test_cases[i].d, m, n, i)
@@ -223,3 +223,4 @@ func TestForwarddistance2MultiAlignment2(t *testing.T) {
 		}
 	}
 }
+*/

@@ -17,6 +17,8 @@ import (
 var (
 	INF             int   = math.MaxInt16 // Value for Infinity
 	EMPTY_INT_SLICE []int = make([]int, 0)
+	//EPSILON         float64 = SmallestNonzeroFloat64
+	EPSILON         float64 = 0.0000000001
 )
 
 //Index for SNP caller
@@ -146,6 +148,10 @@ func PrintMemStats(mesg string) {
 //Convert base quality (in ASCII code) to probability (in float number)
 func QualtoProb(e byte) float64 {
 	return math.Pow(10, -(float64(e) - 30)/10.0)
+}
+//Convert base quality (in ASCII code) to probability (in float number)
+func ProbtoQual(p float64) float32 {
+	return float32(-10*math.Log10(1 - p))
 }
 
 //--------------------------------------------------------------------------------------------------
