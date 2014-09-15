@@ -3,6 +3,14 @@
     + Store all SNPs at each position found from read-multigenome alignment.
     + Calculate SNP quality based on Bayesian method.
 
+(2) Reduce memory usage
+    (1) Work with fmi package:
+        + Integrate new fmi package to reduce memory usge and test it.
+        + Implement goroutines for saving indexes in new fmi package.
+    (2) Work with isc package:
+        + Reduce memory usage of alignment phase.
+        + Simplify implememtation: calling SNPs during alignment phase.
+
 (2) Integrate indexing and SNP calling steps:
     (1) Create or load the index:
         + Create the index only if (A) it does not exist, or (B) it exists but there is an error loading it.

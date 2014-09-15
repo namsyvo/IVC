@@ -7,7 +7,10 @@ package isc
 
 import (
 	"github.com/vtphan/fmi"
+	"runtime"
+	"log"
 	"math"
+	"fmt"
 )
 
 //Global constants and variables
@@ -48,27 +51,24 @@ type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
 	Iter_num        int     //number of random iterations to find proper seeds
 	Max_match       int     //maximum number of matches
-	Err_var_factor  int     //factor for standard variation for sequencing error
-	Iter_num_factor int     //factor for
-	Seq_err         float32 //average sequencing error, estimated from read if real reads
-	Read_len        int     //read length
+	Seq_err         float32 //average sequencing error, estmated from reads with real reads
+	Err_var_factor  int     //factor for standard variation of sequencing error
+	Iter_num_factor int     //factor for number of iterations 
+	Read_len        int     //read length, calculated from read files
 }
 
 //Storing read and information
 type ReadInfo struct {
-	Read1          []byte //first end read
-	Read2          []byte //second end read
-	Rev_read1      []byte //reverse of 1st end read
-	Rev_read2      []byte //reverse of 2nd end read
-	Rev_comp_read1 []byte //reverse complement of 1st end read
-	Rev_comp_read2 []byte //reverse complement of 2nd end read
-	Comp_read1     []byte //complement of 1st end read, ~ reverse of reverse complement of the read
-	Comp_read2     []byte //complement of 2nd end read, ~ reverse of reverse complement of the read
-	Read_info_1    []byte //general info of 1st read
-	Read_info_2    []byte //general info of 2nd read
-	Qual_info_1    []byte //quality info of 1st read
-	Qual_info_2    []byte //quality info of 2nd read
-	Read_len       int    //length of reads
+	Read1		[]byte //first end read
+	Read2		[]byte //second end read
+	Qual1		[]byte //quality info of 1st read
+	Qual2		[]byte //quality info of 2nd read
+	Rev_read1 []byte
+	Rev_comp_read1 []byte
+	Comp_read1 []byte
+	Rev_read2 []byte
+	Rev_comp_read2 []byte
+	Comp_read2 []byte
 }
 
 //"Global" variables used in alignment process (computing distance, snp call)
@@ -79,44 +79,40 @@ type AlignInfo struct {
 	Fw_Trace [][][]byte // SNP trace matrix for forward alignment
 }
 
-//Assigning reads to ReadInfo.
-func (read_info *ReadInfo) AssignReads(read1, read2 []byte) {
-	read_info.Read1, read_info.Read2 = make([]byte, len(read1)), make([]byte, len(read2))
-	copy(read_info.Read1, read1)
-	copy(read_info.Read2, read2)
-}
-
-//Calculating reverse, reverse complement, and complement of reads.
-func (read_info *ReadInfo) CalcRevComp() {
-	read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1 = RevComp(read_info.Read1)
-	read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2 = RevComp(read_info.Read2)
-}
-
 //Computing reverse, reverse complement, and complement of a read.
-func RevComp(read []byte) ([]byte, []byte, []byte) {
+func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
 	read_len := len(read)
-	rev_read, rev_comp_read, comp_read :=
-		make([]byte, read_len), make([]byte, read_len), make([]byte, read_len)
 	for i, elem := range read {
-		rev_read[i] = read[read_len-1-i]
 		if elem == 'A' {
+			rev_read[read_len-i-1] = 'A'
 			rev_comp_read[read_len-1-i] = 'T'
 			comp_read[i] = 'T'
 		} else if elem == 'T' {
+			rev_read[read_len-i-1] = 'T'
 			rev_comp_read[read_len-1-i] = 'A'
 			comp_read[i] = 'A'
 		} else if elem == 'C' {
+			rev_read[read_len-i-1] = 'C'
 			rev_comp_read[read_len-1-i] = 'G'
 			comp_read[i] = 'G'
 		} else if elem == 'G' {
+			rev_read[read_len-i-1] = 'G'
 			rev_comp_read[read_len-1-i] = 'C'
 			comp_read[i] = 'C'
 		} else {
+			rev_read[read_len-i-1] = elem
 			rev_comp_read[read_len-1-i] = elem
 			comp_read[i] = elem
 		}
 	}
-	return rev_read, rev_comp_read, comp_read
+}
+
+//Printing read information
+func (read_info *ReadInfo) PrintReads() {
+	fmt.Println("read1: ", string(read_info.Read1))
+	fmt.Println("read2: ", string(read_info.Read2))
+	fmt.Println("qual1: ", string(read_info.Qual1))
+	fmt.Println("qual1: ", string(read_info.Qual2))
 }
 
 //Allocating memory for share variables for alignment process
@@ -135,6 +131,21 @@ func InitMatrix(arr_len int, dis_mtr *[][]int, trace_mtr *[][][]byte) {
 	for i := 0; i < arr_len; i++ {
 		(*trace_mtr)[i] = make([][]byte, arr_len)
 	}
+}
+
+//Global variable for memory profiling
+var Memstats = new(runtime.MemStats)
+
+func PrintMemStats(mesg string) {
+    runtime.ReadMemStats(Memstats)
+    log.Printf(mesg + "\t%d\t%d\t%d\t%d\t%d\t%.2f",
+		Memstats.Alloc, Memstats.TotalAlloc, Memstats.Sys, Memstats.HeapAlloc, Memstats.HeapSys,
+		float64(Memstats.Sys)/(math.Pow(1024, 3)))
+}
+
+//Convert base quality (in ASCII code) to probability (in float number)
+func QualtoProb(e byte) float64 {
+	return math.Pow(10, -(float64(e) - 30)/10.0)
 }
 
 //--------------------------------------------------------------------------------------------------
