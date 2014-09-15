@@ -1,3 +1,8 @@
+## 0.3.7
+- Call SNPs and calculate SNP call quality during alignment phase.
+    + Eliminate data structures for storing all possible SNPs during the alignment phase.
+    + Eliminate functions for calling SNPs after the alignment phase.
+
 ## 0.3.6:
 - Calculate SNP quality for SNP calls using Bayesian method.
     + Read allele frequency from reference SNP profile (VCF files).
