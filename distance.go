@@ -45,6 +45,9 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + n - 1]
 		if !is_snp {
 			if read[m - 1] != ref[n - 1] {
+				snp_pos = append(snp_pos, pos + n - 1)
+				snp_idx = append(snp_idx, m - 1)
+				snp_val = append(snp_val, []byte{read[m-1]})
 				d++
 			}
 			m--
@@ -189,6 +192,9 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
 		if !is_snp {
 			if read[(M - 1) - (m - 1)] != ref[(N - 1) - (n - 1)] {
+                snp_pos = append(snp_pos, pos + (N - 1) - (n - 1))
+                snp_idx = append(snp_idx, (M - 1) - (m - 1))
+                snp_val = append(snp_val, []byte{read[(M - 1) - (m-1)]})
 				d++
 			}
 			m--
