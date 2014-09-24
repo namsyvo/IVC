@@ -373,6 +373,12 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	var p float64
 	p_ab := make(map[string]float64)
 	p_a := 0.0
+
+	if _, ok := S.SNP_Calls[pos]; !ok {
+		S.SNP_Calls[pos] = make(map[string]float64)
+		S.SNP_Calls[pos][string(INDEX.SEQ[pos])] = 1 - EPSILON
+	}
+
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
