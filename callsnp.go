@@ -376,7 +376,6 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 
 	if _, ok := S.SNP_Calls[pos]; !ok {
 		S.SNP_Calls[pos] = make(map[string]float64)
-		S.SNP_Calls[pos][string(INDEX.SEQ[pos])] = 1 - EPSILON
 	}
 
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
@@ -414,6 +413,12 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	var qi byte
 	p_ab := make(map[string]float64)
 	p_a := 0.0
+
+	if _, ok := S.SNP_Calls[pos]; !ok {
+		S.SNP_Calls[pos] = make(map[string]float64)
+		S.SNP_Calls[pos][a] = EPSILON
+	}
+
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
