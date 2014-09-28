@@ -17,22 +17,22 @@ func TestSNPQual(t *testing.T) {
 	var S isc.SNP_Prof
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Calls[100] = make(map[string]float64)
-	S.SNP_Calls[100]["A"] = 0.7
-	S.SNP_Calls[100]["C"] = 0.2
-	//S.SNP_Calls[100]["G"] = 0.00001
-	//S.SNP_Calls[100]["T"] = 0.09999
-	S.SNP_Calls[100]["ACT"] = 0.1
-	/*
+	S.SNP_Calls[100]["A"] = 0.99
+	S.SNP_Calls[100]["C"] = 0.01/3
+	S.SNP_Calls[100]["G"] = 0.01/3
+	S.SNP_Calls[100]["T"] = 0.01/3
+	//S.SNP_Calls[100]["ACT"] = 0.1
+	
 	snps := []isc.SNP {
-		{100, []byte{'A'}, []byte{'I'}},
-		{100, []byte{'A'}, []byte{'I'}},
-		{100, []byte{'A'}, []byte{'I'}},
-		{100, []byte{'A'}, []byte{'I'}},
-		{100, []byte{'C'}, []byte{'I'}},
-		{100, []byte{'T'}, []byte{'I'}},
-		{100, []byte{'T'}, []byte{'I'}},
+		{100, []byte{'C'}, []byte{'5'}},
+		{100, []byte{'C'}, []byte{'5'}},
+		{100, []byte{'A'}, []byte{'5'}},
+		//{100, []byte{'A'}, []byte{'I'}},
+		{100, []byte{'C'}, []byte{'5'}},
+		//{100, []byte{'T'}, []byte{'I'}},
+		//{100, []byte{'T'}, []byte{'I'}},
 	}
-
+	/*
 	snps2 := []isc.SNP {
 		{100, []byte{'A'}, []byte{'I'}},
 		{100, []byte{'A'}, []byte{'I'}},
@@ -42,7 +42,6 @@ func TestSNPQual(t *testing.T) {
 		{100, []byte{'G'}, []byte{'I'}},
 		{100, []byte{'G'}, []byte{'I'}},
 	}
-	 */
 	snps3 := []isc.SNP {
 		{100, []byte{}, []byte{}},
 		{100, []byte{'A', 'G', 'T'}, []byte{'4', '4', '4'}},
@@ -52,12 +51,13 @@ func TestSNPQual(t *testing.T) {
 		{100, []byte{'A', 'C', 'T'}, []byte{'4', '4', '4'}},
 		{100, []byte{'A', 'C', 'T'}, []byte{'4', '4', '4'}},
 	}
+	 */
 
 	for snp, prob := range S.SNP_Calls[100] {
 		fmt.Print("SNP: ", snp, "\t")
 		fmt.Println("Prob: ", prob, "\tQual: ", isc.ProbtoQual(prob))
 	}
-	for _, snp := range snps3 {
+	for _, snp := range snps {
 		fmt.Println("a: ", string(snp.Bases))
 		fmt.Println("e: ", string(snp.BaseQ))
 		S.UpdateIndelProb(snp)
