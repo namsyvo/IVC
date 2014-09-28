@@ -13,7 +13,7 @@ package isc
 func Cost(read, ref []byte) int {
 	for i := 0; i < len(read); i++ {
 		if read[i] != ref[i] {
-			return INF
+			return 1 //give higher cost for substition of known alleles at known SNP location
 		}
 	}
 	return 0

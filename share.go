@@ -15,10 +15,9 @@ import (
 
 //Global constants and variables
 var (
-	INF             int   = math.MaxInt16 // Value for Infinity
-	EMPTY_INT_SLICE []int = make([]int, 0)
-	//EPSILON         float64 = SmallestNonzeroFloat64
-	EPSILON         float64 = 0.0000000001
+	STD_BASES		= []byte{'A', 'C', 'G', 'T'}
+	INF             = math.MaxInt16 // Value for Infinity
+	EPSILON         = 0.01 			//Value for prior probability of rare alleles
 )
 
 //Index for SNP caller

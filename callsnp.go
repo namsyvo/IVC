@@ -29,7 +29,7 @@ var (
 
 //--------------------------------------------------------------------------------------------------
 // SNP represents SNP obtained during alignment phase.
-// Each variable of type SNP present SNPs at each position on reference multigenome (temporary variable).
+// It serves as temporary variable during SNP calling phase.
 //--------------------------------------------------------------------------------------------------
 type SNP struct {
 	Pos 	uint32 //SNP postion on ref
@@ -38,19 +38,14 @@ type SNP struct {
 }
 
 
-// SNP_Prof represents all possible SNPs and their probablilties at all positions on reference multigenome.
-// One variable of type SNP_Prof is created in initialization phase and stores all possible SNPs
-// through whole program, i.e., all phases alignment, calling SNPs, and writing SNP calls to file (permanent varialbe).
-// This struct also has functions defined on it for calling SNPs.
 //--------------------------------------------------------------------------------------------------
-// SNP_Bases stores all possible SNPs at each position
-// SNP_Probs stores probablilities of all possible SNPs at each position
+// SNP_Prof represents all possible SNPs and their probablilties at all positions on reference multigenome.
+// This struct also has functions defined on it for calling SNPs.
+// SNP_Calls stores all possible variants at each position and their probablilities of being SNP calls.
 // Their initial (prior) probablities will be obtained from reference genomes and SNP profiles.
-// Their posterior probabilities will be updated based on information from read-multigenome alignment
-// during alignment phase.
+// Their posterior probabilities will be updated during alignment phase based on information from read-multigenome alignment
 type SNP_Prof struct {
 	SNP_Calls 	map[uint32]map[string]float64
-	SNP_Pos     map[uint32]bool
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -65,17 +60,6 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 
 	// Assign all possible SNPs and their prior probabilities from SNP profile.
 	S.SNP_Calls = make(map[uint32]map[string]float64)
-	S.SNP_Pos = make(map[uint32]bool)
-	var idx int
-	var snp_pos uint32
-	var snp []byte
-	for pos, snps := range INDEX.SNP_PROF {
-		snp_pos = uint32(pos)
-		S.SNP_Calls[snp_pos] = make(map[string]float64)
-		for idx, snp = range snps {
-			S.SNP_Calls[snp_pos][string(snp)] = float64(INDEX.SNP_AF[pos][idx])
-		}
-	}
 	
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
@@ -95,7 +79,9 @@ func SetPara(read_len int, seq_err float32) ParaInfo {
 	err := float64(para_info.Seq_err)
 	rlen := float64(para_info.Read_len)
 	k := float64(para_info.Err_var_factor)
-	para_info.Dist_thres = int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	para_info.Dist_thres = int(0.02 * rlen) + int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	//factor 0.02 above is assigned based on rate of SNP and INDEL reported in SNP profile of human genome
+	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
 	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
@@ -152,7 +138,6 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 	//Collect SNPs from results channel and update SNPs and their probabilities
 	var snp SNP
 	for snp = range snp_results {
-		S.SNP_Pos[snp.Pos] = true
 		if len(snp.Bases) == 1 {
 			S.UpdateSNPProb(snp)
 		} else {
@@ -374,8 +359,16 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	p_ab := make(map[string]float64)
 	p_a := 0.0
 
-	if _, ok := S.SNP_Calls[pos]; !ok {
+	if _, snp_call_exist := S.SNP_Calls[pos]; !snp_call_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
+		if snps, snp_prof_exist := INDEX.SNP_PROF[int(pos)]; snp_prof_exist {
+			snp_prof_num := len(snps)
+			for idx, snp := range snps {
+				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[int(pos)][idx]) - float64(snp_prof_num) * EPSILON
+			}
+		} else {
+			S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
+		}
 	}
 
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
@@ -456,8 +449,8 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	var snp_pos uint32
 	var str_snp_pos, snp_qual string
 
-	SNP_Pos := make([]int, 0, len(S.SNP_Pos))
-	for snp_pos, _ = range S.SNP_Pos {
+	SNP_Pos := make([]int, 0, len(S.SNP_Calls))
+	for snp_pos, _ = range S.SNP_Calls {
 		SNP_Pos = append(SNP_Pos, int(snp_pos))
 	}
 	sort.Ints(SNP_Pos)
