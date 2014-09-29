@@ -142,6 +142,11 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 		_, is_snp = I.SNP_PROF[pos + j - 1]
 		if i > 0 && j > 0 {
 			if !is_snp {
+				if read[i - 1] != ref[j - 1] {
+					snp_pos = append(snp_pos, pos + j - 1)
+					snp_idx = append(snp_idx, i - 1)
+					snp_val = append(snp_val, []byte{read[i - 1]})
+				}
 				i, j = i - 1, j - 1
 			} else {
 				if T[i - 1][j - 1][0] != '.' {
@@ -188,13 +193,13 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 	var snp_idx []int
 	var snp_val [][]byte
 	for m > 0 && n > 0 {
-		snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (n - 1)]
-		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + (N - 1) - (n - 1)]
+		snp_values, is_snp = I.SNP_PROF[pos + N - n]
+		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + N - n]
 		if !is_snp {
-			if read[(M - 1) - (m - 1)] != ref[(N - 1) - (n - 1)] {
-                snp_pos = append(snp_pos, pos + (N - 1) - (n - 1))
-                snp_idx = append(snp_idx, (M - 1) - (m - 1))
-                snp_val = append(snp_val, []byte{read[(M - 1) - (m-1)]})
+			if read[M - m] != ref[N - n] {
+                snp_pos = append(snp_pos, pos + N - n)
+                snp_idx = append(snp_idx, M - m)
+                snp_val = append(snp_val, []byte{read[M - m]})
 				d++
 			}
 			m--
@@ -210,7 +215,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 			if min_d == INF {
 				return INF, 0, m, n, snp_pos, snp_val, snp_idx
 			}
-			snp_pos = append(snp_pos, pos + (N - 1) - (n - 1))
+			snp_pos = append(snp_pos, pos + N - n)
 			snp_idx = append(snp_idx, M - m)
 			snp := make([]byte, snp_len)
 			copy(snp, read[M - m : M - (m - snp_len)])
@@ -236,9 +241,9 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 	var temp_dis, min_index int
 	for i = 1; i <= m; i++ {
 		for j = 1; j <= n; j++ {
-			snp_values, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
+			snp_values, is_snp = I.SNP_PROF[pos + N - j]
 			if !is_snp {
-				if read[(M - 1) - (i - 1)] != ref[(N - 1) - (j - 1)] {
+				if read[M - i] != ref[N - j] {
 					D[i][j] = D[i - 1][j - 1] + 1
 				} else {
 					D[i][j] = D[i - 1][j - 1]
@@ -288,9 +293,14 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 	var snp_idx []int
 	var snp_val [][]byte
 	for i > 0 || j > 0 {
-		_, is_snp = I.SNP_PROF[pos + (N - 1) - (j - 1)]
+		_, is_snp = I.SNP_PROF[pos + N - j]
 		if i > 0 && j > 0 {
 			if !is_snp {
+				if read[M - i] != ref[N - j] {
+					snp_pos = append(snp_pos, pos + N - j)
+					snp_idx = append(snp_idx, M - i)
+					snp_val = append(snp_val, []byte{read[M - i]})
+				}
 				i, j = i - 1, j - 1
 			} else {
 				if T[i - 1][j - 1][0] != '.' {
@@ -298,7 +308,7 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 				} else {
 					snp_len = 0
 				}
-				snp_pos = append(snp_pos, pos + (N - 1) - (j - 1))
+				snp_pos = append(snp_pos, pos + N - j)
 				snp_idx = append(snp_idx, M - i)
 				snp := make([]byte, snp_len)
 				copy(snp, read[M - i : M - (i - snp_len)])
