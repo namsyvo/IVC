@@ -241,11 +241,15 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	//Will process constrants of two ends here
 	//...
 	var snp SNP
-	for _, snp = range snps1 {
-		snp_results <- snp
+	if len(snps1) > 0 {
+		for _, snp = range snps1 {
+			snp_results <- snp
+		}
 	}
-	for _, snp = range snps2 {
-		snp_results <- snp
+	if len(snps2) > 0 {
+		for _, snp = range snps2 {
+			snp_results <- snp
+		}
 	}
 }
 
@@ -312,7 +316,6 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 	var left_snp_val, right_snp_val [][]byte
 	var snps []SNP
 	var snp SNP
-
 	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
 		//PrintMemStats("Before FindExtensions, match_num " + strconv.Itoa(i))
@@ -320,9 +323,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			 INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
 		//PrintMemStats("After FindExtensions, match_num " + strconv.Itoa(i))
 		if dis <= PARA_INFO.Dist_thres {
-			if len(left_snp_pos) == 0 && len(right_snp_pos) == 0 {
-				continue
-			} else {
+			if len(left_snp_pos) != 0 || len(right_snp_pos) == 0 {
 				for k = 0; k < len(left_snp_pos); k++ {
 					//PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
 					left_snp_qual := make([]byte, len(left_snp_val[k]))
@@ -369,11 +370,13 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		} else {
 			S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
 		}
+		for _, b := range STD_BASES {
+			if _, ok := S.SNP_Calls[pos][string(b)]; !ok {
+				S.SNP_Calls[pos][string(b)] = EPSILON
+			}
+		}
 	}
 
-	if _, ok := S.SNP_Calls[pos][a]; !ok {
-		S.SNP_Calls[pos][a] = EPSILON
-	}
 	for b, p_b := range(S.SNP_Calls[pos]) {
 		if a == b {
 			p = 1.0 - math.Pow(10, -(float64(q) - 33) / 10.0) //Phred-encoding factor (33) need to be estimated from input data
@@ -407,14 +410,27 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	p_ab := make(map[string]float64)
 	p_a := 0.0
 
-	if _, ok := S.SNP_Calls[pos]; !ok {
+	if _, snp_call_exist := S.SNP_Calls[pos]; !snp_call_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
-		S.SNP_Calls[pos][a] = EPSILON
+		if snps, snp_prof_exist := INDEX.SNP_PROF[int(pos)]; snp_prof_exist {
+			snp_prof_num := len(snps)
+			for idx, snp := range snps {
+				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[int(pos)][idx]) - float64(snp_prof_num) * EPSILON
+			}
+		} else {
+			S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
+		}
+		for _, b := range STD_BASES {
+			if _, ok := S.SNP_Calls[pos][string(b)]; !ok {
+				S.SNP_Calls[pos][string(b)] = EPSILON
+			}
+		}
 	}
 
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
+
 	for b, p_b := range(S.SNP_Calls[pos]) {
 		p = 1
 		if a == b {

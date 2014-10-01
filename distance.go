@@ -47,7 +47,8 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 			if read[m - 1] != ref[n - 1] {
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_idx = append(snp_idx, m - 1)
-				snp_val = append(snp_val, []byte{read[m-1]})
+				snp := read[m - 1]
+				snp_val = append(snp_val, []byte{snp})
 				d++
 			}
 			m--
@@ -60,7 +61,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 					min_d = cost
 				}
 			}
-			if min_d == INF {
+			if min_d >= INF {
 				return INF, 0, m, n, snp_pos, snp_val, snp_idx
 			}
 			snp_pos = append(snp_pos, pos + n - 1)
@@ -145,7 +146,8 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 				if read[i - 1] != ref[j - 1] {
 					snp_pos = append(snp_pos, pos + j - 1)
 					snp_idx = append(snp_idx, i - 1)
-					snp_val = append(snp_val, []byte{read[i - 1]})
+					snp := read[i - 1]
+					snp_val = append(snp_val, []byte{snp})
 				}
 				i, j = i - 1, j - 1
 			} else {
@@ -199,7 +201,8 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 			if read[M - m] != ref[N - n] {
                 snp_pos = append(snp_pos, pos + N - n)
                 snp_idx = append(snp_idx, M - m)
-                snp_val = append(snp_val, []byte{read[M - m]})
+                snp := read[M - m]
+                snp_val = append(snp_val, []byte{snp})
 				d++
 			}
 			m--
@@ -212,7 +215,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 					min_d = cost
 				}
 			}
-			if min_d == INF {
+			if min_d >= INF {
 				return INF, 0, m, n, snp_pos, snp_val, snp_idx
 			}
 			snp_pos = append(snp_pos, pos + N - n)
@@ -254,7 +257,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 				for k = 0; k < len(snp_values); k++ {
 					snp_len = len(snp_values[k])
 					//One possnble case: i - snp_len < 0 for all k
-					if i-snp_len >= 0 {
+					if i - snp_len >= 0 {
 						if snp_values[k][0] != '.' {
 							temp_dis = D[i - snp_len][j - 1] + Cost(read[M - i : M - (i - snp_len)], snp_values[k])
 						} else {
@@ -299,7 +302,8 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 				if read[M - i] != ref[N - j] {
 					snp_pos = append(snp_pos, pos + N - j)
 					snp_idx = append(snp_idx, M - i)
-					snp_val = append(snp_val, []byte{read[M - i]})
+					snp := read[M - i]
+					snp_val = append(snp_val, []byte{snp})
 				}
 				i, j = i - 1, j - 1
 			} else {
