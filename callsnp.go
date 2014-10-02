@@ -323,7 +323,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			 INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
 		//PrintMemStats("After FindExtensions, match_num " + strconv.Itoa(i))
 		if dis <= PARA_INFO.Dist_thres {
-			if len(left_snp_pos) != 0 || len(right_snp_pos) == 0 {
+			if len(left_snp_pos) != 0 || len(right_snp_pos) != 0 {
 				for k = 0; k < len(left_snp_pos); k++ {
 					//PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
 					left_snp_qual := make([]byte, len(left_snp_val[k]))
