@@ -17,18 +17,18 @@ func TestSNPQual(t *testing.T) {
 	var S isc.SNP_Prof
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Calls[100] = make(map[string]float64)
-	S.SNP_Calls[100]["A"] = 0.99
-	S.SNP_Calls[100]["C"] = 0.01/3
-	S.SNP_Calls[100]["G"] = 0.01/3
-	S.SNP_Calls[100]["T"] = 0.01/3
+	S.SNP_Calls[100]["A"] = 0.997
+	S.SNP_Calls[100]["C"] = 0.001
+	S.SNP_Calls[100]["G"] = 0.001
+	S.SNP_Calls[100]["T"] = 0.001
 	//S.SNP_Calls[100]["ACT"] = 0.1
 	
 	snps := []isc.SNP {
-		{100, []byte{'C'}, []byte{'5'}},
-		{100, []byte{'C'}, []byte{'5'}},
-		{100, []byte{'A'}, []byte{'5'}},
+		{100, []byte{'C'}, []byte{'I'}},
+		//{100, []byte{'C'}, []byte{'5'}},
+		//{100, []byte{'A'}, []byte{'5'}},
 		//{100, []byte{'A'}, []byte{'I'}},
-		{100, []byte{'C'}, []byte{'5'}},
+		//{100, []byte{'C'}, []byte{'5'}},
 		//{100, []byte{'T'}, []byte{'I'}},
 		//{100, []byte{'T'}, []byte{'I'}},
 	}
@@ -60,7 +60,7 @@ func TestSNPQual(t *testing.T) {
 	for _, snp := range snps {
 		fmt.Println("a: ", string(snp.Bases))
 		fmt.Println("e: ", string(snp.BaseQ))
-		S.UpdateIndelProb(snp)
+		S.UpdateSNPProb(snp)
 		for snp, prob := range S.SNP_Calls[100] {
 			fmt.Print("SNP: ", snp, "\t")
 			fmt.Println("Prob: ", prob, "\tQual: ", isc.ProbtoQual(prob))
