@@ -55,7 +55,7 @@ type SNP_Prof struct {
 func (S *SNP_Prof) Init(input_info InputInfo) {
 
 	INPUT_INFO = input_info
-	PARA_INFO = SetPara(100, 0.01)
+	PARA_INFO = SetPara(100, 0.05)
 	INDEX.Init()
 
 	// Assign all possible SNPs and their prior probabilities from SNP profile.
@@ -83,6 +83,8 @@ func SetPara(read_len int, seq_err float32) ParaInfo {
 	//factor 0.02 above is assigned based on rate of SNP and INDEL reported in SNP profile of human genome
 	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
+
+	para_info.Iter_num = 5
 
 	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
 	fmt.Println("ITER_NUM: ", para_info.Iter_num)
@@ -315,7 +317,9 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 	var left_snp_pos, right_snp_pos, left_snp_idx, right_snp_idx []int
 	var left_snp_val, right_snp_val [][]byte
 	var snps []SNP
-	var snp SNP
+	var snp, snp SNP
+
+	min_dis := INF
 	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
 		//PrintMemStats("Before FindExtensions, match_num " + strconv.Itoa(i))
@@ -324,21 +328,25 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 		//PrintMemStats("After FindExtensions, match_num " + strconv.Itoa(i))
 		if dis <= PARA_INFO.Dist_thres {
 			if len(left_snp_pos) != 0 || len(right_snp_pos) != 0 {
-				for k = 0; k < len(left_snp_pos); k++ {
-					//PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
-					left_snp_qual := make([]byte, len(left_snp_val[k]))
-					copy(left_snp_qual, qual[left_snp_idx[k] : left_snp_idx[k] + len(left_snp_val[k])])
-					snp.Pos, snp.Bases, snp.BaseQ = uint32(left_snp_pos[k]), left_snp_val[k], left_snp_qual
-					snps = append(snps, snp)
-					//PrintMemStats("After GetSNP left, snp_num " + strconv.Itoa(k))
-				}
-				for k = 0; k < len(right_snp_pos); k++ {
-					//PrintMemStats("Before GetSNP right, snp_num " + strconv.Itoa(k))
-					right_snp_qual := make([]byte, len(right_snp_val[k]))
-					copy(right_snp_qual, qual[right_snp_idx[k] : right_snp_idx[k] + len(right_snp_val[k])])
-					snp.Pos, snp.Bases, snp.BaseQ = uint32(right_snp_pos[k]), right_snp_val[k], right_snp_qual
-					snps = append(snps, snp)
-					//PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
+				if min_dis > dis {
+					min_dis = dis
+					snps = make([]SNP, 0)
+					for k = 0; k < len(left_snp_pos); k++ {
+						//PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
+						left_snp_qual := make([]byte, len(left_snp_val[k]))
+						copy(left_snp_qual, qual[left_snp_idx[k] : left_snp_idx[k] + len(left_snp_val[k])])
+						snp.Pos, snp.Bases, snp.BaseQ = uint32(left_snp_pos[k]), left_snp_val[k], left_snp_qual
+						snps = append(snps, snp)
+						//PrintMemStats("After GetSNP left, snp_num " + strconv.Itoa(k))
+					}
+					for k = 0; k < len(right_snp_pos); k++ {
+						//PrintMemStats("Before GetSNP right, snp_num " + strconv.Itoa(k))
+						right_snp_qual := make([]byte, len(right_snp_val[k]))
+						copy(right_snp_qual, qual[right_snp_idx[k] : right_snp_idx[k] + len(right_snp_val[k])])
+						snp.Pos, snp.Bases, snp.BaseQ = uint32(right_snp_pos[k]), right_snp_val[k], right_snp_qual
+						snps = append(snps, snp)
+						//PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
+					}
 				}
 			}
 		}
