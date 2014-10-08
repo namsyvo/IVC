@@ -69,7 +69,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 //--------------------------------------------------------------------------------------------------
 func SetPara(read_len int, seq_err float32) ParaInfo {
 	para_info := ParaInfo{}
-	para_info.Max_match = 32
+	para_info.Max_match = 16
 	para_info.Err_var_factor = 4
 	para_info.Iter_num_factor = 1
 	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
@@ -84,6 +84,7 @@ func SetPara(read_len int, seq_err float32) ParaInfo {
 	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
+	para_info.Dist_thres = 5
 	para_info.Iter_num = 5
 
 	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
@@ -317,7 +318,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 	var left_snp_pos, right_snp_pos, left_snp_idx, right_snp_idx []int
 	var left_snp_val, right_snp_val [][]byte
 	var snps []SNP
-	var snp, snp SNP
+	var snp SNP
 
 	min_dis := INF
 	for i := 0; i < match_num; i++ {

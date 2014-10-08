@@ -11,12 +11,13 @@ package isc
 // Input slices should have same length
 //-------------------------------------------------------------------------------------------------
 func Cost(read, ref []byte) int {
+	cost := 0
 	for i := 0; i < len(read); i++ {
 		if read[i] != ref[i] {
-			return 1 //give higher cost for substition of known alleles at known SNP location
+			cost += 1
 		}
 	}
-	return 0
+	return cost
 }
 
 //-------------------------------------------------------------------------------------------------
