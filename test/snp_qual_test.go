@@ -17,15 +17,15 @@ func TestSNPQual(t *testing.T) {
 	var S isc.SNP_Prof
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Calls[100] = make(map[string]float64)
-	S.SNP_Calls[100]["A"] = 0.997
-	S.SNP_Calls[100]["C"] = 0.001
-	S.SNP_Calls[100]["G"] = 0.001
-	S.SNP_Calls[100]["T"] = 0.001
+	S.SNP_Calls[100]["A"] = 0.85
+	S.SNP_Calls[100]["C"] = 0.05
+	S.SNP_Calls[100]["G"] = 0.05
+	S.SNP_Calls[100]["T"] = 0.05
 	//S.SNP_Calls[100]["ACT"] = 0.1
 	
 	snps := []isc.SNP {
-		{100, []byte{'C'}, []byte{'I'}},
-		//{100, []byte{'C'}, []byte{'5'}},
+		{100, []byte{'C'}, []byte{'E'}},
+		//{100, []byte{'C'}, []byte{'1'}},
 		//{100, []byte{'A'}, []byte{'5'}},
 		//{100, []byte{'A'}, []byte{'I'}},
 		//{100, []byte{'C'}, []byte{'5'}},

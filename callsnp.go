@@ -55,7 +55,7 @@ type SNP_Prof struct {
 func (S *SNP_Prof) Init(input_info InputInfo) {
 
 	INPUT_INFO = input_info
-	PARA_INFO = SetPara(100, 0.05)
+	PARA_INFO = SetPara(100, 0.001)
 	INDEX.Init()
 
 	// Assign all possible SNPs and their prior probabilities from SNP profile.
@@ -71,7 +71,7 @@ func SetPara(read_len int, seq_err float32) ParaInfo {
 	para_info := ParaInfo{}
 	para_info.Max_match = 16
 	para_info.Err_var_factor = 4
-	para_info.Iter_num_factor = 1
+	para_info.Iter_num_factor = 2
 	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
 
@@ -79,13 +79,13 @@ func SetPara(read_len int, seq_err float32) ParaInfo {
 	err := float64(para_info.Seq_err)
 	rlen := float64(para_info.Read_len)
 	k := float64(para_info.Err_var_factor)
-	para_info.Dist_thres = int(0.02 * rlen) + int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	para_info.Dist_thres = int(0.01 * rlen) + int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
 	//factor 0.02 above is assigned based on rate of SNP and INDEL reported in SNP profile of human genome
 	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
-	para_info.Dist_thres = 5
-	para_info.Iter_num = 5
+	//para_info.Dist_thres = 4
+	//para_info.Iter_num = 5
 
 	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
 	fmt.Println("ITER_NUM: ", para_info.Iter_num)
