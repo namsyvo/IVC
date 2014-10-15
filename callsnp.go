@@ -89,7 +89,7 @@ func SetPara(read_len int, seq_err float32) ParaInfo {
 
 	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
 	fmt.Println("ITER_NUM: ", para_info.Iter_num)
-
+	
 	return para_info
 }
 
@@ -228,21 +228,23 @@ func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_
 func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, match_pos []int) {
 
 	var snps1, snps2 []SNP
-
+	var left_most_pos1, left_most_pos2 int
 	//Find SNPs for the first end
 	//PrintMemStats("Before FindSNPsFromEnd1")
-	snps1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
+	snps1, left_most_pos1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
 		read_info.Comp_read1, read_info.Qual1, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd1")
 
 	//Find SNPs for the second end
 	//PrintMemStats("Before FindSNPsFromEnd2")
-	snps2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
+	snps2, left_most_pos2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
 		read_info.Comp_read2, read_info.Qual2, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd2")
 
 	//Will process constrants of two ends here
 	//...
+	fmt.Println(string(read_info.Read1), string(read_info.Read2), left_most_pos1, left_most_pos2, len(snps1), len(snps2))
+
 	var snp SNP
 	if len(snps1) > 0 {
 		for _, snp = range snps1 {
@@ -260,7 +262,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 // FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read, qual []byte, 
-	align_info *AlignInfo, match_pos []int) []SNP {
+	align_info *AlignInfo, match_pos []int) ([]SNP, int) {
 	var has_seeds bool
 	var p, s_pos, e_pos int
 	var loop_num, match_num int
@@ -268,6 +270,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 
 	p = INPUT_INFO.Start_pos
 	loop_num = 1
+	var left_most_pos int
 	for loop_num <= PARA_INFO.Iter_num {
 		//fmt.Println(loop_num, "\tread2")
 		//PrintMemStats("Before FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
@@ -276,11 +279,11 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		if has_seeds {
 			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			//PrintMemStats("Before FindSNPsFromMatch, original_read, loop_num " + strconv.Itoa(loop_num))
-			snps = S.FindSNPsFromMatch(read, qual, s_pos, e_pos, match_pos, match_num, align_info)
+			snps, left_most_pos = S.FindSNPsFromMatch(read, qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
-				return snps
+				return snps, left_most_pos
 			}
 		}
 		//Find SNPs for the reverse complement of the second end
@@ -290,11 +293,11 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			//PrintMemStats("Before FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
-			snps = S.FindSNPsFromMatch(rev_comp_read, qual, s_pos, e_pos, match_pos, match_num, align_info)
+			snps, left_most_pos = S.FindSNPsFromMatch(rev_comp_read, qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
-				return snps
+				return snps, left_most_pos
 			}
 		}
 		//Take a new position to search
@@ -305,14 +308,14 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		}
 		loop_num++
 	}
-	return snps
+	return snps, left_most_pos
 }
 
 //---------------------------------------------------------------------------------------------------
 // FindSNPsFromMatch finds SNPs from extensions of matches between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int, 
-	match_pos []int, match_num int, align_info *AlignInfo) []SNP {
+	match_pos []int, match_num int, align_info *AlignInfo) ([]SNP, int) {
 
 	var pos, k, dis int
 	var left_snp_pos, right_snp_pos, left_snp_idx, right_snp_idx []int
@@ -321,16 +324,18 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 	var snp SNP
 
 	min_dis := INF
+	var left_most_pos, min_pos int
 	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
 		//PrintMemStats("Before FindExtensions, match_num " + strconv.Itoa(i))
-		dis, left_snp_pos, left_snp_val, left_snp_idx, right_snp_pos, right_snp_val, right_snp_idx =
+		dis, left_snp_pos, left_snp_val, left_snp_idx, right_snp_pos, right_snp_val, right_snp_idx, left_most_pos =
 			 INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
 		//PrintMemStats("After FindExtensions, match_num " + strconv.Itoa(i))
 		if dis <= PARA_INFO.Dist_thres {
 			if len(left_snp_pos) != 0 || len(right_snp_pos) != 0 {
 				if min_dis > dis {
 					min_dis = dis
+					min_pos = left_most_pos
 					snps = make([]SNP, 0)
 					for k = 0; k < len(left_snp_pos); k++ {
 						//PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
@@ -352,7 +357,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			}
 		}
 	}
-	return snps
+	return snps, min_pos
 }
 
 //---------------------------------------------------------------------------------------------------
