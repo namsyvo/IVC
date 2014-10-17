@@ -10,6 +10,10 @@ import (
 	"log"
 	"math"
 	"fmt"
+	"os"
+	"strings"
+	"strconv"
+	"bufio"
 )
 
 //Global constants and variables
@@ -91,6 +95,7 @@ func SetPara(read_len int, seq_err float32) *ParaInfo {
 
 //Read information
 type ReadInfo struct {
+	Info1, Info2		[]byte 		//
 	Read1		[]byte 		//first end read
 	Read2		[]byte 		//second end read
 	Qual1		[]byte 		//quality info of the first read
@@ -101,6 +106,8 @@ type ReadInfo struct {
 	Rev_read2 []byte		//reverse of the second end
 	Rev_comp_read2 []byte	//reverse complement of the second end
 	Comp_read2 []byte		//complement of the second end
+	Rev_qual1 []byte		//
+	Rev_qual2 []byte		//
 }
 
 //Initializing read content
@@ -111,6 +118,7 @@ func InitReadInfo(arr_len int) *ReadInfo {
 	read_info.Rev_read1, read_info.Rev_read2 = make([]byte, arr_len), make([]byte, arr_len)
 	read_info.Rev_comp_read1, read_info.Rev_comp_read2 = make([]byte, arr_len), make([]byte, arr_len)
 	read_info.Comp_read1, read_info.Comp_read2 = make([]byte, arr_len), make([]byte, arr_len)
+	read_info.Rev_qual1, read_info.Rev_qual2 = make([]byte, arr_len), make([]byte, arr_len)
 	return read_info
 }
 
@@ -123,9 +131,10 @@ func (read_info *ReadInfo) PrintReads() {
 }
 
 //Computing reverse, reverse complement, and complement of a read.
-func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
+func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
 	read_len := len(read)
 	for i, elem := range read {
+		rev_qual[i] = qual[read_len-i-1]
 		if elem == 'A' {
 			rev_read[read_len-i-1] = 'A'
 			rev_comp_read[read_len-1-i] = 'T'
@@ -213,4 +222,46 @@ func IntervalHasSNP(A []int, i, j int) bool {
 		}
 	}
 	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
+}
+
+//Load true variants for debugging
+func LoadTrueVar(file_name string) map[int][][]byte {
+	//location := make(map[int]SNPProfile)
+	barr := make(map[int][][]byte)
+
+	f, err := os.Open(file_name)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+	br := bufio.NewReader(f)
+	for {
+		line, err := br.ReadString('\n')
+		if err != nil {
+			//fmt.Printf("%v\n",err)
+			break
+		}
+		sline := string(line[:len(line)-1])
+		split := strings.Split(sline, "\t")
+		k, _ := strconv.ParseInt(split[0], 10, 64)
+		t := make([]string, len(split)-1)
+		for i := 0; i < len(t); i++ {
+			t[i] = split[i+1]
+		}
+
+		// convert to [][]byte & map[int]int
+		flag := len(t[0])
+		b := make([][]byte, len(t))
+
+		for i := range b {
+			b[i] = make([]byte, len(t[i]))
+			copy(b[i], []byte(t[i]))
+			if flag != len(b[i]) || t[i] == "." {
+				flag = 0
+			}
+		}
+		barr[int(k)] = b
+	}
+	return barr
 }

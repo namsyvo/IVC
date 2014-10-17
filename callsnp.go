@@ -27,13 +27,19 @@ var (
 	INDEX		Index      	//Index for alignment
 )
 
+var (
+	TRUE_VAR_COMP, TRUE_VAR_PART, TRUE_VAR_NONE map[int][][]byte
+)
+
 type Debug_info struct {
 	align_pos_diff int
 	snp_eval1, snp_eval2 []bool
 	left_align_pos1, left_align_pos2 int
 	true_pos1, true_pos2 int
 	snp_num1, snp_num2 int
-	snp_pos1, snp_pos2 []int
+	snp_pos1, snp_pos2 []uint32
+	snp_base1, snp_base2 [][]byte
+	snp_baseq1, snp_baseq2 [][]byte
 	read1, read2 []byte
 }
 
@@ -71,6 +77,10 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_comp.txt")
+	TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
+	TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -113,7 +123,7 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 		}
 	}()
 	for d := range debug_info {
-		fmt.Println(string(d.read1), string(d.read2), d.left_most_pos1, d.left_most_pos2, d.snp_num1, d.snp_num2)
+		fmt.Println(d.align_pos_diff, d.left_align_pos1, d.left_align_pos2, d.snp_num1, d.snp_num2, string(d.read1), string(d.read2))
 	}
 	return 0, 0
 }
@@ -139,10 +149,10 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
 	var read_info ReadInfo
-	read_info.Read1 = make([]byte, 200)
-	read_info.Read2 = make([]byte, 200)
-	read_info.Qual1 = make([]byte, 200)
-	read_info.Qual1 = make([]byte, 200)
+	read_info.Read1 = make([]byte, 100)
+	read_info.Read2 = make([]byte, 100)
+	read_info.Qual1 = make([]byte, 100)
+	read_info.Qual1 = make([]byte, 100)
 
 	for scanner1.Scan() && scanner2.Scan() { //ignore 1st lines in input FASTQ files
 		scanner1.Scan()
@@ -188,9 +198,9 @@ func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_
 		copy(read_info.Qual2, read.Qual2)
 		<- read_signal
 		//PrintMemStats("After copying all info from data chan")
-		RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
+		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, read_info.Rev_qual1)
 		//PrintMemStats("After calculating RevComp for Read1")
-		RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
+		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, read_info.Rev_qual2)
 		//PrintMemStats("After calculating RevComp for Read2")
 		S.FindSNPsFromReads(read_info, snp_results, align_info, match_pos, debug_info)
 		//PrintMemStats("After finding all SNPs from reads")
@@ -208,13 +218,13 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	//Find SNPs for the first end
 	//PrintMemStats("Before FindSNPsFromEnd1")
 	snps1, left_most_pos1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
-		read_info.Comp_read1, read_info.Qual1, align_info, match_pos)
+		read_info.Comp_read1, read_info.Qual1, read_info.Rev_qual1, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd1")
 
 	//Find SNPs for the second end
 	//PrintMemStats("Before FindSNPsFromEnd2")
 	snps2, left_most_pos2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
-		read_info.Comp_read2, read_info.Qual2, align_info, match_pos)
+		read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd2")
 
 	//Will process constrants of two ends here
@@ -233,11 +243,17 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	if len(snps1) > 0 {
 		for _, snp = range snps1 {
 			snp_results <- snp
+			d.snp_pos1 = append(d.snp_pos1, snp.Pos)
+			d.snp_base1 = append(d.snp_base1, snp.Bases)
+			d.snp_baseq1 = append(d.snp_baseq1, snp.BaseQ)
 		}
 	}
 	if len(snps2) > 0 {
 		for _, snp = range snps2 {
 			snp_results <- snp
+			d.snp_pos2 = append(d.snp_pos2, snp.Pos)
+			d.snp_base2 = append(d.snp_base2, snp.Bases)
+			d.snp_baseq2 = append(d.snp_baseq2, snp.BaseQ)
 		}
 	}
 }
@@ -245,7 +261,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 //---------------------------------------------------------------------------------------------------
 // FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read, qual []byte, 
+func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read, qual, rev_qual []byte, 
 	align_info *AlignInfo, match_pos []int) ([]SNP, int) {
 	var has_seeds bool
 	var p, s_pos, e_pos int
@@ -277,7 +293,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			//PrintMemStats("Before FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
-			snps, left_most_pos = S.FindSNPsFromMatch(rev_comp_read, qual, s_pos, e_pos, match_pos, match_num, align_info)
+			snps, left_most_pos = S.FindSNPsFromMatch(rev_comp_read, rev_qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
