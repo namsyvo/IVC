@@ -172,6 +172,8 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
 	var read_info ReadInfo
+	read_info.Read1, read_info.Read2 = make([]byte, 100), make([]byte, 100)
+	read_info.Qual1, read_info.Qual2 = make([]byte, 100), make([]byte, 100)
 	for scanner1.Scan() && scanner2.Scan() { //ignore 1st lines in input FASTQ files
 		scanner1.Scan()
 		scanner2.Scan()
