@@ -28,10 +28,13 @@ var (
 )
 
 type Debug_info struct {
-	read1, read2 []byte
-	left_most_pos1, left_most_pos2 int
+	align_pos_diff int
+	snp_eval1, snp_eval2 []bool
+	left_align_pos1, left_align_pos2 int
+	true_pos1, true_pos2 int
 	snp_num1, snp_num2 int
-	snp_diff_dis1, snp_diff_dis2 []int
+	snp_pos1, snp_pos2 []int
+	read1, read2 []byte
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -88,16 +91,14 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 	//Call goroutines to find SNPs, pass shared variable to each goroutine
 	snp_results := make(chan SNP)
 	debug_info := make(chan Debug_info)
-	debug_reads := make(chan []byte)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
-		go S.FindSNPs(read_data, read_signal, snp_results, &wg, debug_info, debug_reads)
+		go S.FindSNPs(read_data, read_signal, snp_results, &wg, debug_info)
 	}
 	go func() {
 		wg.Wait()
 		close(snp_results)
 		close(debug_info)
-		close(debug_reads)
 	}()
 
 	//Collect SNPs from results channel and update SNPs and their probabilities
@@ -111,15 +112,8 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 			}
 		}
 	}()
-	go func() {
-		for d := range debug_info {
-			//fmt.Println(string(d.read1), string(d.read2), d.left_most_pos1, d.left_most_pos2, d.snp_num1, d.snp_num2)
-			fmt.Println("read1, snp\t", string(d.read1))
-		}
-	}()
-	for r := range debug_reads {
-		//fmt.Println(string(d.read1), string(d.read2), d.left_most_pos1, d.left_most_pos2, d.snp_num1, d.snp_num2)
-		fmt.Println("read1, input\t", string(r))
+	for d := range debug_info {
+		fmt.Println(string(d.read1), string(d.read2), d.left_most_pos1, d.left_most_pos2, d.snp_num1, d.snp_num2)
 	}
 	return 0, 0
 }
@@ -164,7 +158,6 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 		if len(read_info.Read1) > 0 && len(read_info.Read2) > 0 {
 			read_num++
 			read_data <- read_info
-			//PrintMemStats("After putting read to data " + string(read_info.Read1))
 			read_signal <- true
 		}
 		//if read_num%10000 == 0 {
@@ -178,7 +171,7 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 // FindSNPs takes data from data channel, find all possible SNPs and put them into results channel.
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_results chan SNP, 
-	wg *sync.WaitGroup, debug_info chan Debug_info, debug_reads chan []byte) {
+	wg *sync.WaitGroup, debug_info chan Debug_info) {
 
 	//Initialize inter-function share variables
 	read_info := InitReadInfo(PARA_INFO.Read_len)
@@ -187,11 +180,7 @@ func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_
 
 	wg.Add(1)
 	defer wg.Done()
-	var read ReadInfo
-	for read = range read_data {
-		read_test := make([]byte, len(read.Read1))
-		copy(read_test, read.Read1)
-		debug_reads <- read_test
+	for read := range read_data {
 		//PrintMemStats("Before copying all info from data chan")
 		copy(read_info.Read1, read.Read1)
 		copy(read_info.Read2, read.Read2)
@@ -231,12 +220,13 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	//Will process constrants of two ends here
 	//...
 	var d Debug_info
-	d.read1 = read_info.Read1
-	d.read2 = read_info.Read2
-	d.left_most_pos1 = left_most_pos1
-	d.left_most_pos2 = left_most_pos2
+	d.align_pos_diff = left_most_pos1 - left_most_pos2
+	d.left_align_pos1 = left_most_pos1
+	d.left_align_pos2 = left_most_pos2
 	d.snp_num1 = len(snps1)
 	d.snp_num2 = len(snps2)
+	d.read1 = read_info.Read1
+	d.read2 = read_info.Read2
 	debug_info <- d
 
 	var snp SNP
