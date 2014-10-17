@@ -17,7 +17,7 @@ import (
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'}
 	INF             = math.MaxInt16 // Value for Infinity
-	EPSILON         = 0.01			//Value for prior probability of rare alleles
+	EPSILON         = 0.001			//Value for prior probability of rare alleles
 )
 
 //Index for SNP caller
@@ -70,6 +70,8 @@ type ReadInfo struct {
 	Rev_read2 []byte
 	Rev_comp_read2 []byte
 	Comp_read2 []byte
+	Rev_qual1 []byte
+	Rev_qual2 []byte
 }
 
 //"Global" variables used in alignment process (computing distance, snp call)
@@ -81,9 +83,10 @@ type AlignInfo struct {
 }
 
 //Computing reverse, reverse complement, and complement of a read.
-func RevComp(read []byte, rev_read, rev_comp_read, comp_read []byte) {
+	func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
 	read_len := len(read)
 	for i, elem := range read {
+		rev_qual[i] = qual[read_len - 1 - i]
 		if elem == 'A' {
 			rev_read[read_len-i-1] = 'A'
 			rev_comp_read[read_len-1-i] = 'T'

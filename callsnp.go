@@ -109,6 +109,7 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 		read_info[i].Rev_read1, read_info[i].Rev_read2 = make([]byte, r_len), make([]byte, r_len)
 		read_info[i].Rev_comp_read1, read_info[i].Rev_comp_read2 = make([]byte, r_len), make([]byte, r_len)
 		read_info[i].Comp_read1, read_info[i].Comp_read2 = make([]byte, r_len), make([]byte, r_len)
+		read_info[i].Rev_qual1, read_info[i].Rev_qual2 = make([]byte, r_len), make([]byte, r_len)
 	}
 	align_info := make([]AlignInfo, INPUT_INFO.Routine_num)
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
@@ -174,14 +175,14 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 	for scanner1.Scan() && scanner2.Scan() { //ignore 1st lines in input FASTQ files
 		scanner1.Scan()
 		scanner2.Scan()
-		read_info.Read1 = scanner1.Bytes() //use 2nd line in input FASTQ file 1
-		read_info.Read2 = scanner2.Bytes() //use 2nd line in input FASTQ file 2
+		copy(read_info.Read1, scanner1.Bytes()) //use 2nd line in input FASTQ file 1
+		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in input FASTQ file 2
 		scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
 		scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
 		scanner1.Scan()
 		scanner2.Scan()
-		read_info.Qual1 = scanner1.Bytes() //use 4th line in input FASTQ file 1
-		read_info.Qual2 = scanner2.Bytes() //use 4th line in input FASTQ file 2
+		copy(read_info.Qual1, scanner1.Bytes()) //use 4th line in input FASTQ file 1
+		copy(read_info.Qual2, scanner2.Bytes()) //use 4th line in input FASTQ file 2
 		if len(read_info.Read1) > 0 && len(read_info.Read2) > 0 {
 			read_num++
 			read_data <- read_info
@@ -212,9 +213,9 @@ func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_
 		copy(read_info.Qual2, read.Qual2)
 		<- read_signal
 		//PrintMemStats("After copying all info from data chan")
-		RevComp(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1)
+		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, read_info.Rev_qual1)
 		//PrintMemStats("After calculating RevComp for Read1")
-		RevComp(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2)
+		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, read_info.Rev_qual2)
 		//PrintMemStats("After calculating RevComp for Read2")
 		S.FindSNPsFromReads(read_info, snp_results, align_info, match_pos)
 		//PrintMemStats("After finding all SNPs from reads")
@@ -227,18 +228,16 @@ func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, match_pos []int) {
 
-	var snps1, snps2 []SNP
-
 	//Find SNPs for the first end
 	//PrintMemStats("Before FindSNPsFromEnd1")
-	snps1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
-		read_info.Comp_read1, read_info.Qual1, align_info, match_pos)
+	snps1, _ := S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
+		read_info.Comp_read1, read_info.Qual1, read_info.Rev_qual1, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd1")
 
 	//Find SNPs for the second end
 	//PrintMemStats("Before FindSNPsFromEnd2")
-	snps2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
-		read_info.Comp_read2, read_info.Qual2, align_info, match_pos)
+	snps2, _ := S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
+		read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd2")
 
 	//Will process constrants of two ends here
@@ -259,8 +258,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 //---------------------------------------------------------------------------------------------------
 // FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read, qual []byte, 
-	align_info *AlignInfo, match_pos []int) []SNP {
+func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read, qual, rev_qual []byte, 
+	align_info *AlignInfo, match_pos []int) ([]SNP, bool) {
 	var has_seeds bool
 	var p, s_pos, e_pos int
 	var loop_num, match_num int
@@ -280,7 +279,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 			//PrintMemStats("After FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
-				return snps
+				return snps, true
 			}
 		}
 		//Find SNPs for the reverse complement of the second end
@@ -290,11 +289,11 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			//PrintMemStats("Before FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
-			snps = S.FindSNPsFromMatch(rev_comp_read, qual, s_pos, e_pos, match_pos, match_num, align_info)
+			snps = S.FindSNPsFromMatch(rev_comp_read, rev_qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
-				return snps
+				return snps, false
 			}
 		}
 		//Take a new position to search
@@ -305,7 +304,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		}
 		loop_num++
 	}
-	return snps
+	return snps, true
 }
 
 //---------------------------------------------------------------------------------------------------
