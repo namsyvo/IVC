@@ -17,7 +17,7 @@ import (
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'}
 	INF             = math.MaxInt16 // Value for Infinity
-	EPSILON         = 0.001			//Value for prior probability of rare alleles
+	EPSILON         = 0.01			//Value for prior probability of rare alleles
 )
 
 //Index for SNP caller
