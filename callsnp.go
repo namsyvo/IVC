@@ -38,12 +38,31 @@ var (
 type Debug_info struct {
 	read_info1, read_info2 []byte
 	align_pos1, align_pos2 int
-	snp_num1, snp_num2 int
 	snp_pos1, snp_pos2 []uint32
 	snp_base1, snp_base2 [][]byte
 	snp_baseq1, snp_baseq2 [][]byte
-	snp_eval1, snp_eval2 []bool
 }
+/*
+ Log file format:
+  align_pos_diff  align_pos1  align_pos2  snp_pos  snp_base  snp_base_qual  snp_qual_prob  true_pos_diff  true_pos1  true_pos2  read_id
+  ...
+ where:
+  one line is corresponding to one variant call
+  value is "None" if not exist
+
+ Log file names:
+  "tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", \
+  "tp_snp_none", "fp_snp_none", "tp_indel_none", "fp_indel_none", "fp_snp_other", "fp_indel_other"
+ where:
+  tp: true positives snps
+  fp: false positive snps
+  snp: snp calls
+  indel: indel calls
+  comp: info at complete knowledge locations
+  part: info at partial knowledge locations
+  none: info at no knowledge locations
+  other: info other locations
+*/
 //--------------------------------------------------------------------------------------------------
 
 
@@ -140,7 +159,7 @@ func ProcessDebugInfo(debug_info chan Debug_info) {
 		defer files[i].Close()
 	}
 	for d := range debug_info {
-		if d.snp_num1 > 0 {
+		if len(d.snp_pos1) > 0 {
 			for i, snp_pos = range d.snp_pos1 {
 				if len(d.snp_base1[i]) == 0 {
 					OutputDebugInfo(files, d, snp_pos, []byte{'.'}, []byte{'I'})
@@ -149,7 +168,7 @@ func ProcessDebugInfo(debug_info chan Debug_info) {
 				}
 			}
 		}
-		if d.snp_num2 > 0 {
+		if len(d.snp_pos2) > 0 {
 			for i, snp_pos = range d.snp_pos2 {
 				if len(d.snp_base2[i]) == 0 {
 					OutputDebugInfo(files, d, snp_pos, []byte{'.'}, []byte{'I'})
@@ -225,11 +244,12 @@ func WriteDebugInfo(file *os.File, d Debug_info, snp_pos uint32, snp_base []byte
 	file.WriteString(strconv.Itoa(d.align_pos1) + "\t" + strconv.Itoa(d.align_pos2) + "\t")
 	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(snp_base) + "\t")
 	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
-
+	//file.WriteString(string(d.read_info1[32:]) + "\n")
+	
 	tokens := bytes.Split(d.read_info1, []byte{'_'})
 	if len(tokens) >= 11 {
-		true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 32)
-		true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 32)
+		true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
+		true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 64)
 		if err1 == nil && err2 == nil {
 			file.WriteString(strconv.FormatInt(true_pos1 - true_pos2, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + "\t" + strconv.FormatInt(true_pos2, 10) + "\t")
 		} else {
@@ -289,7 +309,7 @@ func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 	read_num := 0
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
-	read_info := InitReadInfo(100)
+	read_info := InitReadInfo(PARA_INFO.Read_len)
 	for scanner1.Scan() && scanner2.Scan() {
 		copy(read_info.Info1, scanner1.Bytes()) //use 1st line in input FASTQ file 1
 		copy(read_info.Info2, scanner2.Bytes()) //use 1st line in input FASTQ file 2
@@ -341,11 +361,13 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 		copy(read_info.Qual1, read.Qual1)
 		copy(read_info.Qual2, read.Qual2)
 		<- read_signal
+
 		//PrintMemStats("After copying all info from data chan")
 		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, read_info.Rev_qual1)
 		//PrintMemStats("After calculating RevComp for Read1")
 		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, read_info.Rev_qual2)
 		//PrintMemStats("After calculating RevComp for Read2")
+
 		S.FindSNPsFromReads(read_info, snp_results, align_info, match_pos, debug_info)
 		//PrintMemStats("After finding all SNPs from reads")
 	}
@@ -357,29 +379,27 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, match_pos []int, debug_info chan Debug_info) {
 
-	var snps1, snps2 []SNP
-	var left_most_pos1, left_most_pos2 int
 	//Find SNPs for the first end
 	//PrintMemStats("Before FindSNPsFromEnd1")
-	snps1, left_most_pos1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
+	snps1, left_most_pos1 := S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
 		read_info.Comp_read1, read_info.Qual1, read_info.Rev_qual1, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd1")
 
 	//Find SNPs for the second end
 	//PrintMemStats("Before FindSNPsFromEnd2")
-	snps2, left_most_pos2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
+	snps2, left_most_pos2 := S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
 		read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
 	//PrintMemStats("After FindSNPsFromEnd2")
 
 	//Will process constrants of two ends here
 	//...
 	var d Debug_info
-	d.read_info1 = read_info.Info1
-	d.read_info2 = read_info.Info2
+	d.read_info1 = make([]byte, len(read_info.Info1))
+	d.read_info2 = make([]byte, len(read_info.Info2))
+	copy(d.read_info1, read_info.Info1)
+	copy(d.read_info2, read_info.Info2)
 	d.align_pos1 = left_most_pos1
 	d.align_pos2 = left_most_pos2
-	d.snp_num1 = len(snps1)
-	d.snp_num2 = len(snps2)
 
 	var snp SNP
 	if len(snps1) > 0 {

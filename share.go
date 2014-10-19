@@ -91,16 +91,13 @@ func SetPara(read_len int, seq_err float32) *ParaInfo {
 
 //Read information
 type ReadInfo struct {
-	Read1, Read2		[]byte 		//first and second ends
+	Read1, Read2        []byte 		//first and second ends
 	Qual1, Qual2		[]byte 		//quality info of the first read and second ends
-	Rev_read1 []byte				//reverse of the first end
-	Rev_comp_read1 []byte			//reverse complement of the first end
-	Comp_read1 []byte				//complement of the first end
-	Rev_read2 []byte				//reverse of the second end
-	Rev_comp_read2 []byte			//reverse complement of the second end
-	Comp_read2 []byte				//complement of the second end
-	Rev_qual1, Rev_qual2 []byte		//
-	Info1, Info2		[]byte 		//info of the first and second ends
+	Rev_read1, Rev_read2           []byte	//reverse of the first and second ends
+	Rev_comp_read1, Rev_comp_read2 []byte	//reverse complement of the first and second ends
+	Comp_read1, Comp_read2 []byte			//complement of the first and second ends
+	Rev_qual1, Rev_qual2   []byte		//quality of reverse of the first and second ends
+	Info1, Info2		   []byte 		//info of the first and second ends
 }
 
 //Initializing read content
