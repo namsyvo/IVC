@@ -132,85 +132,90 @@ func (S *SNP_Prof) CallSNPs() {
 func ProcessDebugInfo(debug_info chan Debug_info) {
 	var i int
 	var snp_pos uint32
+
+	files := make([]*os.File, 14)
+	file_names := []string{"tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", "tp_snp_none", "fp_snp_none", "tp_indel_none", "fp_indel_none", "fp_snp_other", "fp_indel_other"}
+	for i, file_name := range file_names {
+		files[i], _ = os.OpenFile(INPUT_INFO.SNP_call_file + "." + file_name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+		defer files[i].Close()
+	}
 	for d := range debug_info {
 		if d.snp_num1 > 0 {
 			for i, snp_pos = range d.snp_pos1 {
 				if len(d.snp_base1[i]) == 0 {
-					OutputDebugInfo(d, snp_pos, []byte{'.'}, []byte{'I'})
+					OutputDebugInfo(files, d, snp_pos, []byte{'.'}, []byte{'I'})
 				} else {
-					OutputDebugInfo(d, snp_pos, d.snp_base1[i], d.snp_baseq1[i])
+					OutputDebugInfo(files, d, snp_pos, d.snp_base1[i], d.snp_baseq1[i])
 				}
 			}
 		}
 		if d.snp_num2 > 0 {
 			for i, snp_pos = range d.snp_pos2 {
 				if len(d.snp_base2[i]) == 0 {
-					OutputDebugInfo(d, snp_pos, []byte{'.'}, []byte{'I'})
+					OutputDebugInfo(files, d, snp_pos, []byte{'.'}, []byte{'I'})
 				} else {
-					OutputDebugInfo(d, snp_pos, d.snp_base2[i], d.snp_baseq2[i])
+					OutputDebugInfo(files, d, snp_pos, d.snp_base2[i], d.snp_baseq2[i])
 				}
 			}
 		}
 	}
 }
 
-func OutputDebugInfo(d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
+func OutputDebugInfo(files []*os.File, d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
 	var ok bool
 	var val []byte
 	if val, ok = TRUE_VAR_COMP[int(snp_pos)]; ok {
 		if len(snp_base) == 1 {
 			if snp_base[0] == val[0] {
-				WriteDebugInfo("tp_snp_comp", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[0], d, snp_pos, snp_base, snp_baseq)
 			} else {
-				WriteDebugInfo("fp_snp_comp", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[1], d, snp_pos, snp_base, snp_baseq)
 			}
 		} else {
 			if bytes.Equal(snp_base, val) {
-				WriteDebugInfo("tp_indel_comp", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[2], d, snp_pos, snp_base, snp_baseq)
 			} else {
-				WriteDebugInfo("fp_indel_comp", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[3], d, snp_pos, snp_base, snp_baseq)
 			}
 		}
 	} else if val, ok = TRUE_VAR_PART[int(snp_pos)]; ok {
 		if len(snp_base) == 1 {
 			if snp_base[0] == val[0] {
-				WriteDebugInfo("tp_snp_part", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[4], d, snp_pos, snp_base, snp_baseq)
 			} else {
-				WriteDebugInfo("fp_snp_part", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[5], d, snp_pos, snp_base, snp_baseq)
 			}
 		} else {
 			if bytes.Equal(snp_base, val) {
-				WriteDebugInfo("tp_indel_part", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[6], d, snp_pos, snp_base, snp_baseq)
 			} else {
-				WriteDebugInfo("fp_indel_part", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[7], d, snp_pos, snp_base, snp_baseq)
 			}
 		}
 	} else if val, ok = TRUE_VAR_NONE[int(snp_pos)]; ok {
 		if len(snp_base) == 1 {
 			if snp_base[0] == val[0] {
-				WriteDebugInfo("tp_snp_none", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[8], d, snp_pos, snp_base, snp_baseq)
 			} else {
-				WriteDebugInfo("fp_snp_none", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[9], d, snp_pos, snp_base, snp_baseq)
 			}
 		} else {
 			if bytes.Equal(snp_base, val) {
-				WriteDebugInfo("tp_indel_none", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[10], d, snp_pos, snp_base, snp_baseq)
 			} else {
-				WriteDebugInfo("fp_indel_none", d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[11], d, snp_pos, snp_base, snp_baseq)
 			}
 		}
 	} else {
 		if len(snp_base) == 1 {
-			WriteDebugInfo("fp_snp_other", d, snp_pos, snp_base, snp_baseq)
+			WriteDebugInfo(files[12], d, snp_pos, snp_base, snp_baseq)
 		} else {
-			WriteDebugInfo("fp_indel_other", d, snp_pos, snp_base, snp_baseq)
+			WriteDebugInfo(files[13], d, snp_pos, snp_base, snp_baseq)
 		}
 	}
 }
 
-func WriteDebugInfo(file_name string, d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
-	file, _ := os.OpenFile(INPUT_INFO.SNP_call_file + "." + file_name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
-	defer file.Close()
+func WriteDebugInfo(file *os.File, d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
 
 	if d.align_pos1 != 0 && d.align_pos2 != 0 {
 		file.WriteString(strconv.Itoa(d.align_pos1 - d.align_pos2) + "\t")
