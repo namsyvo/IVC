@@ -15,6 +15,8 @@ import (
 	"time"
 	"sort"
 	"sync"
+	"bytes"
+	"strings"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -27,21 +29,23 @@ var (
 	INDEX		Index      	//Index for alignment
 )
 
-var (
-	TRUE_VAR_COMP, TRUE_VAR_PART, TRUE_VAR_NONE map[int][][]byte
-)
 
+//--------------------------------------------------------------------------------------------------
+//For debugging
+var (
+	TRUE_VAR_COMP, TRUE_VAR_PART, TRUE_VAR_NONE map[int][]byte
+)
 type Debug_info struct {
-	align_pos_diff int
-	snp_eval1, snp_eval2 []bool
-	left_align_pos1, left_align_pos2 int
-	true_pos1, true_pos2 int
+	read_info1, read_info2 []byte
+	align_pos1, align_pos2 int
 	snp_num1, snp_num2 int
 	snp_pos1, snp_pos2 []uint32
 	snp_base1, snp_base2 [][]byte
 	snp_baseq1, snp_baseq2 [][]byte
-	read1, read2 []byte
+	snp_eval1, snp_eval2 []bool
 }
+//--------------------------------------------------------------------------------------------------
+
 
 //--------------------------------------------------------------------------------------------------
 // SNP represents SNP obtained during alignment phase.
@@ -95,7 +99,7 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 	read_signal := make(chan bool)
 
 	//Call a goroutine to read input reads
-	read_data := make(chan ReadInfo, INPUT_INFO.Routine_num)
+	read_data := make(chan *ReadInfo, INPUT_INFO.Routine_num)
 	go S.ReadReads(read_data, read_signal)
 
 	//Call goroutines to find SNPs, pass shared variable to each goroutine
@@ -122,16 +126,144 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 			}
 		}
 	}()
-	for d := range debug_info {
-		fmt.Println(d.align_pos_diff, d.left_align_pos1, d.left_align_pos2, d.snp_num1, d.snp_num2, string(d.read1), string(d.read2))
-	}
+
+	OutputDebugInfo(debug_info)
+
 	return 0, 0
+}
+
+//Write debug info to files
+func OutputDebugInfo(debug_info chan Debug_info) {
+	var i int
+	var snp_pos uint32
+	for d := range debug_info {
+		if d.snp_num1 > 0 {
+			for i, snp_pos = range d.snp_pos1 {
+				if len(d.snp_base1[i]) == 0 {
+					CheckEvalCategory(d, snp_pos, []byte{'.'}, []byte{'I'})
+				} else {
+					CheckEvalCategory(d, snp_pos, d.snp_base1[i], d.snp_baseq1[i])
+				}
+			}
+		}
+		if d.snp_num2 > 0 {
+			for i, snp_pos = range d.snp_pos2 {
+				if len(d.snp_base2[i]) == 0 {
+					CheckEvalCategory(d, snp_pos, []byte{'.'}, []byte{'I'})
+				} else {
+					CheckEvalCategory(d, snp_pos, d.snp_base2[i], d.snp_baseq2[i])
+				}
+			}
+		}
+	}
+}
+
+func CheckEvalCategory(d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
+	var ok bool
+	var val []byte
+	if val, ok = TRUE_VAR_COMP[int(snp_pos)]; ok {
+		if len(snp_base) == 1 {
+			if snp_base[0] == val[0] {
+				WriteDebugInfo("tp_snp_comp", d, snp_pos, snp_base, snp_baseq)
+			} else {
+				WriteDebugInfo("fp_snp_comp", d, snp_pos, snp_base, snp_baseq)
+			}
+		} else {
+			if bytes.Equal(snp_base, val) {
+				WriteDebugInfo("tp_indel_comp", d, snp_pos, snp_base, snp_baseq)
+			} else {
+				WriteDebugInfo("fp_indel_comp", d, snp_pos, snp_base, snp_baseq)
+			}
+		}
+	} else if val, ok = TRUE_VAR_PART[int(snp_pos)]; ok {
+		if len(snp_base) == 1 {
+			if snp_base[0] == val[0] {
+				WriteDebugInfo("tp_snp_part", d, snp_pos, snp_base, snp_baseq)
+			} else {
+				WriteDebugInfo("fp_snp_part", d, snp_pos, snp_base, snp_baseq)
+			}
+		} else {
+			if bytes.Equal(snp_base, val) {
+				WriteDebugInfo("tp_indel_part", d, snp_pos, snp_base, snp_baseq)
+			} else {
+				WriteDebugInfo("fp_indel_part", d, snp_pos, snp_base, snp_baseq)
+			}
+		}
+	} else if val, ok = TRUE_VAR_NONE[int(snp_pos)]; ok {
+		if len(snp_base) == 1 {
+			if snp_base[0] == val[0] {
+				WriteDebugInfo("tp_snp_none", d, snp_pos, snp_base, snp_baseq)
+			} else {
+				WriteDebugInfo("fp_snp_none", d, snp_pos, snp_base, snp_baseq)
+			}
+		} else {
+			if bytes.Equal(snp_base, val) {
+				WriteDebugInfo("tp_indel_none", d, snp_pos, snp_base, snp_baseq)
+			} else {
+				WriteDebugInfo("fp_indel_none", d, snp_pos, snp_base, snp_baseq)
+			}
+		}
+	} else {
+		if len(snp_base) == 1 {
+			WriteDebugInfo("fp_snp_other", d, snp_pos, snp_base, snp_baseq)
+		} else {
+			WriteDebugInfo("fp_indel_other", d, snp_pos, snp_base, snp_baseq)
+		}
+	}
+}
+
+func WriteDebugInfo(file_name string, d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
+	file, _ := os.OpenFile(INPUT_INFO.SNP_call_file + "." + file_name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+	defer file.Close()
+
+	var pos_diff int64
+	if d.align_pos1 == 0 || d.align_pos2 == 0 {
+		pos_diff = -1
+	} else {
+		pos_diff = int64(d.align_pos1 - d.align_pos2)
+	}
+	tokens := bytes.Split(d.read_info1, []byte{'_'})
+	true_pos1, _ := strconv.ParseInt(string(tokens[2]), 10, 32)
+	true_pos2, _ := strconv.ParseInt(string(tokens[3]), 10, 32)
+	true_pos_diff := true_pos1 - true_pos2
+	file.WriteString(strconv.FormatInt(pos_diff, 10) + "\t" + strconv.FormatInt(int64(d.align_pos1), 10) + "\t" + strconv.FormatInt(int64(d.align_pos2), 10) + "\t")
+	file.WriteString(strconv.FormatInt(true_pos_diff, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + "\t" + strconv.FormatInt(true_pos2, 10) + "\t")
+	file.WriteString(strconv.FormatInt(int64(snp_pos), 10) + "\t" + string(snp_base) + "\t")
+	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
+	file.WriteString(string(tokens[10]) + "\n")
+	file.Sync()
+}
+
+//Load true variants for debugging
+func LoadTrueVar(file_name string) map[int][]byte {
+	barr := make(map[int][]byte)
+
+	f, err := os.Open(file_name)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+	br := bufio.NewReader(f)
+	for {
+		line, err := br.ReadString('\n')
+		if err != nil {
+			break
+		}
+		sline := string(line[:len(line)-1])
+		split := strings.Split(sline, "\t")
+		k, _ := strconv.ParseInt(split[0], 10, 64)
+		b := make([]byte, len(split[1]))
+		copy(b, split[1])
+		barr[int(k)] = b
+	}
+	return barr
 }
 
 //--------------------------------------------------------------------------------------------------
 // ReadReads reads all reads from input FASTQ files and put them into data channel.
 //--------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
+func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 
 	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
 	f1, err_f1 := os.Open(fn1)
@@ -148,17 +280,16 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 	read_num := 0
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
-	var read_info ReadInfo
-	read_info.Read1 = make([]byte, 100)
-	read_info.Read2 = make([]byte, 100)
-	read_info.Qual1 = make([]byte, 100)
-	read_info.Qual1 = make([]byte, 100)
-
-	for scanner1.Scan() && scanner2.Scan() { //ignore 1st lines in input FASTQ files
+	read_info := InitReadInfo(100)
+	for scanner1.Scan() && scanner2.Scan() {
+		copy(read_info.Info1, scanner1.Bytes()) //use 1st line in input FASTQ file 1
+		copy(read_info.Info2, scanner2.Bytes()) //use 1st line in input FASTQ file 2
+		read_info.Info1 = read_info.Info1[0:len(scanner1.Bytes())]
+		read_info.Info2 = read_info.Info2[0:len(scanner2.Bytes())]
 		scanner1.Scan()
 		scanner2.Scan()
 		copy(read_info.Read1, scanner1.Bytes()) //use 2nd line in input FASTQ file 1
-		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in input FASTQ file 1
+		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in input FASTQ file 2
 		scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
 		scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
 		scanner1.Scan()
@@ -180,7 +311,7 @@ func (S *SNP_Prof) ReadReads(read_data chan ReadInfo, read_signal chan bool) {
 //--------------------------------------------------------------------------------------------------
 // FindSNPs takes data from data channel, find all possible SNPs and put them into results channel.
 //--------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_results chan SNP, 
+func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp_results chan SNP, 
 	wg *sync.WaitGroup, debug_info chan Debug_info) {
 
 	//Initialize inter-function share variables
@@ -192,6 +323,10 @@ func (S *SNP_Prof) FindSNPs(read_data chan ReadInfo, read_signal chan bool, snp_
 	defer wg.Done()
 	for read := range read_data {
 		//PrintMemStats("Before copying all info from data chan")
+		copy(read_info.Info1, read.Info1)
+		copy(read_info.Info2, read.Info2)
+		read_info.Info1 = read_info.Info1[0:len(read.Info1)]
+		read_info.Info2 = read_info.Info2[0:len(read.Info2)]
 		copy(read_info.Read1, read.Read1)
 		copy(read_info.Read2, read.Read2)
 		copy(read_info.Qual1, read.Qual1)
@@ -230,14 +365,12 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	//Will process constrants of two ends here
 	//...
 	var d Debug_info
-	d.align_pos_diff = left_most_pos1 - left_most_pos2
-	d.left_align_pos1 = left_most_pos1
-	d.left_align_pos2 = left_most_pos2
+	d.read_info1 = read_info.Info1
+	d.read_info2 = read_info.Info2
+	d.align_pos1 = left_most_pos1
+	d.align_pos2 = left_most_pos2
 	d.snp_num1 = len(snps1)
 	d.snp_num2 = len(snps2)
-	d.read1 = read_info.Read1
-	d.read2 = read_info.Read2
-	debug_info <- d
 
 	var snp SNP
 	if len(snps1) > 0 {
@@ -256,6 +389,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			d.snp_baseq2 = append(d.snp_baseq2, snp.BaseQ)
 		}
 	}
+	debug_info <- d
 }
 
 //---------------------------------------------------------------------------------------------------

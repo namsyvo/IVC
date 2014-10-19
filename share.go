@@ -10,10 +10,6 @@ import (
 	"log"
 	"math"
 	"fmt"
-	"os"
-	"strings"
-	"strconv"
-	"bufio"
 )
 
 //Global constants and variables
@@ -95,19 +91,16 @@ func SetPara(read_len int, seq_err float32) *ParaInfo {
 
 //Read information
 type ReadInfo struct {
-	Info1, Info2		[]byte 		//
-	Read1		[]byte 		//first end read
-	Read2		[]byte 		//second end read
-	Qual1		[]byte 		//quality info of the first read
-	Qual2		[]byte 		//quality info of the second read
-	Rev_read1 []byte		//reverse of the first end
-	Rev_comp_read1 []byte	//reverse complement of the first end
-	Comp_read1 []byte		//complement of the first end
-	Rev_read2 []byte		//reverse of the second end
-	Rev_comp_read2 []byte	//reverse complement of the second end
-	Comp_read2 []byte		//complement of the second end
-	Rev_qual1 []byte		//
-	Rev_qual2 []byte		//
+	Read1, Read2		[]byte 		//first and second ends
+	Qual1, Qual2		[]byte 		//quality info of the first read and second ends
+	Rev_read1 []byte				//reverse of the first end
+	Rev_comp_read1 []byte			//reverse complement of the first end
+	Comp_read1 []byte				//complement of the first end
+	Rev_read2 []byte				//reverse of the second end
+	Rev_comp_read2 []byte			//reverse complement of the second end
+	Comp_read2 []byte				//complement of the second end
+	Rev_qual1, Rev_qual2 []byte		//
+	Info1, Info2		[]byte 		//info of the first and second ends
 }
 
 //Initializing read content
@@ -119,6 +112,7 @@ func InitReadInfo(arr_len int) *ReadInfo {
 	read_info.Rev_comp_read1, read_info.Rev_comp_read2 = make([]byte, arr_len), make([]byte, arr_len)
 	read_info.Comp_read1, read_info.Comp_read2 = make([]byte, arr_len), make([]byte, arr_len)
 	read_info.Rev_qual1, read_info.Rev_qual2 = make([]byte, arr_len), make([]byte, arr_len)
+	read_info.Info1, read_info.Info2 = make([]byte, arr_len), make([]byte, arr_len)
 	return read_info
 }
 
@@ -128,6 +122,8 @@ func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("read2: ", string(read_info.Read2))
 	fmt.Println("qual1: ", string(read_info.Qual1))
 	fmt.Println("qual1: ", string(read_info.Qual2))
+	fmt.Println("info1: ", string(read_info.Info1))
+	fmt.Println("info2: ", string(read_info.Info2))
 }
 
 //Computing reverse, reverse complement, and complement of a read.
@@ -196,7 +192,7 @@ func InitAlignMatrix(arr_len int) ([][]int, [][][]byte) {
 
 //QualtoProb converts base qualities decoded by ASCII codes to probabilities
 func QualtoProb(e byte) float64 {
-	return math.Pow(10, -(float64(e) - 30)/10.0)
+	return math.Pow(10, -(float64(e) - 33)/10.0)
 }
 //ProbtoQual converts probabilities to phred-scale quality scores
 func ProbtoQual(p float64) float32 {
@@ -222,46 +218,4 @@ func IntervalHasSNP(A []int, i, j int) bool {
 		}
 	}
 	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
-}
-
-//Load true variants for debugging
-func LoadTrueVar(file_name string) map[int][][]byte {
-	//location := make(map[int]SNPProfile)
-	barr := make(map[int][][]byte)
-
-	f, err := os.Open(file_name)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	br := bufio.NewReader(f)
-	for {
-		line, err := br.ReadString('\n')
-		if err != nil {
-			//fmt.Printf("%v\n",err)
-			break
-		}
-		sline := string(line[:len(line)-1])
-		split := strings.Split(sline, "\t")
-		k, _ := strconv.ParseInt(split[0], 10, 64)
-		t := make([]string, len(split)-1)
-		for i := 0; i < len(t); i++ {
-			t[i] = split[i+1]
-		}
-
-		// convert to [][]byte & map[int]int
-		flag := len(t[0])
-		b := make([][]byte, len(t))
-
-		for i := range b {
-			b[i] = make([]byte, len(t[i]))
-			copy(b[i], []byte(t[i]))
-			if flag != len(b[i]) || t[i] == "." {
-				flag = 0
-			}
-		}
-		barr[int(k)] = b
-	}
-	return barr
 }
