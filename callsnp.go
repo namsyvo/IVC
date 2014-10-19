@@ -136,7 +136,7 @@ func ProcessDebugInfo(debug_info chan Debug_info) {
 	files := make([]*os.File, 14)
 	file_names := []string{"tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", "tp_snp_none", "fp_snp_none", "tp_indel_none", "fp_indel_none", "fp_snp_other", "fp_indel_other"}
 	for i, file_name := range file_names {
-		files[i], _ = os.OpenFile(INPUT_INFO.SNP_call_file + "." + file_name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
+		files[i], _ = os.Create(INPUT_INFO.SNP_call_file + "." + file_name)
 		defer files[i].Close()
 	}
 	for d := range debug_info {
