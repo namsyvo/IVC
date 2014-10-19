@@ -92,7 +92,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 // and updates SNP information in SNP_Prof.
 // This function will be called from main program.
 //--------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) CallSNPs() (int, int) {
+func (S *SNP_Prof) CallSNPs() {
 
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindSNPs,
 	//when a FindSNPs goroutine finish copying a read to its own memory, it signals ReadReads goroutine to scan next reads.
@@ -114,7 +114,6 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 		close(snp_results)
 		close(debug_info)
 	}()
-
 	//Collect SNPs from results channel and update SNPs and their probabilities
 	go func() {
 		var snp SNP
@@ -126,39 +125,36 @@ func (S *SNP_Prof) CallSNPs() (int, int) {
 			}
 		}
 	}()
-
-	OutputDebugInfo(debug_info)
-
-	return 0, 0
+	ProcessDebugInfo(debug_info)
 }
 
 //Write debug info to files
-func OutputDebugInfo(debug_info chan Debug_info) {
+func ProcessDebugInfo(debug_info chan Debug_info) {
 	var i int
 	var snp_pos uint32
 	for d := range debug_info {
 		if d.snp_num1 > 0 {
 			for i, snp_pos = range d.snp_pos1 {
 				if len(d.snp_base1[i]) == 0 {
-					CheckEvalCategory(d, snp_pos, []byte{'.'}, []byte{'I'})
+					OutputDebugInfo(d, snp_pos, []byte{'.'}, []byte{'I'})
 				} else {
-					CheckEvalCategory(d, snp_pos, d.snp_base1[i], d.snp_baseq1[i])
+					OutputDebugInfo(d, snp_pos, d.snp_base1[i], d.snp_baseq1[i])
 				}
 			}
 		}
 		if d.snp_num2 > 0 {
 			for i, snp_pos = range d.snp_pos2 {
 				if len(d.snp_base2[i]) == 0 {
-					CheckEvalCategory(d, snp_pos, []byte{'.'}, []byte{'I'})
+					OutputDebugInfo(d, snp_pos, []byte{'.'}, []byte{'I'})
 				} else {
-					CheckEvalCategory(d, snp_pos, d.snp_base2[i], d.snp_baseq2[i])
+					OutputDebugInfo(d, snp_pos, d.snp_base2[i], d.snp_baseq2[i])
 				}
 			}
 		}
 	}
 }
 
-func CheckEvalCategory(d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
+func OutputDebugInfo(d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
 	var ok bool
 	var val []byte
 	if val, ok = TRUE_VAR_COMP[int(snp_pos)]; ok {
@@ -216,21 +212,29 @@ func WriteDebugInfo(file_name string, d Debug_info, snp_pos uint32, snp_base []b
 	file, _ := os.OpenFile(INPUT_INFO.SNP_call_file + "." + file_name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
 	defer file.Close()
 
-	var pos_diff int64
-	if d.align_pos1 == 0 || d.align_pos2 == 0 {
-		pos_diff = -1
+	if d.align_pos1 != 0 && d.align_pos2 != 0 {
+		file.WriteString(strconv.Itoa(d.align_pos1 - d.align_pos2) + "\t")
 	} else {
-		pos_diff = int64(d.align_pos1 - d.align_pos2)
+		file.WriteString("None\t")
 	}
-	tokens := bytes.Split(d.read_info1, []byte{'_'})
-	true_pos1, _ := strconv.ParseInt(string(tokens[2]), 10, 32)
-	true_pos2, _ := strconv.ParseInt(string(tokens[3]), 10, 32)
-	true_pos_diff := true_pos1 - true_pos2
-	file.WriteString(strconv.FormatInt(pos_diff, 10) + "\t" + strconv.FormatInt(int64(d.align_pos1), 10) + "\t" + strconv.FormatInt(int64(d.align_pos2), 10) + "\t")
-	file.WriteString(strconv.FormatInt(true_pos_diff, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + "\t" + strconv.FormatInt(true_pos2, 10) + "\t")
-	file.WriteString(strconv.FormatInt(int64(snp_pos), 10) + "\t" + string(snp_base) + "\t")
+	file.WriteString(strconv.Itoa(d.align_pos1) + "\t" + strconv.Itoa(d.align_pos2) + "\t")
+	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(snp_base) + "\t")
 	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
-	file.WriteString(string(tokens[10]) + "\n")
+
+	tokens := bytes.Split(d.read_info1, []byte{'_'})
+	if len(tokens) >= 11 {
+		true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 32)
+		true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 32)
+		if err1 == nil && err2 == nil {
+			file.WriteString(strconv.FormatInt(true_pos1 - true_pos2, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + "\t" + strconv.FormatInt(true_pos2, 10) + "\t")
+		} else {
+			file.WriteString("None\tNone\tNone\t")
+		}
+		file.WriteString(string(tokens[10]) + "\n")
+	} else {
+		file.WriteString("None\tNone\tNone\tNone\n")
+	}
+
 	file.Sync()
 }
 
