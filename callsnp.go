@@ -217,45 +217,38 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		snps2, left_most_pos2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
 			read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
 		//PrintMemStats("After FindSNPsFromEnd2")
-		if left_most_pos1 == 0 || left_most_pos2 == 0 {
+		if left_most_pos1 == 0 || left_most_pos2 == 0 || int(math.Abs(float64(left_most_pos1 - left_most_pos2))) <= PARA_INFO.Max_diff {
+			/*
+			var d Debug_info
+			d.read_info1 = make([]byte, len(read_info.Info1))
+			d.read_info2 = make([]byte, len(read_info.Info2))
+			copy(d.read_info1, read_info.Info1)
+			copy(d.read_info2, read_info.Info2)
+			d.align_pos1 = left_most_pos1
+			d.align_pos2 = left_most_pos2
+			*/
+			var snp SNP
+			if len(snps1) > 0 {
+				for _, snp = range snps1 {
+					snp_results <- snp
+					//d.snp_pos1 = append(d.snp_pos1, snp.Pos)
+					//d.snp_base1 = append(d.snp_base1, snp.Bases)
+					//d.snp_baseq1 = append(d.snp_baseq1, snp.BaseQ)
+				}
+			}
+			if len(snps2) > 0 {
+				for _, snp = range snps2 {
+					snp_results <- snp
+					//d.snp_pos2 = append(d.snp_pos2, snp.Pos)
+					//d.snp_base2 = append(d.snp_base2, snp.Bases)
+					//d.snp_baseq2 = append(d.snp_baseq2, snp.BaseQ)
+				}
+			}
+			//DEBUG_INFO <- d
 			break
-		} else if int(math.Abs(float64(left_most_pos1 - left_most_pos2))) <= PARA_INFO.Max_diff {
-			break
 		}
+		loop_num++
 	}
-
-	//Will process constrants of two ends here
-	//...
-
-
-	/*
-	var d Debug_info
-	d.read_info1 = make([]byte, len(read_info.Info1))
-	d.read_info2 = make([]byte, len(read_info.Info2))
-	copy(d.read_info1, read_info.Info1)
-	copy(d.read_info2, read_info.Info2)
-	d.align_pos1 = left_most_pos1
-	d.align_pos2 = left_most_pos2
-	*/
-
-	var snp SNP
-	if len(snps1) > 0 {
-		for _, snp = range snps1 {
-			snp_results <- snp
-			//d.snp_pos1 = append(d.snp_pos1, snp.Pos)
-			//d.snp_base1 = append(d.snp_base1, snp.Bases)
-			//d.snp_baseq1 = append(d.snp_baseq1, snp.BaseQ)
-		}
-	}
-	if len(snps2) > 0 {
-		for _, snp = range snps2 {
-			snp_results <- snp
-			//d.snp_pos2 = append(d.snp_pos2, snp.Pos)
-			//d.snp_base2 = append(d.snp_base2, snp.Bases)
-			//d.snp_baseq2 = append(d.snp_baseq2, snp.BaseQ)
-		}
-	}
-	//DEBUG_INFO <- d
 }
 
 //---------------------------------------------------------------------------------------------------
