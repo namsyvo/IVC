@@ -6,8 +6,6 @@
 package isc
 
 import (
-	"runtime"
-	"log"
 	"math"
 	"fmt"
 )
@@ -18,19 +16,6 @@ var (
 	INF             = math.MaxInt16 				// Value for Infinity
 	EPSILON         = 0.01							//Value for prior probability of new alleles
 )
-
-//Global variable for memory profiling
-var Memstats = new(runtime.MemStats)
-
-//Printing memory information
-func PrintMemStats(mesg string) {
-    runtime.ReadMemStats(Memstats)
-    log.Printf(mesg + "\t%d\t%d\t%d\t%d\t%d\t%.3f%.3f%.3f%.3f%.3f",
-		Memstats.Alloc, Memstats.TotalAlloc, Memstats.Sys, Memstats.HeapAlloc, Memstats.HeapSys,
-		float64(Memstats.Alloc)/(math.Pow(1024, 3)), float64(Memstats.TotalAlloc)/(math.Pow(1024, 3)),
-		float64(Memstats.Sys)/(math.Pow(1024, 3)), float64(Memstats.HeapAlloc)/(math.Pow(1024, 3)),
-		float64(Memstats.HeapSys)/(math.Pow(1024, 3)))
-}
 
 //Input information
 type InputInfo struct {
@@ -58,24 +43,26 @@ type ParaInfo struct {
 	Err_var_factor  int     //factor for standard variation of sequencing error
 	Iter_num_factor int     //factor for number of iterations 
 	Read_len        int     //read length, calculated from read files
+	Info_len		int 	//length of read information
+	Max_diff		int 	//maximum distance of alignment postions of two ends
 }
 
-//--------------------------------------------------------------------------------------------------
-//SetPara sets values for parameters
-//--------------------------------------------------------------------------------------------------
-func SetPara(read_len int, seq_err float32) *ParaInfo {
+//SetPara sets values of parameters for alignment process
+func SetPara(read_len int, seq_err float32, max_diff int) *ParaInfo {
 	para_info := new(ParaInfo)
 	para_info.Max_match = 16
 	para_info.Err_var_factor = 4
-	para_info.Iter_num_factor = 2
+	para_info.Iter_num_factor = 1
 	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
+	para_info.Info_len = 200	//a big enough number to store read headers
+	para_info.Max_diff = max_diff	//based on simulated data, will be estimated from reads with real data
 
 	//Const for computing distance
 	err := float64(para_info.Seq_err)
 	rlen := float64(para_info.Read_len)
 	k := float64(para_info.Err_var_factor)
-	para_info.Dist_thres = int(0.01 * rlen) + int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	para_info.Dist_thres = int(0.02 * rlen) + int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
 	//factor 0.02 above is assigned based on rate of SNP and INDEL reported in SNP profile of human genome
 	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
@@ -100,20 +87,20 @@ type ReadInfo struct {
 	Info1, Info2		   []byte 		//info of the first and second ends
 }
 
-//Initializing read content
-func InitReadInfo(arr_len int) *ReadInfo {
+//InitReadInfo create a read info object and initializes its content
+func InitReadInfo(read_len, info_len int) *ReadInfo {
 	read_info := new(ReadInfo)
-	read_info.Read1, read_info.Read2 = make([]byte, arr_len), make([]byte, arr_len)
-	read_info.Qual1, read_info.Qual2 = make([]byte, arr_len), make([]byte, arr_len)
-	read_info.Rev_read1, read_info.Rev_read2 = make([]byte, arr_len), make([]byte, arr_len)
-	read_info.Rev_comp_read1, read_info.Rev_comp_read2 = make([]byte, arr_len), make([]byte, arr_len)
-	read_info.Comp_read1, read_info.Comp_read2 = make([]byte, arr_len), make([]byte, arr_len)
-	read_info.Rev_qual1, read_info.Rev_qual2 = make([]byte, arr_len), make([]byte, arr_len)
-	read_info.Info1, read_info.Info2 = make([]byte, arr_len), make([]byte, arr_len)
+	read_info.Read1, read_info.Read2 = make([]byte, read_len), make([]byte, read_len)
+	read_info.Qual1, read_info.Qual2 = make([]byte, read_len), make([]byte, read_len)
+	read_info.Rev_read1, read_info.Rev_read2 = make([]byte, read_len), make([]byte, read_len)
+	read_info.Rev_comp_read1, read_info.Rev_comp_read2 = make([]byte, read_len), make([]byte, read_len)
+	read_info.Comp_read1, read_info.Comp_read2 = make([]byte, read_len), make([]byte, read_len)
+	read_info.Rev_qual1, read_info.Rev_qual2 = make([]byte, read_len), make([]byte, read_len)
+	read_info.Info1, read_info.Info2 = make([]byte, info_len), make([]byte, info_len)
 	return read_info
 }
 
-//Printing read information
+//PrintReads prints read information
 func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("read1: ", string(read_info.Read1))
 	fmt.Println("read2: ", string(read_info.Read2))
@@ -123,37 +110,36 @@ func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("info2: ", string(read_info.Info2))
 }
 
-//Computing reverse, reverse complement, and complement of a read.
+//RevComp computes reverse, reverse complement, and complement of a read.
 func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
 	read_len := len(read)
 	for i, elem := range read {
-		rev_qual[i] = qual[read_len-i-1]
+		rev_qual[i] = qual[read_len-1-i]
 		if elem == 'A' {
-			rev_read[read_len-i-1] = 'A'
+			rev_read[read_len-1-i] = 'A'
 			rev_comp_read[read_len-1-i] = 'T'
 			comp_read[i] = 'T'
 		} else if elem == 'T' {
-			rev_read[read_len-i-1] = 'T'
+			rev_read[read_len-1-i] = 'T'
 			rev_comp_read[read_len-1-i] = 'A'
 			comp_read[i] = 'A'
 		} else if elem == 'C' {
-			rev_read[read_len-i-1] = 'C'
+			rev_read[read_len-1-i] = 'C'
 			rev_comp_read[read_len-1-i] = 'G'
 			comp_read[i] = 'G'
 		} else if elem == 'G' {
-			rev_read[read_len-i-1] = 'G'
+			rev_read[read_len-1-i] = 'G'
 			rev_comp_read[read_len-1-i] = 'C'
 			comp_read[i] = 'C'
 		} else {
-			rev_read[read_len-i-1] = elem
+			rev_read[read_len-1-i] = elem
 			rev_comp_read[read_len-1-i] = elem
 			comp_read[i] = elem
 		}
 	}
 }
 
-//Alignment information
-//Shared variables between functions for alignment process (computing distance, snp call)
+//Alignment information, served as shared variables between functions for alignment process
 type AlignInfo struct {
 	Bw_Dis   [][]int    // Distance matrix for backward alignment
 	Fw_Dis   [][]int    // Distance matrix for forward alignment
@@ -161,7 +147,7 @@ type AlignInfo struct {
 	Fw_Trace [][][]byte // SNP trace matrix for forward alignment
 }
 
-//Allocating memory for share variables for alignment process
+//InitAlignInfo allocates memory for share variables for alignment process
 func InitAlignInfo(arr_len int) *AlignInfo {
 	align_info := new(AlignInfo)
 	align_info.Bw_Dis, align_info.Bw_Trace = InitAlignMatrix(arr_len)
@@ -169,7 +155,7 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 	return align_info
 }
 
-//Initializing variables for computing distance and alignment between reads and multi-genomes.
+//InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
 func InitAlignMatrix(arr_len int) ([][]int, [][][]byte) {
 	dis_mtr := make([][]int, arr_len + 1)
 	for i := 0; i <= arr_len; i++ {
@@ -182,19 +168,9 @@ func InitAlignMatrix(arr_len int) ([][]int, [][][]byte) {
 	return dis_mtr, trace_mtr
 }
 
-
 //--------------------------------------------------------------------------------------------------
-//Utilization functions
+//Utility functions
 //--------------------------------------------------------------------------------------------------
-
-//QualtoProb converts base qualities decoded by ASCII codes to probabilities
-func QualtoProb(e byte) float64 {
-	return math.Pow(10, -(float64(e) - 33)/10.0)
-}
-//ProbtoQual converts probabilities to phred-scale quality scores
-func ProbtoQual(p float64) float32 {
-	return float32(-10*math.Log10(1 - p))
-}
 
 //--------------------------------------------------------------------------------------------------
 // IntervalHasSNP determines whether [i, j] contains SNP positions which are stores in array A.
