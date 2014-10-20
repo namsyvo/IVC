@@ -40,8 +40,7 @@ func main() {
 	//Call SNPs from read-multigenome alignment--------------------------------//
 	fmt.Println("Calling SNPs based on aligning reads to the mutigenome...")
 	start_time = time.Now()
-	snp_call_num, del_num := snp_prof.CallSNPs()
-	fmt.Println("\tNumber of SNP calls, DEL calls: ", snp_call_num, del_num)
+	snp_prof.CallSNPs()
 	align_time := time.Since(start_time)
 	log.Printf("time for calling SNPs:\t%s", align_time)
 	isc.PrintMemStats("memstats after calling SNPs")

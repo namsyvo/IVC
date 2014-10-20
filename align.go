@@ -15,6 +15,16 @@ import (
 	"sort"
 )
 
+//Index for SNP caller
+type Index struct {
+	SEQ            []byte            //store reference multigenomes
+	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
+	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
+	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
+	SORTED_SNP_POS []int             //sorted array of SNP positions
+	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
+}
+
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
@@ -103,7 +113,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info *AlignInfo) (int, []int, [][]byte, []int, []int, [][]byte, []int) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info *AlignInfo) (int, []int, [][]byte, []int, []int, [][]byte, []int, int) {
 
 	var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
 	var lcs_len int = s_pos - e_pos + 1
@@ -159,5 +169,5 @@ func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, ali
 		left_snp_idx = append(left_snp_idx, left_idx...)
 		right_snp_idx = append(right_snp_idx, right_idx...)
 	}
-	return dis, left_snp_pos, left_snp_val, left_snp_idx, right_snp_pos, right_snp_val, right_snp_idx
+	return dis, left_snp_pos, left_snp_val, left_snp_idx, right_snp_pos, right_snp_val, right_snp_idx, left_most_pos
 }
