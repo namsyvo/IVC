@@ -67,11 +67,12 @@ type SNP_debug struct {
 
 /*
  Log file format:
-  align_pos_diff  align_pos1  align_pos2  snp_pos  snp_base  snp_base_qual  snp_qual_prob  true_pos_diff  true_pos1  true_pos2  read_id
+  snp_pos  snp_base  snp_base_qual  snp_qual_prob align_dis1  align_dis2  align_pos_diff  align_pos1  align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
   ...
  where:
-  one line is corresponding to one variant call
+  values in one line are corresponding to one variant call
   value is "None" if not exist
+  snp_pos is consecutive in increasing order
 
  Log file names:
   "tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", \
@@ -99,9 +100,9 @@ func GetDebugInfo() {
 			for i, snp_pos = range d.snp_pos1 {
 				var snp_debug SNP_debug
 				if len(d.snp_base1[i]) == 0 {
-					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_pos1, d.align_pos2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
 				} else {
-					snp_debug = SNP_debug{d.snp_base1[i], d.snp_baseq1[i], d.align_pos1, d.align_pos2, d.align_pos1, d.align_pos2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{d.snp_base1[i], d.snp_baseq1[i], d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
 				}
 				DEBUG_INFO_MAP[snp_pos] = append(DEBUG_INFO_MAP[snp_pos], snp_debug)
 			}
@@ -110,9 +111,9 @@ func GetDebugInfo() {
 			for i, snp_pos = range d.snp_pos2 {
 				var snp_debug SNP_debug
 				if len(d.snp_base2[i]) == 0 {
-					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_pos1, d.align_pos2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
 				} else {
-					snp_debug = SNP_debug{d.snp_base2[i], d.snp_baseq2[i], d.align_pos1, d.align_pos2, d.align_pos1, d.align_pos2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{d.snp_base2[i], d.snp_baseq2[i], d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
 				}
 				DEBUG_INFO_MAP[snp_pos] = append(DEBUG_INFO_MAP[snp_pos], snp_debug)
 			}
