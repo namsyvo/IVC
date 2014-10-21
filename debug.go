@@ -156,58 +156,58 @@ func OutputDebugInfo(files []*os.File, d SNP_debug, snp_pos uint32) {
 	if val, ok = TRUE_VAR_COMP[int(snp_pos)]; ok {
 		if len(d.snp_base) == 1 {
 			if d.snp_base[0] == val[0] {
-				WriteDebugInfo(files[0], d, snp_pos)
+				WriteDebugInfo(files[0], d, snp_pos, val)
 			} else {
-				WriteDebugInfo(files[1], d, snp_pos)
+				WriteDebugInfo(files[1], d, snp_pos, val)
 			}
 		} else {
 			if bytes.Equal(d.snp_base, val) {
-				WriteDebugInfo(files[2], d, snp_pos)
+				WriteDebugInfo(files[2], d, snp_pos, val)
 			} else {
-				WriteDebugInfo(files[3], d, snp_pos)
+				WriteDebugInfo(files[3], d, snp_pos, val)
 			}
 		}
 	} else if val, ok = TRUE_VAR_PART[int(snp_pos)]; ok {
 		if len(d.snp_base) == 1 {
 			if d.snp_base[0] == val[0] {
-				WriteDebugInfo(files[4], d, snp_pos)
+				WriteDebugInfo(files[4], d, snp_pos, val)
 			} else {
-				WriteDebugInfo(files[5], d, snp_pos)
+				WriteDebugInfo(files[5], d, snp_pos, val)
 			}
 		} else {
 			if bytes.Equal(d.snp_base, val) {
-				WriteDebugInfo(files[6], d, snp_pos)
+				WriteDebugInfo(files[6], d, snp_pos, val)
 			} else {
-				WriteDebugInfo(files[7], d, snp_pos)
+				WriteDebugInfo(files[7], d, snp_pos, val)
 			}
 		}
 	} else if val, ok = TRUE_VAR_NONE[int(snp_pos)]; ok {
 		if len(d.snp_base) == 1 {
 			if d.snp_base[0] == val[0] {
-				WriteDebugInfo(files[8], d, snp_pos)
+				WriteDebugInfo(files[8], d, snp_pos, val)
 			} else {
-				WriteDebugInfo(files[9], d, snp_pos)
+				WriteDebugInfo(files[9], d, snp_pos, val)
 			}
 		} else {
 			if bytes.Equal(d.snp_base, val) {
-				WriteDebugInfo(files[10], d, snp_pos)
+				WriteDebugInfo(files[10], d, snp_pos, val)
 			} else {
-				WriteDebugInfo(files[11], d, snp_pos)
+				WriteDebugInfo(files[11], d, snp_pos, val)
 			}
 		}
 	} else {
 		if len(d.snp_base) == 1 {
-			WriteDebugInfo(files[12], d, snp_pos)
+			WriteDebugInfo(files[12], d, snp_pos, val)
 		} else {
-			WriteDebugInfo(files[13], d, snp_pos)
+			WriteDebugInfo(files[13], d, snp_pos, val)
 		}
 	}
 }
 
 //Write debug info to files
-func WriteDebugInfo(file *os.File, d SNP_debug, snp_pos uint32) {
+func WriteDebugInfo(file *os.File, d SNP_debug, snp_pos uint32, true_var []byte) {
 
-	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(d.snp_base) + "\t")
+	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(true_var) + "\t" + string(d.snp_base) + "\t")
 	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(d.snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
 	
 	file.WriteString(string(d.end_from) + "\t" + strconv.Itoa(d.align_dis1) + "\t" + strconv.Itoa(d.align_dis2) + "\t")
