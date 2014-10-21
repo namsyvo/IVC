@@ -68,12 +68,14 @@ type SNP_debug struct {
 
 /*
  Log file format:
-  snp_pos  snp_base  snp_base_qual  snp_qual_prob align_dis1  align_dis2  align_pos_diff  align_pos1  align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
+  snp_pos  true_snp  snp_base  snp_qual end_from  align_dis1  align_dis2  align_pos_diff  align_pos1  align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
   ...
  where:
   values in one line are corresponding to one variant call
   value is "None" if not exist
   snp_pos is consecutive in increasing order
+  end_from is the read end (1 or 2) in which SNPs are called
+  snp_qual is probability of base being wrong (converted from encoded ASCII char in FASTQ format)
 
  Log file names:
   "tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", \
@@ -86,7 +88,7 @@ type SNP_debug struct {
   comp: info at complete knowledge locations
   part: info at partial knowledge locations
   none: info at no knowledge locations
-  other: info other locations
+  other: info at other locations (totaly false positives)
 */
 //--------------------------------------------------------------------------------------------------
 
