@@ -52,19 +52,11 @@ type SNP_Prof struct {
 // This function will be called from main program.
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
-
 	INPUT_INFO = input_info
 	PARA_INFO = *SetPara(100, 0.001, 500)
 	INDEX.Init()
-
-	// Assign all possible SNPs and their prior probabilities from SNP profile.
 	S.SNP_Calls = make(map[uint32]map[string]float64)
-	
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	//TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_comp.txt")
-	//TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
-	//TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -81,31 +73,40 @@ func (S *SNP_Prof) CallSNPs() {
 	read_data := make(chan *ReadInfo, INPUT_INFO.Routine_num)
 	go S.ReadReads(read_data, read_signal)
 
-	//DEBUG_INFO = make(chan Debug_info)
-
 	//Call goroutines to find SNPs, pass shared variable to each goroutine
 	snp_results := make(chan SNP)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
 		go S.FindSNPs(read_data, read_signal, snp_results, &wg)
 	}
+	//------------------------
+	//For debugging
+	go func() {
+		GetDebugInfo()
+	}()
+	//------------------------
 	go func() {
 		wg.Wait()
 		close(snp_results)
-		//close(DEBUG_INFO)
+		//------------------------
+		close(DEBUG_INFO_CHAN)
+		//------------------------
 	}()
+
 	//Collect SNPs from results channel and update SNPs and their probabilities
-	//go func() {
-		var snp SNP
-		for snp = range snp_results {
-			if len(snp.Bases) == 1 {
-				S.UpdateSNPProb(snp)
+	var snp SNP
+	for snp = range snp_results {
+		if len(snp.Bases) == 1 {
+			S.UpdateSNPProb(snp)
 			} else {
-				S.UpdateIndelProb(snp)
-			}
+			S.UpdateIndelProb(snp)
 		}
-	//}()
-	//ProcessDebugInfo()
+	}
+	
+	//------------------------
+	//For debugging
+	ProcessDebugInfo()
+	//------------------------
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -163,14 +164,14 @@ func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp_results chan SNP, 
 	wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
 
 	//Initialize inter-function share variables
 	read_info := InitReadInfo(PARA_INFO.Read_len, PARA_INFO.Info_len)
 	align_info := InitAlignInfo(PARA_INFO.Read_len)
 	match_pos := make([]int, PARA_INFO.Max_match)
 
-	wg.Add(1)
-	defer wg.Done()
 	for read := range read_data {
 		//PrintMemStats("Before copying all info from data chan")
 		read_info.Info1 = read_info.Info1[ : PARA_INFO.Info_len]
@@ -218,7 +219,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
 		//PrintMemStats("After FindSNPsFromEnd2")
 		if left_most_pos1 == 0 || left_most_pos2 == 0 || int(math.Abs(float64(left_most_pos1 - left_most_pos2))) <= PARA_INFO.Max_diff {
-			/*
+
 			var d Debug_info
 			d.read_info1 = make([]byte, len(read_info.Info1))
 			d.read_info2 = make([]byte, len(read_info.Info2))
@@ -226,25 +227,25 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			copy(d.read_info2, read_info.Info2)
 			d.align_pos1 = left_most_pos1
 			d.align_pos2 = left_most_pos2
-			*/
+			
 			var snp SNP
 			if len(snps1) > 0 {
 				for _, snp = range snps1 {
 					snp_results <- snp
-					//d.snp_pos1 = append(d.snp_pos1, snp.Pos)
-					//d.snp_base1 = append(d.snp_base1, snp.Bases)
-					//d.snp_baseq1 = append(d.snp_baseq1, snp.BaseQ)
+					d.snp_pos1 = append(d.snp_pos1, snp.Pos)
+					d.snp_base1 = append(d.snp_base1, snp.Bases)
+					d.snp_baseq1 = append(d.snp_baseq1, snp.BaseQ)
 				}
 			}
 			if len(snps2) > 0 {
 				for _, snp = range snps2 {
 					snp_results <- snp
-					//d.snp_pos2 = append(d.snp_pos2, snp.Pos)
-					//d.snp_base2 = append(d.snp_base2, snp.Bases)
-					//d.snp_baseq2 = append(d.snp_baseq2, snp.BaseQ)
+					d.snp_pos2 = append(d.snp_pos2, snp.Pos)
+					d.snp_base2 = append(d.snp_base2, snp.Bases)
+					d.snp_baseq2 = append(d.snp_baseq2, snp.BaseQ)
 				}
 			}
-			//DEBUG_INFO <- d
+			DEBUG_INFO_CHAN <- d
 			break
 		}
 		loop_num++

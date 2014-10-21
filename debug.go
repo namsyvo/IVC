@@ -15,6 +15,7 @@ import (
 	"strings"
 	"runtime"
 	"log"
+	"sort"
 )
 
 //QualtoProb converts base qualities decoded by ASCII codes to probabilities
@@ -41,8 +42,11 @@ func PrintMemStats(mesg string) {
 
 //Global variable for debugging
 var (
-	DEBUG_INFO chan Debug_info
-	TRUE_VAR_COMP, TRUE_VAR_PART, TRUE_VAR_NONE map[int][]byte
+    DEBUG_INFO_CHAN = make(chan Debug_info)
+	DEBUG_INFO_MAP = make(map[uint32][]SNP_debug)
+    TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_comp.txt")
+    TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
+    TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
 )
 
 type Debug_info struct {
@@ -51,6 +55,12 @@ type Debug_info struct {
 	snp_pos1, snp_pos2 []uint32
 	snp_base1, snp_base2 [][]byte
 	snp_baseq1, snp_baseq2 [][]byte
+}
+
+type SNP_debug struct {
+	align_pos1, align_pos2 int
+	read_info1, read_info2 []byte
+	snp_base, snp_baseq []byte
 }
 
 /*
@@ -76,107 +86,133 @@ type Debug_info struct {
 */
 //--------------------------------------------------------------------------------------------------
 
-//Read debug info from channel and process them
-func ProcessDebugInfo() {
+//Read debug info from channel and store them
+func GetDebugInfo() {
 	var i int
 	var snp_pos uint32
+	var d Debug_info
 
+	for d = range DEBUG_INFO_CHAN {
+		if len(d.snp_pos1) > 0 {
+			for i, snp_pos = range d.snp_pos1 {
+				var snp_debug SNP_debug
+				if len(d.snp_base1[i]) == 0 {
+					snp_debug = SNP_debug{d.align_pos1, d.align_pos2, d.read_info1, d.read_info2, []byte{'.'}, []byte{'I'}}
+				} else {
+					snp_debug = SNP_debug{d.align_pos1, d.align_pos2, d.read_info1, d.read_info2, d.snp_base1[i], d.snp_baseq1[i]}
+				}
+				DEBUG_INFO_MAP[snp_pos] = append(DEBUG_INFO_MAP[snp_pos], snp_debug)
+			}
+		}
+		if len(d.snp_pos2) > 0 {
+			for i, snp_pos = range d.snp_pos2 {
+				var snp_debug SNP_debug
+				if len(d.snp_base2[i]) == 0 {
+					snp_debug = SNP_debug{d.align_pos1, d.align_pos2, d.read_info1, d.read_info2, []byte{'.'}, []byte{'I'}}
+				} else {
+					snp_debug = SNP_debug{d.align_pos1, d.align_pos2, d.read_info1, d.read_info2, d.snp_base2[i], d.snp_baseq2[i]}
+				}
+				DEBUG_INFO_MAP[snp_pos] = append(DEBUG_INFO_MAP[snp_pos], snp_debug)
+			}
+		}
+	}
+}
+
+//Process debug info
+func ProcessDebugInfo() {
 	files := make([]*os.File, 14)
 	file_names := []string{"tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", "tp_snp_none", "fp_snp_none", "tp_indel_none", "fp_indel_none", "fp_snp_other", "fp_indel_other"}
 	for i, file_name := range file_names {
 		files[i], _ = os.Create(INPUT_INFO.SNP_call_file + "." + file_name)
 		defer files[i].Close()
 	}
-	for d := range DEBUG_INFO {
-		if len(d.snp_pos1) > 0 {
-			for i, snp_pos = range d.snp_pos1 {
-				if len(d.snp_base1[i]) == 0 {
-					OutputDebugInfo(files, d, snp_pos, []byte{'.'}, []byte{'I'})
-				} else {
-					OutputDebugInfo(files, d, snp_pos, d.snp_base1[i], d.snp_baseq1[i])
-				}
-			}
-		}
-		if len(d.snp_pos2) > 0 {
-			for i, snp_pos = range d.snp_pos2 {
-				if len(d.snp_base2[i]) == 0 {
-					OutputDebugInfo(files, d, snp_pos, []byte{'.'}, []byte{'I'})
-				} else {
-					OutputDebugInfo(files, d, snp_pos, d.snp_base2[i], d.snp_baseq2[i])
-				}
-			}
+
+	var snp_pos uint32
+	var pos int
+	var d SNP_debug
+
+	SNP_Pos := make([]int, 0, len(DEBUG_INFO_MAP))
+    for snp_pos, _ = range DEBUG_INFO_MAP {
+        SNP_Pos = append(SNP_Pos, int(snp_pos))
+    }
+    sort.Ints(SNP_Pos)
+
+    for _, pos = range SNP_Pos {
+		snp_pos = uint32(pos)
+		for _, d = range DEBUG_INFO_MAP[snp_pos] {
+			OutputDebugInfo(files, d, snp_pos)
 		}
 	}
 }
 
 //Output debug info to proper files
-func OutputDebugInfo(files []*os.File, d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
+func OutputDebugInfo(files []*os.File, d SNP_debug, snp_pos uint32) {
 	var ok bool
 	var val []byte
 	if val, ok = TRUE_VAR_COMP[int(snp_pos)]; ok {
-		if len(snp_base) == 1 {
-			if snp_base[0] == val[0] {
-				WriteDebugInfo(files[0], d, snp_pos, snp_base, snp_baseq)
+		if len(d.snp_base) == 1 {
+			if d.snp_base[0] == val[0] {
+				WriteDebugInfo(files[0], d, snp_pos)
 			} else {
-				WriteDebugInfo(files[1], d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[1], d, snp_pos)
 			}
 		} else {
-			if bytes.Equal(snp_base, val) {
-				WriteDebugInfo(files[2], d, snp_pos, snp_base, snp_baseq)
+			if bytes.Equal(d.snp_base, val) {
+				WriteDebugInfo(files[2], d, snp_pos)
 			} else {
-				WriteDebugInfo(files[3], d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[3], d, snp_pos)
 			}
 		}
 	} else if val, ok = TRUE_VAR_PART[int(snp_pos)]; ok {
-		if len(snp_base) == 1 {
-			if snp_base[0] == val[0] {
-				WriteDebugInfo(files[4], d, snp_pos, snp_base, snp_baseq)
+		if len(d.snp_base) == 1 {
+			if d.snp_base[0] == val[0] {
+				WriteDebugInfo(files[4], d, snp_pos)
 			} else {
-				WriteDebugInfo(files[5], d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[5], d, snp_pos)
 			}
 		} else {
-			if bytes.Equal(snp_base, val) {
-				WriteDebugInfo(files[6], d, snp_pos, snp_base, snp_baseq)
+			if bytes.Equal(d.snp_base, val) {
+				WriteDebugInfo(files[6], d, snp_pos)
 			} else {
-				WriteDebugInfo(files[7], d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[7], d, snp_pos)
 			}
 		}
 	} else if val, ok = TRUE_VAR_NONE[int(snp_pos)]; ok {
-		if len(snp_base) == 1 {
-			if snp_base[0] == val[0] {
-				WriteDebugInfo(files[8], d, snp_pos, snp_base, snp_baseq)
+		if len(d.snp_base) == 1 {
+			if d.snp_base[0] == val[0] {
+				WriteDebugInfo(files[8], d, snp_pos)
 			} else {
-				WriteDebugInfo(files[9], d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[9], d, snp_pos)
 			}
 		} else {
-			if bytes.Equal(snp_base, val) {
-				WriteDebugInfo(files[10], d, snp_pos, snp_base, snp_baseq)
+			if bytes.Equal(d.snp_base, val) {
+				WriteDebugInfo(files[10], d, snp_pos)
 			} else {
-				WriteDebugInfo(files[11], d, snp_pos, snp_base, snp_baseq)
+				WriteDebugInfo(files[11], d, snp_pos)
 			}
 		}
 	} else {
-		if len(snp_base) == 1 {
-			WriteDebugInfo(files[12], d, snp_pos, snp_base, snp_baseq)
+		if len(d.snp_base) == 1 {
+			WriteDebugInfo(files[12], d, snp_pos)
 		} else {
-			WriteDebugInfo(files[13], d, snp_pos, snp_base, snp_baseq)
+			WriteDebugInfo(files[13], d, snp_pos)
 		}
 	}
 }
 
 //Write debug info to files
-func WriteDebugInfo(file *os.File, d Debug_info, snp_pos uint32, snp_base []byte, snp_baseq []byte) {
+func WriteDebugInfo(file *os.File, d SNP_debug, snp_pos uint32) {
 
+	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(d.snp_base) + "\t")
+	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(d.snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
+	
 	if d.align_pos1 != 0 && d.align_pos2 != 0 {
 		file.WriteString(strconv.Itoa(d.align_pos1 - d.align_pos2) + "\t")
 	} else {
 		file.WriteString("None\t")
 	}
 	file.WriteString(strconv.Itoa(d.align_pos1) + "\t" + strconv.Itoa(d.align_pos2) + "\t")
-	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(snp_base) + "\t")
-	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
-	//file.WriteString(string(d.read_info1[32:]) + "\n")
-	
+
 	tokens := bytes.Split(d.read_info1, []byte{'_'})
 	if len(tokens) >= 11 {
 		true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
