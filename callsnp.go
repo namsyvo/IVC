@@ -204,30 +204,32 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, match_pos []int) {
 
 	var snps1, snps2 []SNP
-	var left_most_pos1, left_most_pos2 int
+	var left_align_pos1, left_align_pos2, min_dis1, min_dis2 int
 	loop_num := 1
 	for loop_num < 5 {
 		//Find SNPs for the first end
 		//PrintMemStats("Before FindSNPsFromEnd1")
-		snps1, left_most_pos1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
+		snps1, left_align_pos1, min_dis1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, read_info.Rev_comp_read1, 
 			read_info.Comp_read1, read_info.Qual1, read_info.Rev_qual1, align_info, match_pos)
 		//PrintMemStats("After FindSNPsFromEnd1")
 
 		//Find SNPs for the second end
 		//PrintMemStats("Before FindSNPsFromEnd2")
-		snps2, left_most_pos2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
+		snps2, left_align_pos2, min_dis2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, read_info.Rev_comp_read2, 
 			read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
 		//PrintMemStats("After FindSNPsFromEnd2")
-		if left_most_pos1 == 0 || left_most_pos2 == 0 || int(math.Abs(float64(left_most_pos1 - left_most_pos2))) <= PARA_INFO.Max_diff {
+		if left_align_pos1 == 0 || left_align_pos2 == 0 || int(math.Abs(float64(left_align_pos1 - left_align_pos2))) <= PARA_INFO.Max_diff {
 
 			var d Debug_info
 			d.read_info1 = make([]byte, len(read_info.Info1))
 			d.read_info2 = make([]byte, len(read_info.Info2))
 			copy(d.read_info1, read_info.Info1)
 			copy(d.read_info2, read_info.Info2)
-			d.align_pos1 = left_most_pos1
-			d.align_pos2 = left_most_pos2
-			
+			d.align_pos1 = left_align_pos1
+			d.align_pos2 = left_align_pos2
+			d.align_dis1 = min_dis1
+			d.align_dis2 = min_dis2
+
 			var snp SNP
 			if len(snps1) > 0 {
 				for _, snp = range snps1 {
@@ -256,15 +258,16 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 // FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read, qual, rev_qual []byte, 
-	align_info *AlignInfo, match_pos []int) ([]SNP, int) {
+	align_info *AlignInfo, match_pos []int) ([]SNP, int, int) {
 	var has_seeds bool
 	var p, s_pos, e_pos int
 	var loop_num, match_num int
 	var snps []SNP
 
 	p = INPUT_INFO.Start_pos
+	var left_align_pos, min_dis int
+
 	loop_num = 1
-	var left_most_pos int
 	for loop_num <= PARA_INFO.Iter_num {
 		//fmt.Println(loop_num, "\tread2")
 		//PrintMemStats("Before FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
@@ -273,11 +276,11 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		if has_seeds {
 			//fmt.Println("read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
 			//PrintMemStats("Before FindSNPsFromMatch, original_read, loop_num " + strconv.Itoa(loop_num))
-			snps, left_most_pos = S.FindSNPsFromMatch(read, qual, s_pos, e_pos, match_pos, match_num, align_info)
+			snps, left_align_pos, min_dis = S.FindSNPsFromMatch(read, qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
-				return snps, left_most_pos
+				return snps, left_align_pos, min_dis
 			}
 		}
 		//Find SNPs for the reverse complement of the second end
@@ -287,11 +290,11 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		if has_seeds {
 			//fmt.Println("rc_read2, has seed\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
 			//PrintMemStats("Before FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
-			snps, left_most_pos = S.FindSNPsFromMatch(rev_comp_read, rev_qual, s_pos, e_pos, match_pos, match_num, align_info)
+			snps, left_align_pos, min_dis = S.FindSNPsFromMatch(rev_comp_read, rev_qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
 				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
-				return snps, left_most_pos
+				return snps, left_align_pos, min_dis
 			}
 		}
 		//Take a new position to search
@@ -302,14 +305,14 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		}
 		loop_num++
 	}
-	return snps, left_most_pos
+	return snps, left_align_pos, min_dis
 }
 
 //---------------------------------------------------------------------------------------------------
 // FindSNPsFromMatch finds SNPs from extensions of matches between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int, 
-	match_pos []int, match_num int, align_info *AlignInfo) ([]SNP, int) {
+	match_pos []int, match_num int, align_info *AlignInfo) ([]SNP, int, int) {
 
 	var pos, k, dis int
 	var left_snp_pos, right_snp_pos, left_snp_idx, right_snp_idx []int
@@ -317,8 +320,8 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 	var snps []SNP
 	var snp SNP
 
-	min_dis := INF
-	var left_most_pos, min_pos int
+	var min_dis = INF
+	var min_pos, left_most_pos int
 	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
 		//PrintMemStats("Before FindExtensions, match_num " + strconv.Itoa(i))
@@ -351,7 +354,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			}
 		}
 	}
-	return snps, min_pos
+	return snps, min_pos, min_dis
 }
 
 //---------------------------------------------------------------------------------------------------
