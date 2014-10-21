@@ -63,6 +63,7 @@ type SNP_debug struct {
 	align_pos1, align_pos2 int
 	align_dis1, align_dis2 int
 	read_info1, read_info2 []byte
+	end_from byte
 }
 
 /*
@@ -100,9 +101,9 @@ func GetDebugInfo() {
 			for i, snp_pos = range d.snp_pos1 {
 				var snp_debug SNP_debug
 				if len(d.snp_base1[i]) == 0 {
-					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2, '1'}
 				} else {
-					snp_debug = SNP_debug{d.snp_base1[i], d.snp_baseq1[i], d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{d.snp_base1[i], d.snp_baseq1[i], d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2, '1'}
 				}
 				DEBUG_INFO_MAP[snp_pos] = append(DEBUG_INFO_MAP[snp_pos], snp_debug)
 			}
@@ -111,9 +112,9 @@ func GetDebugInfo() {
 			for i, snp_pos = range d.snp_pos2 {
 				var snp_debug SNP_debug
 				if len(d.snp_base2[i]) == 0 {
-					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{[]byte{'.'}, []byte{'I'}, d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2, '2'}
 				} else {
-					snp_debug = SNP_debug{d.snp_base2[i], d.snp_baseq2[i], d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2}
+					snp_debug = SNP_debug{d.snp_base2[i], d.snp_baseq2[i], d.align_pos1, d.align_pos2, d.align_dis1, d.align_dis2, d.read_info1, d.read_info2, '2'}
 				}
 				DEBUG_INFO_MAP[snp_pos] = append(DEBUG_INFO_MAP[snp_pos], snp_debug)
 			}
@@ -209,7 +210,7 @@ func WriteDebugInfo(file *os.File, d SNP_debug, snp_pos uint32) {
 	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(d.snp_base) + "\t")
 	file.WriteString(strconv.FormatFloat(math.Pow(10, -(float64(d.snp_baseq[0]) - 33)/10.0), 'f', 5, 32) + "\t")
 	
-	file.WriteString(strconv.Itoa(d.align_dis1) + "\t" + strconv.Itoa(d.align_dis2) + "\t")
+	file.WriteString(string(d.end_from) + "\t" + strconv.Itoa(d.align_dis1) + "\t" + strconv.Itoa(d.align_dis2) + "\t")
 
 	if d.align_pos1 != 0 && d.align_pos2 != 0 {
 		file.WriteString(strconv.Itoa(d.align_pos1 - d.align_pos2) + "\t")
