@@ -279,7 +279,13 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 			snps, left_align_pos, min_dis = S.FindSNPsFromMatch(read, qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
-				//fmt.Println("read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Read2))
+				//fmt.Println("ori read has snp\t", string(read[s_pos : e_pos + 1]), "\t", s_pos, "\t", e_pos, "\t", match_num)
+				fmt.Println("ori read has snp\t", s_pos, "\t", e_pos, "\t", match_num)
+				fmt.Print("ori match pos\t")
+				for i := 0; i < match_num; i++ {
+					fmt.Print(match_pos[i], "\t")
+				}
+				fmt.Println()
 				return snps, left_align_pos, min_dis
 			}
 		}
@@ -293,7 +299,13 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 			snps, left_align_pos, min_dis = S.FindSNPsFromMatch(rev_comp_read, rev_qual, s_pos, e_pos, match_pos, match_num, align_info)
 			//PrintMemStats("After FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
 			if len(snps) > 0 {
-				//fmt.Println("rc_read2, has snp\t", s_pos, "\t", e_pos, "\t", string(read_info.Rev_comp_read2))
+				//fmt.Println("rev read has snp\t", string(rev_comp_read[s_pos : e_pos + 1]), "\t", s_pos, "\t", e_pos, "\t", match_num)
+				fmt.Println("rev read has snp\t", s_pos, "\t", e_pos, "\t", match_num)
+				fmt.Print("rev match pos\t")
+				for i := 0; i < match_num; i++ {
+					fmt.Println(match_pos[i], "\t")
+				}
+				fmt.Println()
 				return snps, left_align_pos, min_dis
 			}
 		}
@@ -329,6 +341,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			 INDEX.FindExtensions(read, s_pos, e_pos, pos, align_info)
 		//PrintMemStats("After FindExtensions, match_num " + strconv.Itoa(i))
 		if dis <= PARA_INFO.Dist_thres {
+			fmt.Println("Match\t", i, "\t", pos, "\t", dis, "\t", left_most_pos, "\t", left_snp_pos, "\t", string(read))
 			if len(left_snp_pos) != 0 || len(right_snp_pos) != 0 {
 				if min_dis > dis {
 					min_dis = dis
@@ -354,6 +367,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			}
 		}
 	}
+	fmt.Println("Min Match\t", min_pos, "\t", min_dis)
 	return snps, min_pos, min_dis
 }
 

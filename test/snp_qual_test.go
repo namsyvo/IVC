@@ -24,7 +24,7 @@ func TestSNPQual(t *testing.T) {
 	//S.SNP_Calls[100]["ACT"] = 0.1
 	
 	snps := []isc.SNP {
-		{100, []byte{'C'}, []byte{'E'}},
+		{100, []byte{'C'}, []byte{'?'}},
 		//{100, []byte{'C'}, []byte{'1'}},
 		//{100, []byte{'A'}, []byte{'5'}},
 		//{100, []byte{'A'}, []byte{'I'}},
