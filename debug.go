@@ -302,48 +302,100 @@ func WriteSNPTPFPInfo(file *os.File, st SNP_trace_info, snp_pos uint32, true_var
 	file.Sync()
 }
 
+var (
+	FN_SNP_COMP = make(map[int][]byte)
+	FN_SNP_PART = make(map[int][]byte)
+	FN_SNP_NONE = make(map[int][]byte)
+)
 
 //Process FN SNPs and realted info
 func ProcessSNPFNInfo() {
 	if PRINT_FN {
-		file, _ := os.Create(INPUT_INFO.SNP_call_file + ".fn")
-		defer file.Close()
+		files := make([]*os.File, 9)
+		file_names := []string{"fn_snp_none", "fn_indel_none", "fn_other_none", "fn_snp_part", "fn_indel_part", "fn_other_part", "fn_snp_comp", "fn_indel_comp", "fn_other_comp"}
+		for i, file_name := range file_names {
+			files[i], _ = os.Create(INPUT_INFO.SNP_call_file + "." + file_name)
+			defer files[i].Close()
+		}
 
 		var snp_pos int
 		var snp []byte
-		SNP_FN_map := make(map[int][]byte)
-		for snp_pos, snp = range TRUE_VAR_COMP {
-			SNP_FN_map[snp_pos] = snp
-		}
-		for snp_pos, snp = range TRUE_VAR_PART {
-			SNP_FN_map[snp_pos] = snp
-		}
-		for snp_pos, snp = range TRUE_VAR_NONE {
-			SNP_FN_map[snp_pos] = snp
-		}
-
-		SNP_Pos := make([]int, 0)
 		var ok bool
-		for snp_pos, snp = range SNP_FN_map {
+
+		for snp_pos, snp = range TRUE_VAR_NONE {
 			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
-				SNP_Pos = append(SNP_Pos, snp_pos)
+				FN_SNP_NONE[snp_pos] = snp
 			}
 		}
-		sort.Ints(SNP_Pos)
+		None_Pos := make([]int, 0)
+		for snp_pos, snp = range FN_SNP_NONE {
+			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+				None_Pos = append(None_Pos, snp_pos)
+			}
+		}
+		sort.Ints(None_Pos)
+		OutputSNPFNInfo(files[0], files[1], files[2], None_Pos, FN_SNP_NONE)
 
-		var at Align_trace_info
-		for _, pos := range SNP_Pos {
-			for _, at = range ALIGN_TRACE_INFO_ARR {
-				if at.align_pos1 <= pos && at.align_right_pos1 >= pos {
-					WriteSNPFNInfo(file, at, pos, SNP_FN_map[pos])
-				}
-				if at.align_pos2 <= pos && at.align_right_pos2 >= pos {
-					WriteSNPFNInfo(file, at, pos, SNP_FN_map[pos])
+		for snp_pos, snp = range TRUE_VAR_PART {
+			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+				FN_SNP_PART[snp_pos] = snp
+			}
+		}
+		Part_Pos := make([]int, 0)
+		for snp_pos, snp = range FN_SNP_PART {
+			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+				Part_Pos = append(Part_Pos, snp_pos)
+			}
+		}
+		sort.Ints(Part_Pos)
+		OutputSNPFNInfo(files[3], files[4], files[5], Part_Pos, FN_SNP_PART)
+
+		for snp_pos, snp = range TRUE_VAR_COMP {
+			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+				FN_SNP_COMP[snp_pos] = snp
+			}
+		}
+		Comp_Pos := make([]int, 0)
+		for snp_pos, snp = range FN_SNP_COMP {
+			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+				Comp_Pos = append(Comp_Pos, snp_pos)
+			}
+		}
+		sort.Ints(Comp_Pos)
+		OutputSNPFNInfo(files[6], files[7], files[8], Comp_Pos, FN_SNP_COMP)
+	}
+}
+
+func OutputSNPFNInfo(file1, file2, file3 *os.File, SNP_Pos []int, FN_map map[int][]byte) {
+	var at Align_trace_info
+	var true_var []byte
+	for _, pos := range SNP_Pos {
+		true_var = FN_map[pos]
+		has_align := false
+		for _, at = range ALIGN_TRACE_INFO_ARR {
+			if at.align_pos1 <= pos && at.align_right_pos1 >= pos {
+				has_align = true
+				if len(true_var) == 1 {
+					WriteSNPFNInfo(file1, at, pos, true_var)
+				} else {
+					WriteSNPFNInfo(file2, at, pos, true_var)
 				}
 			}
+			if at.align_pos2 <= pos && at.align_right_pos2 >= pos {
+				has_align = true
+				if len(true_var) == 1 {
+					WriteSNPFNInfo(file1, at, pos, true_var)
+				} else {
+					WriteSNPFNInfo(file2, at, pos, true_var)
+				}
+			}
+		}
+		if !has_align {
+			file3.WriteString(strconv.Itoa(pos) + "\t" + string(true_var) + "\n")
 		}
 	}
 }
+
 
 //Write to file FN SNPs with all reads aligned to those locations
 func WriteSNPFNInfo(file *os.File, at Align_trace_info, pos int, true_snp []byte) {
@@ -355,6 +407,7 @@ func WriteSNPFNInfo(file *os.File, at Align_trace_info, pos int, true_snp []byte
 		file.WriteString("None\t")
 	}
 	file.WriteString(strconv.Itoa(at.align_pos1) + "\t" + strconv.Itoa(at.align_pos2) + "\t")
+	file.WriteString(strconv.Itoa(at.align_right_pos1) + "\t" + strconv.Itoa(at.align_right_pos2) + "\t")
 	file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
 
 	tokens := bytes.Split(at.read_info1, []byte{'_'})
