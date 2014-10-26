@@ -47,17 +47,17 @@ func main() {
 	//-------------------------------------------------------------------------//
 
 	//Outputing SNPs-----------------------------------------------------------//
-	fmt.Println("Outputing SNPs...")
-	start_time = time.Now()
-	snp_prof.OutputSNPCalls()
-	output_time := time.Since(start_time)
-	log.Printf("time for outputing SNPs:\t%s", output_time)
-	isc.PrintMemStats("memstats after outputing SNPs")
+	//fmt.Println("Outputing SNPs...")
+	//start_time = time.Now()
+	//snp_prof.OutputSNPCalls()
+	//output_time := time.Since(start_time)
+	//log.Printf("time for outputing SNPs:\t%s", output_time)
+	//isc.PrintMemStats("memstats after outputing SNPs")
 	//-------------------------------------------------------------------------//
 
 	//Finishing Program--------------------------------------------------------//
 	WriteOutputInfo(input_info)
-	isc.PrintMemStats("memstats at the end")
+	//isc.PrintMemStats("memstats at the end")
 	fmt.Println("Finish SNP calling process.")
 	//-------------------------------------------------------------------------//
 }
