@@ -349,13 +349,17 @@ func ProcessSNPFNInfo() {
 func WriteSNPFNInfo(file *os.File, align_pos int, at Align_trace_info, pos int, true_snp []byte) {
 
 	file.WriteString(strconv.Itoa(pos) + "\t" + string(true_snp) + "\t")
-	for i, snp_pos := range at.snp_pos1 {
-		file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base1[i]) + "\t")
-		file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq1[i][0]), 'f', 5, 32) + "\t")
+	if len(at.snp_pos1) > 0 {
+		for i, snp_pos := range at.snp_pos1 {
+			file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base1[i]) + "\t")
+			file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq1[i][0]), 'f', 5, 32) + "\t")
+		}
 	}
-	for i, snp_pos := range at.snp_pos2 {
-		file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base2[i]) + "\t")
-		file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq2[i][0]), 'f', 5, 32) + "\t")
+	if len(at.snp_pos2) > 0 {
+		for i, snp_pos := range at.snp_pos2 {
+			file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base2[i]) + "\t")
+			file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq2[i][0]), 'f', 5, 32) + "\t")
+		}
 	}
 	if at.align_pos1 != 0 && at.align_pos2 != 0 {
 		file.WriteString(strconv.Itoa(at.align_pos1 - at.align_pos2) + "\t")
