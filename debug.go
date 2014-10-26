@@ -321,6 +321,7 @@ func ProcessSNPFNInfo() {
 		for snp_pos, snp = range TRUE_VAR_NONE {
 			SNP_FN_map[snp_pos] = snp
 		}
+
 		SNP_Pos := make([]int, 0)
 		var ok bool
 		for snp_pos, snp = range SNP_FN_map {
@@ -333,7 +334,7 @@ func ProcessSNPFNInfo() {
 		var align_pos int
 		var at_arr []Align_trace_info
 		var at Align_trace_info
-		for pos := range SNP_Pos {
+		for _, pos := range SNP_Pos {
 			for align_pos, at_arr = range ALIGN_TRACE_INFO_MAP {
 				if align_pos <= pos && align_pos + 200 > pos {
 					for _, at = range at_arr {
