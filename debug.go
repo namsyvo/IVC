@@ -335,7 +335,7 @@ func ProcessSNPFNInfo() {
 		var at Align_trace_info
 		for pos := range SNP_Pos {
 			for align_pos, at_arr = range ALIGN_TRACE_INFO_MAP {
-				if align_pos <= pos {
+				if align_pos <= pos && align_pos + 200 > pos {
 					for _, at = range at_arr {
 						WriteSNPFNInfo(file, align_pos, at, pos, SNP_FN_map[pos])
 					}
@@ -351,14 +351,24 @@ func WriteSNPFNInfo(file *os.File, align_pos int, at Align_trace_info, pos int, 
 	file.WriteString(strconv.Itoa(pos) + "\t" + string(true_snp) + "\t")
 	if len(at.snp_pos1) > 0 {
 		for i, snp_pos := range at.snp_pos1 {
-			file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base1[i]) + "\t")
-			file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq1[i][0]), 'f', 5, 32) + "\t")
+			if len(at.snp_base1[i]) > 0 {
+				file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base1[i]) + "\t")
+				file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq1[i][0]), 'f', 5, 32) + "\t")
+			} else {
+				file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + "." + "\t")
+				file.WriteString(strconv.FormatFloat(QualtoProb('I'), 'f', 5, 32) + "\t")
+			}
 		}
 	}
 	if len(at.snp_pos2) > 0 {
 		for i, snp_pos := range at.snp_pos2 {
-			file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base2[i]) + "\t")
-			file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq2[i][0]), 'f', 5, 32) + "\t")
+			if len(at.snp_base2[i]) > 0 {
+				file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(at.snp_base2[i]) + "\t")
+				file.WriteString(strconv.FormatFloat(QualtoProb(at.snp_baseq2[i][0]), 'f', 5, 32) + "\t")
+			} else {
+				file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + "." + "\t")
+				file.WriteString(strconv.FormatFloat(QualtoProb('I'), 'f', 5, 32) + "\t")
+			}
 		}
 	}
 	if at.align_pos1 != 0 && at.align_pos2 != 0 {
@@ -371,17 +381,18 @@ func WriteSNPFNInfo(file *os.File, align_pos int, at Align_trace_info, pos int, 
 
 	tokens := bytes.Split(at.read_info1, []byte{'_'})
 	if len(tokens) >= 11 {
-			true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
+		true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
 		true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 64)
 		if err1 == nil && err2 == nil {
 			file.WriteString(strconv.FormatInt(true_pos1 - true_pos2, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + "\t" + strconv.FormatInt(true_pos2, 10) + "\t")
 		} else {
-				file.WriteString("None\tNone\tNone\t")
+			file.WriteString("None\tNone\tNone\t")
 		}
-		file.WriteString(string(tokens[10]) + "\t")
-		} else {
-		file.WriteString("None\tNone\tNone\tNone\t")
+		file.WriteString(string(tokens[10]))
+	} else {
+		file.WriteString("None\tNone\tNone\tNone")
 	}
+	file.WriteString("\n")
 	file.Sync()
 }
 
