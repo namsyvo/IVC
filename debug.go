@@ -18,6 +18,15 @@ import (
 	"sort"
 )
 
+//Global variable for turnning on/off info profiling
+var (
+	PRINT_MEM = false
+	PRINT_ALIGN_TRACE_INFO = false
+	GET_INFO = true
+	PRINT_TPFP = false
+	PRINT_FN = true
+)
+
 //QualtoProb converts base qualities decoded by ASCII codes to probabilities
 func QualtoProb(e byte) float64 {
 	return math.Pow(10, -(float64(e) - 33)/10.0)
@@ -30,7 +39,6 @@ func ProbtoQual(p float64) float32 {
 //Global variable for memory profiling
 var (
 	MEM_STATS = new(runtime.MemStats)
-	PRINT_MEM = false
 )
 //Printing memory information
 func PrintMemStats(mesg string) {
@@ -43,11 +51,6 @@ func PrintMemStats(mesg string) {
 			float64(MEM_STATS.HeapSys)/(math.Pow(1024, 3)))
 	}
 }
-
-//Global variable for align info profiling
-var (
-	PRINT_ALIGN_TRACE_INFO = false
-)
 
 //Printing ALignment info
 func PrintLoopTraceInfo(loop_num int, read []byte) {
@@ -92,9 +95,6 @@ var (
     TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
     TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
 	QUAL_THRES = 25.0
-	GET_INFO = true
-	PRINT_TPFP = false
-	PRINT_FN = true
 )
 
 type Align_trace_info struct {
