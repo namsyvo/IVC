@@ -148,7 +148,6 @@ func GetAlignTraceInfo() {
 		var i int
 		var snp_pos uint32
 		var at Align_trace_info
-		
 		for at = range ALIGN_TRACE_INFO_CHAN {
 			ALIGN_TRACE_INFO_ARR = append(ALIGN_TRACE_INFO_ARR, at)
 			if len(at.snp_pos1) > 0 {
@@ -309,7 +308,7 @@ var (
 )
 
 //Process FN SNPs and realted info
-func ProcessSNPFNInfo() {
+func ProcessSNPFNInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_FN {
 		files := make([]*os.File, 9)
 		file_names := []string{"fn_snp_none", "fn_indel_none", "fn_other_none", "fn_snp_part", "fn_indel_part", "fn_other_part", "fn_snp_comp", "fn_indel_comp", "fn_other_comp"}
@@ -322,44 +321,53 @@ func ProcessSNPFNInfo() {
 		var snp []byte
 		var ok bool
 
+		SNP_CALL_MAP := make(map[int]bool)
+		var prob, snp_prob, qual float64
+		for pos, _ := range SNP_TRACE_INFO_MAP {
+		    prob = 0.0
+	    	for _, snp_prob = range snp_call[pos] {
+	        	if prob < snp_prob {
+	            	prob = snp_prob
+	        	}
+	    	}
+			qual = -10 * math.Log10(1 - prob)
+			if qual >= QUAL_THRES {
+				SNP_CALL_MAP[int(pos)] = true
+			}
+		}
+
 		for snp_pos, snp = range TRUE_VAR_NONE {
-			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+			if _, ok = SNP_CALL_MAP[snp_pos]; !ok {
 				FN_SNP_NONE[snp_pos] = snp
 			}
 		}
 		None_Pos := make([]int, 0)
-		for snp_pos, snp = range FN_SNP_NONE {
-			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+		for snp_pos, _ = range FN_SNP_NONE {
 				None_Pos = append(None_Pos, snp_pos)
-			}
 		}
 		sort.Ints(None_Pos)
 		OutputSNPFNInfo(files[0], files[1], files[2], None_Pos, FN_SNP_NONE)
 
 		for snp_pos, snp = range TRUE_VAR_PART {
-			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+			if _, ok = SNP_CALL_MAP[snp_pos]; !ok {
 				FN_SNP_PART[snp_pos] = snp
 			}
 		}
 		Part_Pos := make([]int, 0)
-		for snp_pos, snp = range FN_SNP_PART {
-			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+		for snp_pos, _ = range FN_SNP_PART {
 				Part_Pos = append(Part_Pos, snp_pos)
-			}
 		}
 		sort.Ints(Part_Pos)
 		OutputSNPFNInfo(files[3], files[4], files[5], Part_Pos, FN_SNP_PART)
 
 		for snp_pos, snp = range TRUE_VAR_COMP {
-			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+			if _, ok = SNP_CALL_MAP[snp_pos]; !ok {
 				FN_SNP_COMP[snp_pos] = snp
 			}
 		}
 		Comp_Pos := make([]int, 0)
-		for snp_pos, snp = range FN_SNP_COMP {
-			if _, ok = SNP_TRACE_INFO_MAP[uint32(snp_pos)]; !ok {
+		for snp_pos, _ = range FN_SNP_COMP {
 				Comp_Pos = append(Comp_Pos, snp_pos)
-			}
 		}
 		sort.Ints(Comp_Pos)
 		OutputSNPFNInfo(files[6], files[7], files[8], Comp_Pos, FN_SNP_COMP)

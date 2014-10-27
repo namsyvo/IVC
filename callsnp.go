@@ -111,7 +111,7 @@ func (S *SNP_Prof) CallSNPs() {
 	//For debugging
 	fmt.Println("Processing traced snp info...")
 	ProcessSNPTPFPInfo(S.SNP_Calls)
-	ProcessSNPFNInfo()	
+	ProcessSNPFNInfo(S.SNP_Calls)	
 	//------------------------
 }
 
