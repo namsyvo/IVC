@@ -53,7 +53,7 @@ type SNP_Prof struct {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
 	INPUT_INFO = input_info
-	PARA_INFO = *SetPara(100, 0.001, 500)
+	PARA_INFO = *SetPara(100, 0.01, 1000)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -344,6 +344,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 				min_dis = dis
 				left_pos = left_most_pos
 				right_pos = right_most_pos
+			}
 				snps = make([]SNP, 0)
 				for k = 0; k < len(left_snp_pos); k++ {
 					PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
@@ -361,7 +362,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 					snps = append(snps, snp)
 					PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
 				}
-			}
+			//}
 		}
 	}
 	return snps, min_dis, left_pos, right_pos
