@@ -53,7 +53,7 @@ type SNP_Prof struct {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
 	INPUT_INFO = input_info
-	PARA_INFO = *SetPara(100, 0.01, 1000)
+	PARA_INFO = *SetPara(100, 0.001, 500)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -84,6 +84,9 @@ func (S *SNP_Prof) CallSNPs() {
 	go func() {
 		GetAlignTraceInfo()
 	}()
+	go func() {
+		GetMisAlignTraceInfo()
+	}()
 	//------------------------
 	go func() {
 		wg.Wait()
@@ -91,6 +94,7 @@ func (S *SNP_Prof) CallSNPs() {
 		//------------------------
 		//For debugging
 		close(ALIGN_TRACE_INFO_CHAN)
+		close(MIS_ALIGN_TRACE_INFO_CHAN)
 		//------------------------
 	}()
 	
@@ -109,9 +113,10 @@ func (S *SNP_Prof) CallSNPs() {
 
 	//------------------------
 	//For debugging
-	fmt.Println("Processing traced snp info...")
+	fmt.Println("Processing trace info...")
 	ProcessSNPTPFPInfo(S.SNP_Calls)
-	ProcessSNPFNInfo(S.SNP_Calls)	
+	ProcessSNPFNInfo(S.SNP_Calls)
+	ProcessMisAlignInfo(S.SNP_Calls)
 	//------------------------
 }
 
@@ -131,7 +136,7 @@ func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 		panic("Error opening input read file " + fn2)
 	}
 	defer f2.Close()
-
+	
 	read_num := 0
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
@@ -207,7 +212,7 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 // FindSNPsFromReads returns SNPs found from alignment between pair-end reads and the multigenome.
 // This version treats each end of the reads independently.
 //--------------------------------------------------------------------------------------------------
-	func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, match_pos []int) {
+func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, match_pos []int) {
 	
 	var snps1, snps2 []SNP
 	var min_dis1, min_dis2, left_align_pos1, left_align_pos2, right_align_pos1, right_align_pos2 int
@@ -258,10 +263,22 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 				}
 			}
 			ALIGN_TRACE_INFO_CHAN <- at
-			break
+			return
 		}
 		loop_num++
 	}
+	var at Align_trace_info
+	at.read_info1 = make([]byte, len(read_info.Info1))
+	at.read_info2 = make([]byte, len(read_info.Info2))
+	copy(at.read_info1, read_info.Info1)
+	copy(at.read_info2, read_info.Info2)
+	at.align_pos1 = left_align_pos1
+	at.align_pos2 = left_align_pos2
+	at.align_right_pos1 = right_align_pos1
+	at.align_right_pos2 = right_align_pos2
+	at.align_dis1 = min_dis1
+	at.align_dis2 = min_dis2
+	MIS_ALIGN_TRACE_INFO_CHAN <- at
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -288,7 +305,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 			PrintMemStats("Before FindSNPsFromMatch, original_read, loop_num " + strconv.Itoa(loop_num))
 			snps, min_dis, left_align_pos, right_align_pos = S.FindSNPsFromMatch(read, qual, s_pos, e_pos, match_pos, match_num, align_info)
 			PrintMemStats("After FindSeeds, original_read, loop_num " + strconv.Itoa(loop_num))
-			if min_dis < INF {
+			if min_dis <= PARA_INFO.Dist_thres {
 				PrintExtendTraceInfo("ori", read[e_pos : s_pos + 1], e_pos, s_pos, match_num, match_pos)
 				return snps, min_dis, left_align_pos, right_align_pos, true
 			}
@@ -302,7 +319,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 			PrintMemStats("Before FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
 			snps, min_dis, left_align_pos, right_align_pos = S.FindSNPsFromMatch(rev_comp_read, rev_qual, s_pos, e_pos, match_pos, match_num, align_info)
 			PrintMemStats("After FindSNPsFromMatch, revcomp_read, loop_num " + strconv.Itoa(loop_num))
-			if min_dis < INF {
+			if min_dis <= PARA_INFO.Dist_thres {
 				PrintExtendTraceInfo("rev", read[e_pos : s_pos + 1], e_pos, s_pos, match_num, match_pos)
 				return snps, min_dis, left_align_pos, right_align_pos, false
 			}
@@ -344,7 +361,6 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 				min_dis = dis
 				left_pos = left_most_pos
 				right_pos = right_most_pos
-			}
 				snps = make([]SNP, 0)
 				for k = 0; k < len(left_snp_pos); k++ {
 					PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
@@ -362,10 +378,14 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 					snps = append(snps, snp)
 					PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
 				}
-			//}
+			}
 		}
 	}
-	return snps, min_dis, left_pos, right_pos
+	if len(snps) > 0 {
+		return snps, min_dis, left_pos, right_pos
+	} else {
+		return snps, dis, left_most_pos, right_most_pos
+	}
 }
 
 //---------------------------------------------------------------------------------------------------
