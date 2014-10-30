@@ -6,25 +6,25 @@
 package isc_test
 
 import (
-	"fmt"
-	"testing"
-    "github.com/namsyvo/ISC"
+	//"fmt"
+	//"testing"
+    //"github.com/namsyvo/ISC"
 )
-
+/*
 func TestSNPQual(t *testing.T) {
 	defer __(o_())
 
 	var S isc.SNP_Prof
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Calls[100] = make(map[string]float64)
-	S.SNP_Calls[100]["A"] = 0.85
-	S.SNP_Calls[100]["C"] = 0.05
-	S.SNP_Calls[100]["G"] = 0.05
-	S.SNP_Calls[100]["T"] = 0.05
+	S.SNP_Calls[100]["A"] = 0.97
+	S.SNP_Calls[100]["C"] = 0.01
+	S.SNP_Calls[100]["G"] = 0.01
+	S.SNP_Calls[100]["T"] = 0.01
 	//S.SNP_Calls[100]["ACT"] = 0.1
 	
 	snps := []isc.SNP {
-		{100, []byte{'C'}, []byte{'?'}},
+		{100, []byte{'C'}, []byte{'I'}},
 		//{100, []byte{'C'}, []byte{'1'}},
 		//{100, []byte{'A'}, []byte{'5'}},
 		//{100, []byte{'A'}, []byte{'I'}},
@@ -32,7 +32,7 @@ func TestSNPQual(t *testing.T) {
 		//{100, []byte{'T'}, []byte{'I'}},
 		//{100, []byte{'T'}, []byte{'I'}},
 	}
-	/*
+
 	snps2 := []isc.SNP {
 		{100, []byte{'A'}, []byte{'I'}},
 		{100, []byte{'A'}, []byte{'I'}},
@@ -51,7 +51,7 @@ func TestSNPQual(t *testing.T) {
 		{100, []byte{'A', 'C', 'T'}, []byte{'4', '4', '4'}},
 		{100, []byte{'A', 'C', 'T'}, []byte{'4', '4', '4'}},
 	}
-	 */
+
 
 	for snp, prob := range S.SNP_Calls[100] {
 		fmt.Print("SNP: ", snp, "\t")
@@ -68,7 +68,7 @@ func TestSNPQual(t *testing.T) {
 	}
 }
 
-/*
+
 var bases []byte = []byte{'A', 'C', 'G', 'T'}
 var p_b []float64 = []float64{0.7, 0.2, 0.00001, 0.09999}
 

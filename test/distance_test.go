@@ -6,11 +6,11 @@
 package isc_test
 
 import (
-	//"fmt"
-	//"testing"
-    //"github.com/namsyvo/ISC"
+	"fmt"
+	"testing"
+    "github.com/namsyvo/ISC"
 )
-/*
+
 type type_snpprofile map[int][][]byte
 type type_samelensnp map[int]int
 type TestCase struct {
@@ -223,4 +223,3 @@ func TestForwarddistance2MultiAlignment2(t *testing.T) {
 		}
 	}
 }
-*/
