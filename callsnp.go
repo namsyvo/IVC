@@ -54,7 +54,7 @@ type SNP_Prof struct {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
 	INPUT_INFO = input_info
-	PARA_INFO = *SetPara(100, 0.001, 1000)
+	PARA_INFO = *SetPara(100, 0.0015, 1000)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
@@ -234,7 +234,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		PrintMemStats("After FindSNPsFromEnd2")
 
 		//Check if alignments are likely pair-end alignments
-		if (strand1 != strand2) && (int(math.Abs(float64(left_align_pos1 - left_align_pos2))) <= PARA_INFO.Max_diff || left_align_pos1 == 0 || left_align_pos2 == 0) {
+		if (strand1 != strand2) && (int(math.Abs(float64(left_align_pos1 - left_align_pos2))) <= PARA_INFO.Max_diff) || (left_align_pos1 == 0) || (left_align_pos2 == 0) {
 			var at Align_trace_info
 			at.read1 = make([]byte, len(read_info.Read1))
 			at.read2 = make([]byte, len(read_info.Read2))
@@ -337,7 +337,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		//Take a new position to search
 		if INPUT_INFO.Search_mode == 1 {
 			RAND_GEN := rand.New(rand.NewSource(time.Now().UnixNano()))
-			p = RAND_GEN.Intn(len(read) - 1) + 1
+			p = RAND_GEN.Intn(len(read) - 5)
 		} else if INPUT_INFO.Search_mode == 2 {
 			p = p + INPUT_INFO.Search_step
 		}

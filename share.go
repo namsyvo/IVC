@@ -67,8 +67,8 @@ func SetPara(read_len int, seq_err float32, max_diff int) *ParaInfo {
 	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
-	//para_info.Dist_thres = 4
-	//para_info.Iter_num = 5
+	//para_info.Dist_thres = 7
+	//para_info.Iter_num = 8
 
 	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
 	fmt.Println("ITER_NUM: ", para_info.Iter_num)
