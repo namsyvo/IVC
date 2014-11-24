@@ -55,7 +55,7 @@ func SetPara(read_len int, seq_err float32, max_diff int) *ParaInfo {
 	para_info.Iter_num_factor = 1
 	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
-	para_info.Info_len = 200	//a big enough number to store read headers
+	para_info.Info_len = 500	//a big enough number to store read headers
 	para_info.Max_diff = max_diff	//based on simulated data, will be estimated from reads with real data
 
 	//Const for computing distance

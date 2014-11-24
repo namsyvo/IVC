@@ -20,33 +20,38 @@ import (
 
 //Global variable for turnning on/off info profiling
 var (
-	PRINT_MEM = false
-	PRINT_ALIGN_TRACE_INFO = false
+	PRINT_PROCESS_MEM = true
+	PRINT_MEM_STATS = false
 	GET_ALIGN_TRACE_INFO = true
+	PRINT_ALIGN_TRACE_INFO = false
 	PRINT_TPFP = false
 	PRINT_FN = false
 	GET_MIS_ALIGN_TRACE_INFO = true
-	PRINT_MA = true
+	PRINT_MA = false
 )
-
-//QualtoProb converts base qualities decoded by ASCII codes to probabilities
-func QualtoProb(e byte) float64 {
-	return math.Pow(10, -(float64(e) - 33)/10.0)
-}
-//ProbtoQual converts probabilities to phred-scale quality scores
-func ProbtoQual(p float64) float32 {
-	return float32(-10*math.Log10(1 - p))
-}
 
 //Global variable for memory profiling
 var (
 	MEM_STATS = new(runtime.MemStats)
 )
+
+//Printing memory information
+func PrintProcessMem(mesg string) {
+	if PRINT_PROCESS_MEM {
+		runtime.ReadMemStats(MEM_STATS)
+		log.Printf(mesg + "\t%d\t%d\t%d\t%d\t%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f",
+			MEM_STATS.Alloc, MEM_STATS.TotalAlloc, MEM_STATS.Sys, MEM_STATS.HeapAlloc, MEM_STATS.HeapSys,
+			float64(MEM_STATS.Alloc)/(math.Pow(1024, 3)), float64(MEM_STATS.TotalAlloc)/(math.Pow(1024, 3)),
+			float64(MEM_STATS.Sys)/(math.Pow(1024, 3)), float64(MEM_STATS.HeapAlloc)/(math.Pow(1024, 3)),
+			float64(MEM_STATS.HeapSys)/(math.Pow(1024, 3)))
+	}
+}
+
 //Printing memory information
 func PrintMemStats(mesg string) {
-	if PRINT_MEM {
+	if PRINT_MEM_STATS {
 		runtime.ReadMemStats(MEM_STATS)
-		log.Printf(mesg + "\t%d\t%d\t%d\t%d\t%d\t%.3f%.3f%.3f%.3f%.3f",
+		log.Printf(mesg + "\t%d\t%d\t%d\t%d\t%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f",
 			MEM_STATS.Alloc, MEM_STATS.TotalAlloc, MEM_STATS.Sys, MEM_STATS.HeapAlloc, MEM_STATS.HeapSys,
 			float64(MEM_STATS.Alloc)/(math.Pow(1024, 3)), float64(MEM_STATS.TotalAlloc)/(math.Pow(1024, 3)),
 			float64(MEM_STATS.Sys)/(math.Pow(1024, 3)), float64(MEM_STATS.HeapAlloc)/(math.Pow(1024, 3)),
@@ -95,13 +100,14 @@ var (
 	SNP_TRACE_INFO_MAP = make(map[uint32][]SNP_trace_info)
     MIS_ALIGN_TRACE_INFO_CHAN = make(chan Align_trace_info)
 	MIS_ALIGN_TRACE_INFO_ARR = make([]Align_trace_info, 0)
-    TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_comp.txt")
-    TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
-    TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test_data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
+    TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/mutate-0.3300/variant_comp.txt")
+    TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
+    TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
 	QUAL_THRES = 25.0
 )
 
 type Align_trace_info struct {
+	read1, read2 []byte
 	read_info1, read_info2 []byte
 	align_pos1, align_pos2 int
 	align_right_pos1, align_right_pos2 int
@@ -119,9 +125,8 @@ type SNP_trace_info struct {
 	end_from byte
 }
 
-//Read debug info from channel and store them
+//Read align trace info from channel and store them
 func GetAlignTraceInfo() {
-
 	if GET_ALIGN_TRACE_INFO {
 		var i int
 		var snp_pos uint32
@@ -158,7 +163,7 @@ func GetAlignTraceInfo() {
 	}
 }
 
-//Read debug info from channel and store them
+//Read misalign reads and related info from channel and store them
 func GetMisAlignTraceInfo() {
 	if GET_MIS_ALIGN_TRACE_INFO {
 		for at := range MIS_ALIGN_TRACE_INFO_CHAN {
@@ -195,7 +200,7 @@ func GetMisAlignTraceInfo() {
 */
 //--------------------------------------------------------------------------------------------------
 
-//Process debug info
+//Process TP, FP variants info
 func ProcessSNPTPFPInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_TPFP {
 		files := make([]*os.File, 14)
@@ -237,7 +242,7 @@ func ProcessSNPTPFPInfo(snp_call map[uint32]map[string]float64) {
 	}
 }
 
-//Output debug info to proper files
+//Output TP, FP variants info to proper files
 func OutputSNPTPFPInfo(files []*os.File, st SNP_trace_info, snp_pos uint32) {
 	var ok bool
 	var val []byte
@@ -292,9 +297,8 @@ func OutputSNPTPFPInfo(files []*os.File, st SNP_trace_info, snp_pos uint32) {
 	}
 }
 
-//Write debug info to files
+//Write TP, FP variants info to files
 func WriteSNPTPFPInfo(file *os.File, st SNP_trace_info, snp_pos uint32, true_var []byte) {
-
 	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(true_var) + "\t" + string(st.snp_base) + "\t")
 	file.WriteString(strconv.FormatFloat(QualtoProb(st.snp_baseq[0]), 'f', 5, 32) + "\t")
 	
@@ -321,7 +325,6 @@ func WriteSNPTPFPInfo(file *os.File, st SNP_trace_info, snp_pos uint32, true_var
 		} else {
 		file.WriteString("None\tNone\tNone\tNone\n")
 	}
-		
 	file.Sync()
 }
 
@@ -366,7 +369,7 @@ var (
 	TPFP_VAR_CALL = make(map[int]bool)
 )
 
-//Process FN SNPs and realted info
+//Process FN variants and realted info
 func ProcessSNPFNInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_FN {
 		files := make([]*os.File, 18)
@@ -447,6 +450,7 @@ func ProcessSNPFNInfo(snp_call map[uint32]map[string]float64) {
 	}
 }
 
+//Output FN variants info to proper files
 func OutputSNPFNInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 	var at Align_trace_info
 	var true_var []byte
@@ -501,8 +505,7 @@ func OutputSNPFNInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 	}
 }
 
-
-//Write to file FN SNPs with all reads aligned to those locations
+//Write to file FN variants with all reads aligned to FN locations
 func WriteSNPFNInfo(file *os.File, at Align_trace_info, pos int, true_var []byte, snp_call SNP_CALL) {
 
 	file.WriteString(strconv.Itoa(pos) + "\t" + string(true_var) + "\t")
@@ -544,7 +547,7 @@ func WriteSNPFNInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 	file.Sync()
 }
 
-//Process FN SNPs and realted info
+//Process misalign reads and realted info
 func ProcessMisAlignInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_MA {
 		var pos int
@@ -602,6 +605,7 @@ func ProcessMisAlignInfo(snp_call map[uint32]map[string]float64) {
 	}
 }
 
+//Write misalign reads and related info to file
 func WriteMisALignInfo(file *os.File, var_pos []int, at Align_trace_info) {
 	if at.align_pos1 != 0 && at.align_pos2 != 0 {
 		file.WriteString(strconv.Itoa(at.align_pos1 - at.align_pos2) + "\t")
@@ -643,7 +647,6 @@ func WriteMisALignInfo(file *os.File, var_pos []int, at Align_trace_info) {
 	file.Sync()
 }
 
-
 //Load true variants which are used to generate the mutant genome
 func LoadTrueVar(file_name string) map[int][]byte {
 	barr := make(map[int][]byte)
@@ -668,4 +671,13 @@ func LoadTrueVar(file_name string) map[int][]byte {
 		barr[int(k)] = b
 	}
 	return barr
+}
+
+//QualtoProb converts base qualities decoded by ASCII codes to probabilities
+func QualtoProb(e byte) float64 {
+	return math.Pow(10, -(float64(e) - 33)/10.0)
+}
+//ProbtoQual converts probabilities to phred-scale quality scores
+func ProbtoQual(p float64) float32 {
+	return float32(-10*math.Log10(1 - p))
 }

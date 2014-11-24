@@ -45,6 +45,7 @@ type SNP struct {
 // Their posterior probabilities will be updated during alignment phase based on information from read-multigenome alignment
 type SNP_Prof struct {
 	SNP_Calls 	map[uint32]map[string]float64
+	SNP_Bases 	map[uint32]map[string]int
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -53,9 +54,10 @@ type SNP_Prof struct {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
 	INPUT_INFO = input_info
-	PARA_INFO = *SetPara(100, 0.001, 500)
+	PARA_INFO = *SetPara(100, 0.001, 1000)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
+	S.SNP_Bases = make(map[uint32]map[string]int)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
@@ -164,7 +166,7 @@ func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 			read_signal <- true
 		}
 		if read_num%10000 == 0 {
-			PrintMemStats("Memstats after distributing 10000 reads")
+			PrintProcessMem("Memstats after distributing 10000 reads")
 		}
 	}
 	close(read_data)
@@ -234,6 +236,10 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		//Check if alignments are likely pair-end alignments
 		if (strand1 != strand2) && (int(math.Abs(float64(left_align_pos1 - left_align_pos2))) <= PARA_INFO.Max_diff || left_align_pos1 == 0 || left_align_pos2 == 0) {
 			var at Align_trace_info
+			at.read1 = make([]byte, len(read_info.Read1))
+			at.read2 = make([]byte, len(read_info.Read2))
+			copy(at.read1, read_info.Read1)
+			copy(at.read2, read_info.Read2)
 			at.read_info1 = make([]byte, len(read_info.Info1))
 			at.read_info2 = make([]byte, len(read_info.Info2))
 			copy(at.read_info1, read_info.Info1)
@@ -268,6 +274,10 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		loop_num++
 	}
 	var at Align_trace_info
+	at.read1 = make([]byte, len(read_info.Read1))
+	at.read2 = make([]byte, len(read_info.Read2))
+	copy(at.read1, read_info.Read1)
+	copy(at.read2, read_info.Read2)
 	at.read_info1 = make([]byte, len(read_info.Info1))
 	at.read_info2 = make([]byte, len(read_info.Info2))
 	copy(at.read_info1, read_info.Info1)
@@ -326,6 +336,7 @@ func (S *SNP_Prof) FindSNPsFromEachEnd(read, rev_read, rev_comp_read, comp_read,
 		}
 		//Take a new position to search
 		if INPUT_INFO.Search_mode == 1 {
+			RAND_GEN := rand.New(rand.NewSource(time.Now().UnixNano()))
 			p = RAND_GEN.Intn(len(read) - 1) + 1
 		} else if INPUT_INFO.Search_mode == 2 {
 			p = p + INPUT_INFO.Search_step
@@ -398,6 +409,11 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	a := string(snp.Bases)
 	q := snp.BaseQ[0]
 
+	if _, snp_base_exist := S.SNP_Calls[pos]; !snp_base_exist {
+		S.SNP_Bases[pos] = make(map[string]int)
+	}
+	S.SNP_Bases[pos][a] += 1
+
 	var p float64
 	p_ab := make(map[string]float64)
 	p_a := 0.0
@@ -446,6 +462,11 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		a = "."
 		q = []byte{'I'} //need to be changed to a proper value
 	}
+
+	if _, snp_base_exist := S.SNP_Calls[pos]; !snp_base_exist {
+		S.SNP_Bases[pos] = make(map[string]int)
+	}
+	S.SNP_Bases[pos][a] += 1
 
 	var p float64
 	var qi byte
@@ -505,7 +526,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	defer file.Close()
 
 	var snp_pos uint32
-	var str_snp_pos, snp_qual string
+	var str_snp_pos, str_snp_qual, str_base_num string
 
 	SNP_Pos := make([]int, 0, len(S.SNP_Calls))
 	for snp_pos, _ = range S.SNP_Calls {
@@ -517,7 +538,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	var snp_call, snp string
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
-		str_snp_pos = strconv.Itoa(pos)
+		str_snp_pos = strconv.Itoa(pos + 1)
 		snp_call_prob = 0
 		for snp, snp_prob = range S.SNP_Calls[snp_pos] {
 			if snp_call_prob < snp_prob {
@@ -525,9 +546,10 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		snp_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
-		if snp_qual != "+Inf" {
-			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + snp_qual + "\n")
+		str_snp_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
+		str_base_num = strconv.Itoa(S.SNP_Bases[snp_pos][snp_call])
+		if str_snp_qual != "+Inf" {
+			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + str_snp_qual + "\t" + str_base_num + "\n")
 		} else {
 			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t1000\n")
 		}
