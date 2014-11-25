@@ -358,7 +358,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 	var snps []SNP
 	var snp SNP
 
-	var min_dis = INF
+	var min_dis = PARA_INFO.Dist_thres + 1
 	var left_pos, right_pos, left_most_pos, right_most_pos int
 	for i := 0; i < match_num; i++ {
 		pos = match_pos[i]
@@ -392,7 +392,7 @@ func (S *SNP_Prof) FindSNPsFromMatch(read, qual []byte, s_pos, e_pos int,
 			}
 		}
 	}
-	if len(snps) > 0 {
+	if min_dis <= PARA_INFO.Dist_thres {
 		return snps, min_dis, left_pos, right_pos
 	} else {
 		return snps, dis, left_most_pos, right_most_pos
