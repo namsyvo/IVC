@@ -63,10 +63,10 @@ func ReadInputInfo() isc.InputInfo {
 	var read_file_2 = flag.String("2", "", "pairend read file, second end")
 	var snp_call_file = flag.String("o", "", "snp calling file")
 	var search_mode = flag.Int("m", 1, "searching mode for finding seeds (1: random, 2: deterministic)")
-	var start_pos = flag.Int("p", 5, "starting position on reads for finding seeds")
+	var start_pos = flag.Int("p", 0, "starting position on reads for finding seeds")
 	var search_step = flag.Int("j", 5, "step for searching in deterministic mode")
-	var proc_num = flag.Int("w", 1, "maximum number of CPUs using by Go")
-	var routine_num = flag.Int("t", 1, "number of goroutines")
+	var proc_num = flag.Int("w", 0, "maximum number of CPUs using by Go")
+	var routine_num = flag.Int("t", 0, "number of goroutines")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
 
@@ -89,7 +89,7 @@ func ReadInputInfo() isc.InputInfo {
 	input_info.Search_step = *search_step
 	input_info.Proc_num = *proc_num
 	input_info.Routine_num = *routine_num
-	if *proc_num == 0 || *routine_num == 0 {
+	if *proc_num <= 0 || *routine_num <= 0 {
 		input_info.Proc_num = runtime.NumCPU()
 		input_info.Routine_num = runtime.NumCPU()
 	}
