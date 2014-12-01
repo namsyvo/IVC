@@ -23,11 +23,11 @@ var (
 	PRINT_PROCESS_MEM = true
 	PRINT_MEM_STATS = false
 	GET_ALIGN_TRACE_INFO = true
-	PRINT_ALIGN_TRACE_INFO = true
-	PRINT_TPFP = true
-	PRINT_FN = true
+	PRINT_ALIGN_TRACE_INFO = false
+	PRINT_TPFP = false
+	PRINT_FN = false
 	GET_NO_ALIGN_TRACE_INFO = true
-	PRINT_NA = true
+	PRINT_NA = false
 )
 
 //Global variable for memory profiling
@@ -60,21 +60,28 @@ func PrintMemStats(mesg string) {
 }
 
 //Printing ALignment info
-func PrintLoopTraceInfo(loop_num int, read []byte) {
+func PrintLoopTraceInfo(loop_num int, mess string) {
 	if PRINT_ALIGN_TRACE_INFO {
-		fmt.Println("Loop\t", loop_num, "\t", string(read))
+		fmt.Println("Loop\t", loop_num, "\t", mess)
 	}
 }
 
 func PrintSeedTraceInfo(mess string, e_pos, s_pos int, read []byte) {
 	if PRINT_ALIGN_TRACE_INFO {
-		fmt.Println(mess + " has seed\t", e_pos, "\t", s_pos, "\t", string(read))
+		fmt.Println(mess + " has seed\t", e_pos, "\t", s_pos, "\t", string(read[e_pos : s_pos + 1]))
 	}
 }
 
+func PrintPairedSeedInfo(mess string, match_pos_r1, match_pos_r2 int) {
+	if PRINT_ALIGN_TRACE_INFO {
+		fmt.Println(mess, "\t", match_pos_r1, "\t", match_pos_r2)
+	}
+}
+
+
 func PrintExtendTraceInfo(mess string, match []byte, e_pos, s_pos, match_num int, match_pos []int) {
 	if PRINT_ALIGN_TRACE_INFO {
-		fmt.Println(mess, " read\t", string(match), "\t", e_pos, "\t", s_pos, "\t", match_num)
+		fmt.Println(mess, " extend\t", string(match), "\t", e_pos, "\t", s_pos, "\t", match_num)
 		fmt.Print(mess, " match pos\t")
 		for i := 0; i < match_num; i++ {
 			fmt.Print(match_pos[i], "\t")
@@ -83,10 +90,10 @@ func PrintExtendTraceInfo(mess string, match []byte, e_pos, s_pos, match_num int
 	}
 }
 
-func PrintMatchTraceInfo(i, pos, dis, left_most_pos int, left_snp_pos []int, read []byte) {
+func PrintMatchTraceInfo(pos, dis, left_most_pos int, left_snp_pos []int, read []byte) {
 	if PRINT_ALIGN_TRACE_INFO {
-		fmt.Println("Match\t", i, "\t", pos, "\t", dis, "\t", left_most_pos, "\t", string(read), "\t")
-		for pos := range left_snp_pos {
+		fmt.Print("Match\t", pos, "\t", dis, "\t", left_most_pos, "\t", string(read), "\t")
+		for _, pos := range left_snp_pos {
 			fmt.Print(pos, "\t")
 		}
 		fmt.Println()
@@ -109,8 +116,8 @@ var (
 type Align_trace_info struct {
 	read1, read2 []byte
 	read_info1, read_info2 []byte
-	align_pos1, align_pos2 int
-	align_right_pos1, align_right_pos2 int
+	l_align_pos1, l_align_pos2 int
+	r_align_pos1, r_align_pos2 int
 	align_dis1, align_dis2 int
 	snp_pos1, snp_pos2 []uint32
 	snp_base1, snp_base2 [][]byte
@@ -136,10 +143,10 @@ func GetAlignTraceInfo() {
 				for i, snp_pos = range at.snp_pos1 {
 					var snp SNP_trace_info
 					if len(at.snp_base1[i]) == 0 {
-						snp = SNP_trace_info{[]byte{'.'}, []byte{'I'}, at.align_pos1, at.align_pos2, 
+						snp = SNP_trace_info{[]byte{'.'}, []byte{'I'}, at.l_align_pos1, at.l_align_pos2, 
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '1'}
 					} else {
-						snp = SNP_trace_info{at.snp_base1[i], at.snp_baseq1[i], at.align_pos1, at.align_pos2, 
+						snp = SNP_trace_info{at.snp_base1[i], at.snp_baseq1[i], at.l_align_pos1, at.l_align_pos2, 
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '1'}
 					}
 					SNP_TRACE_INFO_MAP[snp_pos] = append(SNP_TRACE_INFO_MAP[snp_pos], snp)
@@ -149,10 +156,10 @@ func GetAlignTraceInfo() {
 				for i, snp_pos = range at.snp_pos2 {
 					var snp SNP_trace_info
 					if len(at.snp_base2[i]) == 0 {
-						snp = SNP_trace_info{[]byte{'.'}, []byte{'I'}, at.align_pos1, at.align_pos2, 
+						snp = SNP_trace_info{[]byte{'.'}, []byte{'I'}, at.l_align_pos1, at.l_align_pos2, 
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '2'}
 					} else {
-						snp = SNP_trace_info{at.snp_base2[i], at.snp_baseq2[i], at.align_pos1, at.align_pos2, 
+						snp = SNP_trace_info{at.snp_base2[i], at.snp_baseq2[i], at.l_align_pos1, at.l_align_pos2, 
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '2'}
 					}
 					SNP_TRACE_INFO_MAP[snp_pos] = append(SNP_TRACE_INFO_MAP[snp_pos], snp)
@@ -175,7 +182,7 @@ func GetNoAlignTraceInfo() {
 
 /*
  TP-FP info: Log file format:
-  snp_pos  true_snp  snp_base  snp_qual end_from  align_dis1  align_dis2  align_pos_diff  align_pos1  align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
+  snp_pos  true_snp  snp_base  snp_qual end_from  align_dis1  align_dis2  align_pos_diff  l_align_pos1  l_align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
   ...
  where:
   values in one line are corresponding to one variant call
@@ -460,7 +467,7 @@ func OutputSNPFNInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 		true_var = FN_Var[pos]
 		has_align_read = false
 		for _, at = range ALIGN_TRACE_INFO_ARR {
-			if at.align_pos1 <= pos && at.align_right_pos1 >= pos {
+			if at.l_align_pos1 <= pos && at.r_align_pos1 >= pos {
 				has_align_read = true
 				snp_call, has_align_base := FN_VAR_CALL[pos]
 				if has_align_base {
@@ -477,7 +484,7 @@ func OutputSNPFNInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 					}			
 				}
 			}
-			if at.align_pos2 <= pos && at.align_right_pos2 >= pos {
+			if at.l_align_pos2 <= pos && at.r_align_pos2 >= pos {
 				has_align_read = true
 				snp_call, has_align_base := FN_VAR_CALL[pos]
 				if has_align_base {
@@ -512,13 +519,13 @@ func WriteSNPFNInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 	if len(snp_call.Bases) != 0 {
 		file.WriteString(snp_call.Bases + "\t" + strconv.FormatFloat(snp_call.Prob, 'f', 5, 32) + "\t")
 	}
-	if at.align_pos1 != 0 && at.align_pos2 != 0 {
-		file.WriteString(strconv.Itoa(at.align_pos1 - at.align_pos2) + "\t")
+	if at.l_align_pos1 != 0 && at.l_align_pos2 != 0 {
+		file.WriteString(strconv.Itoa(at.l_align_pos1 - at.l_align_pos2) + "\t")
 	} else {
 		file.WriteString("None\t")
 	}
-	file.WriteString(strconv.Itoa(at.align_pos1) + "\t" + strconv.Itoa(at.align_pos2) + "\t")
-	file.WriteString(strconv.Itoa(at.align_right_pos1) + "\t" + strconv.Itoa(at.align_right_pos2) + "\t")
+	file.WriteString(strconv.Itoa(at.l_align_pos1) + "\t" + strconv.Itoa(at.l_align_pos2) + "\t")
+	file.WriteString(strconv.Itoa(at.r_align_pos1) + "\t" + strconv.Itoa(at.r_align_pos2) + "\t")
 	file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
 
 	tokens := bytes.Split(at.read_info1, []byte{'_'})
@@ -561,8 +568,8 @@ func ProcessNoAlignInfo(snp_call map[uint32]map[string]float64) {
 //Write noalign reads and related info to file
 func WriteNoALignInfo(file *os.File, at Align_trace_info) {
 	file.WriteString("None\t")
-	file.WriteString(strconv.Itoa(at.align_pos1) + "\t" + strconv.Itoa(at.align_pos2) + "\t")
-	file.WriteString(strconv.Itoa(at.align_right_pos1) + "\t" + strconv.Itoa(at.align_right_pos2) + "\t")
+	file.WriteString(strconv.Itoa(at.l_align_pos1) + "\t" + strconv.Itoa(at.l_align_pos2) + "\t")
+	file.WriteString(strconv.Itoa(at.r_align_pos1) + "\t" + strconv.Itoa(at.r_align_pos2) + "\t")
 	file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
 				
 	tokens := bytes.Split(at.read_info1, []byte{'_'})
