@@ -1,4 +1,7 @@
-(1) Evaluate performance with both simulated and real reads.
+(1) Check if alignment of pair-end reads have:
+    + Chromosome distance of seeds of two ends is small (< 1000).
+    + Distance(read, ref) is small (< 5), taking into account both original and reverse complement of reads, the smaller will be accepted.
+    + Matches are in reverse strands.
 
 (2) Finish some back work:
     + Read fully allele frequency from SNP profile (VCF files).
@@ -12,12 +15,4 @@
         + Tell users that the program has finished calling SNPs so they can go ahead to look at the result.
         + The program can go ahead to save the index (FM and SNP) while users are looking at the results.
 
-(4) Call new SNPs and new alleles:
-    + Generate new simlated reads with new SNPs and new alleles (0.1%, 0.5%, 1%).
-    + Modify the traceback algorithm to call new SNPs with current distance calculation algorithm (that is, allow only known alleles at known positions).
-    + Modify the distance calculation and traceback algorithms to call new alleles (and new SNPs as well).
-
-(5) Exploit the advantage of pair-end reads:
-    + Difference(first match, second match) is small.
-    + Distance(read, ref) is small.
-    + Matches are in reverse strands.
+(4) Evaluate performance with both simulated and real reads.
