@@ -87,7 +87,7 @@ func (S *SNP_Prof) CallSNPs() {
 		GetAlignTraceInfo()
 	}()
 	go func() {
-		GetMisAlignTraceInfo()
+		GetNoAlignTraceInfo()
 	}()
 	//------------------------
 	go func() {
@@ -96,7 +96,7 @@ func (S *SNP_Prof) CallSNPs() {
 		//------------------------
 		//For debugging
 		close(ALIGN_TRACE_INFO_CHAN)
-		close(MIS_ALIGN_TRACE_INFO_CHAN)
+		close(NO_ALIGN_TRACE_INFO_CHAN)
 		//------------------------
 	}()
 	
@@ -116,9 +116,9 @@ func (S *SNP_Prof) CallSNPs() {
 	//------------------------
 	//For debugging
 	fmt.Println("Processing trace info...")
-	ProcessSNPTPFPInfo(S.SNP_Calls)
+	ProcessNoAlignInfo(S.SNP_Calls)
 	ProcessSNPFNInfo(S.SNP_Calls)
-	ProcessMisAlignInfo(S.SNP_Calls)
+	ProcessSNPTPFPInfo(S.SNP_Calls)
 	//------------------------
 }
 
@@ -277,7 +277,25 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 					}
 				}
 			}
-		} else if len(match_dis1) == 0 {
+		}
+		loop_num++
+	}
+	loop_num = 0
+	for loop_num < 5 { //an arbitrary value, will be replaced later
+		//Find SNPs for the first end
+		PrintMemStats("Before FindSNPsFromEnd1")
+		snps_arr1, match_dis1, left_align_pos1, right_align_pos1, strand1 = S.FindSNPsFromEachEnd(read_info.Read1, read_info.Rev_read1, 
+			read_info.Rev_comp_read1, read_info.Comp_read1, read_info.Qual1, read_info.Rev_qual1, align_info, match_pos)
+		PrintMemStats("After FindSNPsFromEnd1")
+
+		//Find SNPs for the second end
+		PrintMemStats("Before FindSNPsFromEnd2")
+		snps_arr2, match_dis2, left_align_pos2, right_align_pos2, strand2 = S.FindSNPsFromEachEnd(read_info.Read2, read_info.Rev_read2, 
+			read_info.Rev_comp_read2, read_info.Comp_read2, read_info.Qual2, read_info.Rev_qual2, align_info, match_pos)
+		PrintMemStats("After FindSNPsFromEnd2")
+
+		var idx1, idx2, pos1, pos2 int
+		if len(match_dis1) == 0 && len(match_dis2) > 0 {
 			for idx2, pos2 = range left_align_pos2 {
 				var at Align_trace_info
 				at.read1 = make([]byte, len(read_info.Read1))
@@ -307,7 +325,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				ALIGN_TRACE_INFO_CHAN <- at
 				return
 			}
-		} else if len(match_dis2) == 0 {
+		} else if len(match_dis1) > 0 && len(match_dis2) == 0 {
 			for idx1, pos1 = range left_align_pos1 {
 				var at Align_trace_info
 				at.read1 = make([]byte, len(read_info.Read1))
@@ -337,11 +355,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				ALIGN_TRACE_INFO_CHAN <- at
 				return
 			}
-		}
-		
+		}		
 		loop_num++
 	}
-	/*
 	var at Align_trace_info
 	at.read1 = make([]byte, len(read_info.Read1))
 	at.read2 = make([]byte, len(read_info.Read2))
@@ -351,14 +367,13 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	at.read_info2 = make([]byte, len(read_info.Info2))
 	copy(at.read_info1, read_info.Info1)
 	copy(at.read_info2, read_info.Info2)
-	at.align_pos1 = left_align_pos1
-	at.align_pos2 = left_align_pos2
-	at.align_right_pos1 = right_align_pos1
-	at.align_right_pos2 = right_align_pos2
-	at.align_dis1 = min_dis1
-	at.align_dis2 = min_dis2
-	MIS_ALIGN_TRACE_INFO_CHAN <- at
-	 */
+	at.align_pos1 = -1
+	at.align_pos2 = -1
+	at.align_right_pos1 = -1
+	at.align_right_pos2 = -1
+	at.align_dis1 = -1
+	at.align_dis2 = -1
+	NO_ALIGN_TRACE_INFO_CHAN <- at
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -592,7 +607,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	defer file.Close()
 
 	var snp_pos uint32
-	var str_snp_pos, str_snp_qual, str_base_num string
+	var str_snp_pos, str_snp_qual, str_snp_prob, str_base_num string
 
 	SNP_Pos := make([]int, 0, len(S.SNP_Calls))
 	for snp_pos, _ = range S.SNP_Calls {
@@ -602,6 +617,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 
 	var snp_call_prob, snp_prob float64
 	var snp_call, snp string
+	var snp_num int
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
 		str_snp_pos = strconv.Itoa(pos + 1)
@@ -612,12 +628,23 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
+		str_snp_prob = strconv.FormatFloat(snp_call_prob, 'f', 5, 32)
 		str_snp_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
 		str_base_num = strconv.Itoa(S.SNP_Bases[snp_pos][snp_call])
 		if str_snp_qual != "+Inf" {
-			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + str_snp_qual + "\t" + str_base_num + "\n")
+			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + str_snp_qual + "\t" + str_snp_prob + "\t" + str_base_num + "\t")
+			for snp, snp_num = range S.SNP_Bases[snp_pos] {
+				str_base_num = strconv.Itoa(snp_num)
+				_, err = file.WriteString(snp + "\t" + str_base_num + "\t")
+			}
+			_, err = file.WriteString("\n")
 		} else {
-			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t1000\n")
+			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + "1000" + "\t" + str_snp_prob + "\t" + str_base_num + "\t")
+			for snp, snp_num = range S.SNP_Bases[snp_pos] {
+				str_base_num = strconv.Itoa(snp_num)
+				_, err = file.WriteString(snp + "\t" + str_base_num + "\t")
+			}
+			_, err = file.WriteString("\n")
 		}
 		if err != nil {
 			fmt.Println(err)

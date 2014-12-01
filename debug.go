@@ -23,11 +23,11 @@ var (
 	PRINT_PROCESS_MEM = true
 	PRINT_MEM_STATS = false
 	GET_ALIGN_TRACE_INFO = true
-	PRINT_ALIGN_TRACE_INFO = false
-	PRINT_TPFP = false
-	PRINT_FN = false
-	GET_MIS_ALIGN_TRACE_INFO = true
-	PRINT_MA = false
+	PRINT_ALIGN_TRACE_INFO = true
+	PRINT_TPFP = true
+	PRINT_FN = true
+	GET_NO_ALIGN_TRACE_INFO = true
+	PRINT_NA = true
 )
 
 //Global variable for memory profiling
@@ -98,8 +98,8 @@ var (
     ALIGN_TRACE_INFO_CHAN = make(chan Align_trace_info)
 	ALIGN_TRACE_INFO_ARR = make([]Align_trace_info, 0)
 	SNP_TRACE_INFO_MAP = make(map[uint32][]SNP_trace_info)
-    MIS_ALIGN_TRACE_INFO_CHAN = make(chan Align_trace_info)
-	MIS_ALIGN_TRACE_INFO_ARR = make([]Align_trace_info, 0)
+    NO_ALIGN_TRACE_INFO_CHAN = make(chan Align_trace_info)
+	NO_ALIGN_TRACE_INFO_ARR = make([]Align_trace_info, 0)
     TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/mutate-0.3300/variant_comp.txt")
     TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/mutate-0.3300/variant_part.txt")
     TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/mutate-0.3300/variant_none.txt")
@@ -163,13 +163,13 @@ func GetAlignTraceInfo() {
 	}
 }
 
-//Read misalign reads and related info from channel and store them
-func GetMisAlignTraceInfo() {
-	if GET_MIS_ALIGN_TRACE_INFO {
-		for at := range MIS_ALIGN_TRACE_INFO_CHAN {
-			MIS_ALIGN_TRACE_INFO_ARR = append(MIS_ALIGN_TRACE_INFO_ARR, at)
+//Read noalign reads and related info from channel and store them
+func GetNoAlignTraceInfo() {
+	if GET_NO_ALIGN_TRACE_INFO {
+		for at := range NO_ALIGN_TRACE_INFO_CHAN {
+			NO_ALIGN_TRACE_INFO_ARR = append(NO_ALIGN_TRACE_INFO_ARR, at)
 		}
-		fmt.Println("# of misaligned reads:", len(MIS_ALIGN_TRACE_INFO_ARR))
+		fmt.Println("# of no-aligned reads:", len(NO_ALIGN_TRACE_INFO_ARR))
 	}
 }
 
@@ -547,71 +547,20 @@ func WriteSNPFNInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 	file.Sync()
 }
 
-//Process misalign reads and realted info
-func ProcessMisAlignInfo(snp_call map[uint32]map[string]float64) {
-	if PRINT_MA {
-		var pos int
-		var snp []byte
-		SNP_pos := make([]int, 0)
-		Indel_pos := make([]int, 0)
-		for pos, snp = range TRUE_VAR_COMP {
-			if len(snp) == 0 || len(snp) > 1 {
-				Indel_pos = append(Indel_pos, pos)
-			} else {
-				SNP_pos = append(SNP_pos, pos)
-			}
-		}
-		for pos, snp = range TRUE_VAR_COMP {
-			if len(snp) == 0 || len(snp) > 1 {
-				Indel_pos = append(Indel_pos, pos)
-			} else {
-				SNP_pos = append(SNP_pos, pos)
-			}
-		}
-		for pos, snp = range TRUE_VAR_COMP {
-			if len(snp) == 0 || len(snp) > 1 {
-				Indel_pos = append(Indel_pos, pos)
-			} else {
-				SNP_pos = append(SNP_pos, pos)
-			}
-		}
-
-		fmt.Println("# SNP_pos:", len(SNP_pos))
-		Sorted_snp_pos := make([]int, 0)
-		for _, pos = range SNP_pos {
-				Sorted_snp_pos = append(Sorted_snp_pos, pos)
-		}
-		sort.Ints(Sorted_snp_pos)
-
-		fmt.Println("# Indel_pos:", len(Indel_pos))
-		Sorted_indel_pos := make([]int, 0)
-		for _, pos = range Indel_pos {
-				Sorted_indel_pos = append(Sorted_indel_pos, pos)
-		}
-		sort.Ints(Sorted_indel_pos)
-
-		file1, _ := os.Create(INPUT_INFO.SNP_call_file + ".misalign_snp")
-		file2, _ := os.Create(INPUT_INFO.SNP_call_file + ".misalign_indel")
-		defer file1.Close()
-		defer file2.Close()
-
-		for _, at := range MIS_ALIGN_TRACE_INFO_ARR {
-			if IntervalHasSNP(Sorted_indel_pos, at.align_pos1, at.align_right_pos1) || IntervalHasSNP(Sorted_indel_pos, at.align_pos2, at.align_right_pos2){
-				WriteMisALignInfo(file2, Sorted_indel_pos, at)
-			} else {
-				WriteMisALignInfo(file1, Sorted_snp_pos, at)
-			}
+//Process noalign reads and related info
+func ProcessNoAlignInfo(snp_call map[uint32]map[string]float64) {
+	if PRINT_NA {
+		file, _ := os.Create(INPUT_INFO.SNP_call_file + ".noalign")
+		defer file.Close()
+		for _, at := range NO_ALIGN_TRACE_INFO_ARR {
+			WriteNoALignInfo(file, at)
 		}
 	}
 }
 
-//Write misalign reads and related info to file
-func WriteMisALignInfo(file *os.File, var_pos []int, at Align_trace_info) {
-	if at.align_pos1 != 0 && at.align_pos2 != 0 {
-		file.WriteString(strconv.Itoa(at.align_pos1 - at.align_pos2) + "\t")
-	} else {
-		file.WriteString("None\t")
-	}
+//Write noalign reads and related info to file
+func WriteNoALignInfo(file *os.File, at Align_trace_info) {
+	file.WriteString("None\t")
 	file.WriteString(strconv.Itoa(at.align_pos1) + "\t" + strconv.Itoa(at.align_pos2) + "\t")
 	file.WriteString(strconv.Itoa(at.align_right_pos1) + "\t" + strconv.Itoa(at.align_right_pos2) + "\t")
 	file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
@@ -629,19 +578,6 @@ func WriteMisALignInfo(file *os.File, var_pos []int, at Align_trace_info) {
 		file.WriteString(string(tokens[10]) + "\t")
 	} else {
 		file.WriteString("None\tNone\tNone\tNone\t")
-	}
-	var pos int
-	align_pos := make([]int, 0)
-	for _, pos = range var_pos {
-		if at.align_pos1 <= pos && at.align_right_pos1 > pos {
-			align_pos = append(align_pos, pos)
-		}
-		if at.align_pos2 <= pos && at.align_right_pos2 > pos {
-			align_pos = append(align_pos, pos)
-		}
-	}
-	for _, pos = range align_pos {
-		file.WriteString(strconv.Itoa(pos) + "\t")
 	}
 	file.WriteString("\n")
 	file.Sync()
