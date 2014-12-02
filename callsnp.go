@@ -84,10 +84,10 @@ func (S *SNP_Prof) CallSNPs() {
 	//------------------------
 	//For debugging
 	go func() {
-		GetAlignTraceInfo()
+		GetAlignReadInfo()
 	}()
 	go func() {
-		GetNoAlignTraceInfo()
+		GetNoAlignReadInfo()
 	}()
 	//------------------------
 	go func() {
@@ -95,8 +95,8 @@ func (S *SNP_Prof) CallSNPs() {
 		close(snp_results)
 		//------------------------
 		//For debugging
-		close(ALIGN_TRACE_INFO_CHAN)
-		close(NO_ALIGN_TRACE_INFO_CHAN)
+		close(ALIGN_READ_INFO_CHAN)
+		close(NO_ALIGN_READ_INFO_CHAN)
 		//------------------------
 	}()
 	
@@ -116,9 +116,9 @@ func (S *SNP_Prof) CallSNPs() {
 	//------------------------
 	//For debugging
 	fmt.Println("Processing trace info...")
-	ProcessNoAlignInfo(S.SNP_Calls)
-	ProcessSNPFNInfo(S.SNP_Calls)
-	ProcessSNPTPFPInfo(S.SNP_Calls)
+	ProcessNoAlignReadInfo(S.SNP_Calls)
+	ProcessFNSNPInfo(S.SNP_Calls)
+	ProcessTPFPSNPInfo(S.SNP_Calls)
 	//------------------------
 }
 
@@ -317,12 +317,12 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 					at.snp_baseq2 = append(at.snp_baseq2, snp.BaseQ)
 				}
 			}
-			ALIGN_TRACE_INFO_CHAN <- at
+			ALIGN_READ_INFO_CHAN <- at
 			return
 		}
 		loop_num++
 	}
-
+/*
 	//Try to align the first end
 	loop_num = 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
@@ -386,7 +386,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 					at.snp_baseq1 = append(at.snp_baseq1, snp.BaseQ)
 				}
 			}
-			ALIGN_TRACE_INFO_CHAN <- at
+			ALIGN_READ_INFO_CHAN <- at
 			return
 		}
 		loop_num++
@@ -455,12 +455,12 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 					at.snp_baseq2 = append(at.snp_baseq2, snp.BaseQ)
 				}
 			}
-			ALIGN_TRACE_INFO_CHAN <- at
+			ALIGN_READ_INFO_CHAN <- at
 			return
 		}
 		loop_num++
 	}
-
+*/
 	//Cannot align any ends, consider as unaligned reads
 	at.l_align_pos1 = -1
 	at.l_align_pos2 = -1
@@ -468,7 +468,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	at.r_align_pos2 = -1
 	at.align_dis1 = -1
 	at.align_dis2 = -1
-	NO_ALIGN_TRACE_INFO_CHAN <- at
+	NO_ALIGN_READ_INFO_CHAN <- at
 }
 
 //---------------------------------------------------------------------------------------------------
