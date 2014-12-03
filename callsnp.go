@@ -322,7 +322,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		}
 		loop_num++
 	}
-/*
+
 	//Try to align the first end
 	loop_num = 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
@@ -438,7 +438,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		}
 		loop_num++
 	}
-*/
+
 	//Cannot align any ends, consider as unaligned reads
 	at.l_align_pos1 = -1
 	at.l_align_pos2 = -1
