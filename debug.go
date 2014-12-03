@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"log"
 	"sort"
+	"time"
 )
 
 //Global variable for turnning on/off info profiling
@@ -26,11 +27,11 @@ var (
 	PRINT_ALIGN_TRACE_INFO = false
 
 	GET_ALIGN_READ_INFO = true
-	PRINT_FN = true
-	PRINT_TPFP = true
+	PRINT_FN = false
+	PRINT_TPFP = false
 
 	GET_NO_ALIGN_READ_INFO = true
-	PRINT_NA = true
+	PRINT_NA = false
 )
 
 //Global variable for memory profiling
@@ -213,6 +214,7 @@ func GetNoAlignReadInfo() {
 //Process TP, FP variants info
 func ProcessTPFPSNPInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_TPFP {
+		fmt.Println("Processing TP, FP SNP info...")
 		files := make([]*os.File, 14)
 		file_names := []string{"tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", 
 								"tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part", 
@@ -249,6 +251,7 @@ func ProcessTPFPSNPInfo(snp_call map[uint32]map[string]float64) {
 				}
 			}
 		}
+		fmt.Println("Finish processing TP, FP SNP info.")
 	}
 }
 
@@ -382,6 +385,7 @@ var (
 //Process FN variants and realted info
 func ProcessFNSNPInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_FN {
+		fmt.Println("Processing FN SNP info...")
 		files := make([]*os.File, 18)
 		file_names := []string{"fn_snp_align_none", "fn_indel_align_none", "fn_snp_misalign_none", "fn_indel_misalign_none", "fn_snp_noalign_none", "fn_indel_noalign_none", 
 								"fn_snp_align_part", "fn_indel_align_part", "fn_snp_misalign_part", "fn_indel_misalign_part", "fn_snp_noalign_part", "fn_indel_noalign_part", 
@@ -457,6 +461,7 @@ func ProcessFNSNPInfo(snp_call map[uint32]map[string]float64) {
 		fmt.Println("# FN_VAR_COMP:", len(Comp_Pos))
 		fmt.Println("Outputing FN_VAR_COMP:")
 		OutputFNSNPInfo(files[12:18], Comp_Pos, FN_VAR_COMP)
+		fmt.Println("Finish processing FN SNP info.")
 	}
 }
 
@@ -464,9 +469,12 @@ func ProcessFNSNPInfo(snp_call map[uint32]map[string]float64) {
 func OutputFNSNPInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 	var at Align_trace_info
 	var true_var []byte
-	var pos int
+	var i, pos int
 	var has_align_read bool
-	for _, pos = range FN_Pos {
+	start_time := time.Now()
+	process_time := time.Since(start_time)
+	for i, pos = range FN_Pos {
+		start_time = time.Now()
 		true_var = FN_Var[pos]
 		has_align_read = false
 		for _, at = range ALIGN_READ_INFO_ARR {
@@ -512,6 +520,8 @@ func OutputFNSNPInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 				files[5].WriteString(strconv.Itoa(pos) + "\t" + string(true_var) + "\n")
 			}
 		}
+		process_time = time.Since(start_time)
+		fmt.Println("time for processing each FN element:\t", i, process_time)
 	}
 }
 
@@ -560,37 +570,33 @@ func WriteFNSNPInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 //Process noalign reads and related info
 func ProcessNoAlignReadInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_NA {
+		fmt.Println("Processing noaligned read info...")
 		file, _ := os.Create(INPUT_INFO.SNP_call_file + ".noalign")
 		defer file.Close()
 		for _, at := range NO_ALIGN_READ_INFO_ARR {
-			WriteNoALignReadInfo(file, at)
+			file.WriteString("None\t")
+			file.WriteString(strconv.Itoa(at.l_align_pos1) + "\t" + strconv.Itoa(at.l_align_pos2) + "\t")
+			file.WriteString(strconv.Itoa(at.r_align_pos1) + "\t" + strconv.Itoa(at.r_align_pos2) + "\t")
+			file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
+						
+			tokens := bytes.Split(at.read_info1, []byte{'_'})
+			if len(tokens) >= 11 {
+				true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
+				true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 64)
+				if err1 == nil && err2 == nil {
+					file.WriteString(strconv.FormatInt(true_pos1 - true_pos2, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + 
+						"\t" + strconv.FormatInt(true_pos2, 10) + "\t")
+				} else {
+					file.WriteString("None\tNone\tNone\t")
+				}
+				file.WriteString(string(tokens[10]) + "\t")
+			} else {
+				file.WriteString("None\tNone\tNone\tNone\t")
+			}
+			file.WriteString("\n")
 		}
+		fmt.Println("Finish processing noaligned read info.")
 	}
-}
-
-//Write noalign reads and related info to file
-func WriteNoALignReadInfo(file *os.File, at Align_trace_info) {
-	file.WriteString("None\t")
-	file.WriteString(strconv.Itoa(at.l_align_pos1) + "\t" + strconv.Itoa(at.l_align_pos2) + "\t")
-	file.WriteString(strconv.Itoa(at.r_align_pos1) + "\t" + strconv.Itoa(at.r_align_pos2) + "\t")
-	file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
-				
-	tokens := bytes.Split(at.read_info1, []byte{'_'})
-	if len(tokens) >= 11 {
-		true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
-		true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 64)
-		if err1 == nil && err2 == nil {
-			file.WriteString(strconv.FormatInt(true_pos1 - true_pos2, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + 
-				"\t" + strconv.FormatInt(true_pos2, 10) + "\t")
-		} else {
-			file.WriteString("None\tNone\tNone\t")
-		}
-		file.WriteString(string(tokens[10]) + "\t")
-	} else {
-		file.WriteString("None\tNone\tNone\tNone\t")
-	}
-	file.WriteString("\n")
-	file.Sync()
 }
 
 //Load true variants which are used to generate the mutant genome

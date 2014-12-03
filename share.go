@@ -8,6 +8,7 @@ package isc
 import (
 	"math"
 	"fmt"
+	"log"
 )
 
 //Global constants and variables
@@ -39,52 +40,61 @@ type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
 	Iter_num        int     //number of random iterations to find proper seeds
 	Max_match       int     //maximum number of matches
+	Min_seed       	int     //manimum length of seeds
+	Max_ins 		int 	//maximum insert size of two aligned ends
 	Seq_err         float32 //average sequencing error, estmated from reads with real reads
 	Err_var_factor  int     //factor for standard variation of sequencing error
 	Iter_num_factor int     //factor for number of iterations 
 	Read_len        int     //read length, calculated from read files
 	Info_len		int 	//length of read information
-	Max_diff		int 	//maximum distance of alignment postions of two ends
 }
 
 //SetPara sets values of parameters for alignment process
-func SetPara(read_len int, seq_err float32, max_diff int) *ParaInfo {
+func SetPara(read_len int, seq_err float32, max_ins int) *ParaInfo {
 	para_info := new(ParaInfo)
-	para_info.Max_match = 16
-	para_info.Err_var_factor = 4
-	para_info.Iter_num_factor = 1
+	para_info.Max_ins = max_ins	//based on simulated data, will be estimated from reads with real data
 	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
 	para_info.Info_len = 500	//a big enough number to store read headers
-	para_info.Max_diff = max_diff	//based on simulated data, will be estimated from reads with real data
+	para_info.Err_var_factor = 4
+	para_info.Iter_num_factor = 1
+	para_info.Max_match = 32
+	para_info.Min_seed = 19
 
-	//Const for computing distance
 	err := float64(para_info.Seq_err)
 	rlen := float64(para_info.Read_len)
 	k := float64(para_info.Err_var_factor)
-	para_info.Dist_thres = int(0.02 * rlen) + int(math.Ceil(err*rlen + k*math.Sqrt(rlen*err*(1-err))))
+	para_info.Dist_thres = int(0.02 * rlen) + int(math.Ceil(err * rlen + k * math.Sqrt(rlen * err * (1 - err))))
 	//factor 0.02 above is assigned based on rate of SNP and INDEL reported in SNP profile of human genome
 	//it will be estimated from input info
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
-	//para_info.Dist_thres = 7
-	//para_info.Iter_num = 8
+	para_info.Dist_thres = 5
+	para_info.Iter_num = 6
 
-	fmt.Println("DIST_THRES: ", para_info.Dist_thres)
-	fmt.Println("ITER_NUM: ", para_info.Iter_num)
+	log.Printf("Dist_thres:\t%d", para_info.Dist_thres)
+	log.Printf("Iter_num:\t%d", para_info.Iter_num)
+	log.Printf("Max_ins:\t%d", para_info.Max_ins)
+	log.Printf("Seq_err:\t%.5f", para_info.Seq_err)
+	log.Printf("Read_len:\t%d", para_info.Read_len)
+	log.Printf("Info_len:\t%d", para_info.Info_len)
+	log.Printf("Err_var_factor:\t%d", para_info.Err_var_factor)
+	log.Printf("Iter_num_factor:\t%d", para_info.Iter_num_factor)
+	log.Printf("Max_match:\t%d", para_info.Max_match)
+	log.Printf("Min_seed:\t%d", para_info.Min_seed)
 	
 	return para_info
 }
 
 //Read information
 type ReadInfo struct {
-	Read1, Read2        []byte 		//first and second ends
-	Qual1, Qual2		[]byte 		//quality info of the first read and second ends
-	Rev_read1, Rev_read2           []byte	//reverse of the first and second ends
-	Rev_comp_read1, Rev_comp_read2 []byte	//reverse complement of the first and second ends
-	Comp_read1, Comp_read2 []byte			//complement of the first and second ends
-	Rev_qual1, Rev_qual2   []byte		//quality of reverse of the first and second ends
-	Info1, Info2		   []byte 		//info of the first and second ends
+	Read1, Read2        			[]byte 		//first and second ends
+	Qual1, Qual2					[]byte 		//quality info of the first read and second ends
+	Rev_read1, Rev_read2           	[]byte		//reverse of the first and second ends
+	Rev_comp_read1, Rev_comp_read2 	[]byte		//reverse complement of the first and second ends
+	Comp_read1, Comp_read2 			[]byte		//complement of the first and second ends
+	Rev_qual1, Rev_qual2   			[]byte		//quality of reverse of the first and second ends
+	Info1, Info2		   			[]byte 		//info of the first and second ends
 }
 
 //InitReadInfo create a read info object and initializes its content
