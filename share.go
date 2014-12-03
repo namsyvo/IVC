@@ -52,7 +52,7 @@ type ParaInfo struct {
 //SetPara sets values of parameters for alignment process
 func SetPara(read_len, info_len int, max_ins int, seq_err float32) *ParaInfo {
 	para_info := new(ParaInfo)
-	para_info.Max_match = 32
+	para_info.Max_match = 16
 	para_info.Min_seed = 19
 	para_info.Err_var_factor = 4
 	para_info.Iter_num_factor = 1
