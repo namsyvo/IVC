@@ -15,6 +15,7 @@ import (
 	"time"
 	"sort"
 	"sync"
+	"strings"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -54,7 +55,7 @@ type SNP_Prof struct {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
 	INPUT_INFO = input_info
-	PARA_INFO = *SetPara(100, 0.0015, 1000)
+	PARA_INFO = *SetPara(100, 500, 1000, 0.0015)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
@@ -321,7 +322,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		}
 		loop_num++
 	}
-
+/*
 	//Try to align the first end
 	loop_num = 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
@@ -437,7 +438,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		}
 		loop_num++
 	}
-
+*/
 	//Cannot align any ends, consider as unaligned reads
 	at.l_align_pos1 = -1
 	at.l_align_pos2 = -1
@@ -769,7 +770,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	defer file.Close()
 
 	var snp_pos uint32
-	var str_snp_pos, str_snp_qual, str_snp_prob, str_base_num string
+	var str_pos, str_qual, str_prob, str_base_num string
 
 	SNP_Pos := make([]int, 0, len(S.SNP_Calls))
 	for snp_pos, _ = range S.SNP_Calls {
@@ -782,7 +783,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	var snp_num int
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
-		str_snp_pos = strconv.Itoa(pos + 1)
+		str_pos = strconv.Itoa(pos + 1)
 		snp_call_prob = 0
 		for snp, snp_prob = range S.SNP_Calls[snp_pos] {
 			if snp_call_prob < snp_prob {
@@ -790,18 +791,18 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		str_snp_prob = strconv.FormatFloat(snp_call_prob, 'f', 5, 32)
-		str_snp_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
+		str_prob = strconv.FormatFloat(snp_call_prob, 'f', 5, 32)
+		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
 		str_base_num = strconv.Itoa(S.SNP_Bases[snp_pos][snp_call])
-		if str_snp_qual != "+Inf" {
-			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + str_snp_qual + "\t" + str_snp_prob + "\t" + str_base_num + "\t")
+		if str_qual != "+Inf" {
+			_, err = file.WriteString(strings.Join([]string{str_pos, snp_call, str_qual, str_prob, str_base_num}, "\t"))
 			for snp, snp_num = range S.SNP_Bases[snp_pos] {
 				str_base_num = strconv.Itoa(snp_num)
 				_, err = file.WriteString(snp + "\t" + str_base_num + "\t")
 			}
 			_, err = file.WriteString("\n")
 		} else {
-			_, err = file.WriteString(str_snp_pos + "\t" + snp_call + "\t" + "1000" + "\t" + str_snp_prob + "\t" + str_base_num + "\t")
+			_, err = file.WriteString(strings.Join([]string{str_pos, snp_call, "1000", str_prob, str_base_num}, "\t"))
 			for snp, snp_num = range S.SNP_Bases[snp_pos] {
 				str_base_num = strconv.Itoa(snp_num)
 				_, err = file.WriteString(snp + "\t" + str_base_num + "\t")

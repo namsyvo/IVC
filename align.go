@@ -86,7 +86,7 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 // FindSeeds function returns positions and distances of LCS between reads and multi-genomes.
 // It uses both backward search and forward search (backward search on reverse references).
 //--------------------------------------------------------------------------------------------------
-func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, int, int, bool) {
+func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
 
 	var rev_sp, rev_ep int = 0, PARA_INFO.Max_match
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
@@ -100,7 +100,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 		e_pos = p
 		if rev_ep - rev_sp + 1 <= PARA_INFO.Max_match && s_pos - e_pos >= PARA_INFO.Min_seed {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				match_pos[idx - rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
+				m_pos[idx - rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}
@@ -113,61 +113,61 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, match_pos []int) (int, i
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, match_pos int, align_info *AlignInfo) (int, []int, [][]byte, []int, []int, [][]byte, []int, int, int) {
+func (I *Index) FindExtensions(read []byte, s_pos, e_pos int, m_pos int, align_info *AlignInfo) (int, 
+	[]int, [][]byte, []int, []int, [][]byte, []int, int, int, bool) {
 
-	var ref_left_flank, ref_right_flank, read_left_flank, read_right_flank []byte
+	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank []byte
 	var lcs_len int = s_pos - e_pos + 1
 
 	var isSNP, isSameLenSNP bool
-	left_ext_add_len, right_ext_add_len := 0, 0
+	l_ext_add_len, right_ext_add_len := 0, 0
 	i := 0
-	for i = match_pos - e_pos; i < match_pos; i++ {
+	for i = m_pos - e_pos; i < m_pos; i++ {
 		_, isSNP = I.SNP_PROF[i]
 		_, isSameLenSNP = I.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
-			left_ext_add_len++
+			l_ext_add_len++
 		}
 	}
-	for i = match_pos + lcs_len; i < (match_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
+	for i = m_pos + lcs_len; i < (m_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
 		_, isSNP = I.SNP_PROF[i]
 		_, isSameLenSNP = I.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
 			right_ext_add_len++
 		}
 	}
-	left_most_pos := match_pos - e_pos - left_ext_add_len
-	if left_most_pos >= 0 {
-		ref_left_flank = I.SEQ[left_most_pos:match_pos]
+	l_most_pos := m_pos - e_pos - l_ext_add_len
+	if l_most_pos >= 0 {
+		ref_l_flank = I.SEQ[l_most_pos : m_pos]
 	} else {
-		ref_left_flank = I.SEQ[0 : match_pos]
+		ref_l_flank = I.SEQ[0 : m_pos]
 	}
-	right_most_pos := (match_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
-	if right_most_pos <= len(I.SEQ) {
-		ref_right_flank = I.SEQ[match_pos+lcs_len : right_most_pos]
+	r_most_pos := (m_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
+	if r_most_pos <= len(I.SEQ) {
+		ref_r_flank = I.SEQ[m_pos+lcs_len : r_most_pos]
 	} else {
-		ref_right_flank = I.SEQ[match_pos+lcs_len : len(I.SEQ)]
+		ref_r_flank = I.SEQ[m_pos+lcs_len : len(I.SEQ)]
 	}
 
-	read_left_flank = read[ : e_pos]
-	left_d, left_D, left_m, left_n, left_snp_pos, left_snp_val, left_snp_idx :=
-		I.BackwardDistance(read_left_flank, ref_left_flank, left_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
+	read_l_flank = read[ : e_pos]
+	left_d, left_D, l_m, l_n, l_snp_pos, l_snp_val, l_snp_idx :=
+		I.BackwardDistance(read_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
 
-	read_right_flank = read[s_pos + 1 : ]
-	right_d, right_D, right_m, right_n, right_snp_pos, right_snp_val, right_snp_idx :=
-		I.ForwardDistance(read_right_flank, ref_right_flank, match_pos+lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
+	read_r_flank = read[s_pos + 1 : ]
+	right_d, right_D, r_m, r_n, r_snp_pos, r_snp_val, r_snp_idx :=
+		I.ForwardDistance(read_r_flank, ref_r_flank, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
 	dis := left_d + right_d + left_D + right_D
 	if dis <= PARA_INFO.Dist_thres {
-		left_pos, left_val, left_idx := I.BackwardTraceBack(read_left_flank, ref_left_flank,
-			left_m, left_n, left_most_pos, align_info.Bw_Trace)
-		right_pos, right_val, right_idx := I.ForwardTraceBack(read_right_flank, ref_right_flank,
-			right_m, right_n, match_pos + lcs_len, align_info.Fw_Trace)
-		left_snp_pos = append(left_snp_pos, left_pos...)
-		right_snp_pos = append(right_snp_pos, right_pos...)
-		left_snp_val = append(left_snp_val, left_val...)
-		right_snp_val = append(right_snp_val, right_val...)
-		left_snp_idx = append(left_snp_idx, left_idx...)
-		right_snp_idx = append(right_snp_idx, right_idx...)
+		l_pos, l_val, l_idx := I.BackwardTraceBack(read_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
+		r_pos, r_val, r_idx := I.ForwardTraceBack(read_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
+		l_snp_pos = append(l_snp_pos, l_pos...)
+		r_snp_pos = append(r_snp_pos, r_pos...)
+		l_snp_val = append(l_snp_val, l_val...)
+		r_snp_val = append(r_snp_val, r_val...)
+		l_snp_idx = append(l_snp_idx, l_idx...)
+		r_snp_idx = append(r_snp_idx, r_idx...)
+		return dis, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, true
 	}
-	return dis, left_snp_pos, left_snp_val, left_snp_idx, right_snp_pos, right_snp_val, right_snp_idx, left_most_pos, right_most_pos
+	return dis, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, false
 }
