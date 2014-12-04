@@ -98,7 +98,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep - rev_sp + 1 <= PARA_INFO.Max_match && s_pos - e_pos >= PARA_INFO.Min_seed {
+		if rev_ep - rev_sp + 1 <= PARA_INFO.Max_match {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
 				m_pos[idx - rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
 			}

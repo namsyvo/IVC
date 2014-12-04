@@ -236,13 +236,21 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 
 	var dis, p_idx, s_idx int
 
-	//Try to align the first end
+	//Try to align both ends
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2 = S.FindSeedsFromPairedEnds(read_info)
 		dis = 2 * PARA_INFO.Dist_thres + 1
 		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
+
+			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
+			//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
+			//For mate-pair, thewy can be R-F (need to be confirmed)
+			//if strand_r1[p_idx] == strand_r2[p_idx] {
+			//	continue
+			//}
+
 			//Find SNPs for the first end
 			PrintMemStats("Before FindSNPsFromEnd1")
 			if strand_r1[p_idx] == true {
@@ -322,7 +330,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		}
 		loop_num++
 	}
-
+	/*
 	//Try to align the first end
 	loop_num = 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
@@ -438,7 +446,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		}
 		loop_num++
 	}
-
+	*/
 	//Cannot align any ends, consider as unaligned reads
 	at.l_align_pos1 = -1
 	at.l_align_pos2 = -1
@@ -481,32 +489,72 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
-		PrintMemStats("Before FindSeeds, loop_num " + strconv.Itoa(loop_num))
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t" + string(read_info.Read1))
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t" + string(read_info.Read2))
 
+		PrintMemStats("Before FindSeeds, loop_num " + strconv.Itoa(loop_num))
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or = 
 			INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, m_pos_r1_or)
+		PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
+
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc = 
 			INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, m_pos_r1_rc)
+		PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
+
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or = 
 			INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, m_pos_r2_or)
+		PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
+
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc = 
 			INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, m_pos_r2_rc)
-
+		PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
 		PrintMemStats("After FindSeeds, loop_num " + strconv.Itoa(loop_num))
 
-		if has_seeds_r1_or && has_seeds_r2_or {
-			PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
-			PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
-			PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
-			PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
 
+		if has_seeds_r1_or && has_seeds_r2_rc {
 			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
+			PrintExtendTraceInfo("r2_rc", read_info.Read1[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
+			for i = 0; i < m_num_r1_or; i++ {
+				for j = 0; j < m_num_r2_rc; j++ {
+					//Check if alignments are likely pair-end alignments
+					if (m_pos_r1_or[i] < m_pos_r2_rc[j]) && (m_pos_r2_rc[j] - m_pos_r1_or[i]) <= PARA_INFO.Max_ins {
+						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", m_pos_r1_or[i], m_pos_r2_rc[j])
+						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
+						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
+						s_pos_r2 = append(s_pos_r2, s_pos_r2_rc)
+						e_pos_r2 = append(e_pos_r2, e_pos_r2_rc)
+						m_pos_r1 = append(m_pos_r1, m_pos_r1_or[i])
+						m_pos_r2 = append(m_pos_r2, m_pos_r2_rc[j])
+						strand_r1 = append(strand_r1, true)
+						strand_r2 = append(strand_r2, false)
+					}
+				}
+			}
+		}
+		if has_seeds_r1_rc && has_seeds_r2_or {
 			PrintExtendTraceInfo("r1_rc", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
 			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
-			PrintExtendTraceInfo("r2_rc", read_info.Read1[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
-			
+			for i = 0; i < m_num_r1_rc; i++ {
+				for j = 0; j < m_num_r2_or; j++ {
+					//Check if alignments are likely pair-end alignments
+					if (m_pos_r1_rc[i] > m_pos_r2_or[j]) && (m_pos_r1_rc[i] - m_pos_r2_or[j]) <= PARA_INFO.Max_ins {
+						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", m_pos_r1_rc[i], m_pos_r2_or[j])
+						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
+						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
+						s_pos_r2 = append(s_pos_r2, s_pos_r2_or)
+						e_pos_r2 = append(e_pos_r2, e_pos_r2_or)
+						m_pos_r1 = append(m_pos_r1, m_pos_r1_rc[i])
+						m_pos_r2 = append(m_pos_r2, m_pos_r2_or[j])
+						strand_r1 = append(strand_r1, false)
+						strand_r2 = append(strand_r2, true)
+					}
+				}
+			}
+		}
+		/*
+		if has_seeds_r1_or && has_seeds_r2_or {
+			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
+			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_or; j++ {
 					//Check if alignments are likely pair-end alignments
@@ -524,43 +572,9 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 				}
 			}
 		}
-		if has_seeds_r1_or && has_seeds_r2_rc {
-			for i = 0; i < m_num_r1_or; i++ {
-				for j = 0; j < m_num_r2_rc; j++ {
-					//Check if alignments are likely pair-end alignments
-					if int(math.Abs(float64(m_pos_r1_or[i] - m_pos_r2_rc[j]))) <= PARA_INFO.Max_ins {
-						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", m_pos_r1_or[i], m_pos_r2_rc[j])
-						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
-						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
-						s_pos_r2 = append(s_pos_r2, s_pos_r2_rc)
-						e_pos_r2 = append(e_pos_r2, e_pos_r2_rc)
-						m_pos_r1 = append(m_pos_r1, m_pos_r1_or[i])
-						m_pos_r2 = append(m_pos_r2, m_pos_r2_rc[j])
-						strand_r1 = append(strand_r1, true)
-						strand_r2 = append(strand_r2, false)
-					}
-				}
-			}
-		}
-		if has_seeds_r1_rc && has_seeds_r2_or {
-			for i = 0; i < m_num_r1_rc; i++ {
-				for j = 0; j < m_num_r2_or; j++ {
-					//Check if alignments are likely pair-end alignments
-					if int(math.Abs(float64(m_pos_r1_rc[i] - m_pos_r2_or[j]))) <= PARA_INFO.Max_ins {
-						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", m_pos_r1_rc[i], m_pos_r2_or[j])
-						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
-						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
-						s_pos_r2 = append(s_pos_r2, s_pos_r2_or)
-						e_pos_r2 = append(e_pos_r2, e_pos_r2_or)
-						m_pos_r1 = append(m_pos_r1, m_pos_r1_rc[i])
-						m_pos_r2 = append(m_pos_r2, m_pos_r2_or[j])
-						strand_r1 = append(strand_r1, false)
-						strand_r2 = append(strand_r2, true)
-					}
-				}
-			}
-		}
 		if has_seeds_r1_rc && has_seeds_r2_rc {
+			PrintExtendTraceInfo("r1_rc", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
+			PrintExtendTraceInfo("r2_rc", read_info.Read1[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
 					//Check if alignments are likely pair-end alignments
@@ -578,6 +592,7 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 				}
 			}
 		}
+		*/
 		if len(s_pos_r1) > 0 {
 			return s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2
 		}
