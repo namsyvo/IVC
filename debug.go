@@ -625,6 +625,9 @@ func LoadTrueVar(file_name string) map[int][]byte {
 	return barr
 }
 
+/*----
+Utilities
+*/
 //QualtoProb converts base qualities decoded by ASCII codes to probabilities
 func QualtoProb(e byte) float64 {
 	return math.Pow(10, -(float64(e) - 33)/10.0)

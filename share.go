@@ -33,49 +33,49 @@ type InputInfo struct {
 	Search_step    int    //step for searching in deterministic mode
 	Proc_num       int    //maximum number of CPUs using by Go
 	Routine_num    int    //number of goroutines
+	Max_snum      int    //maximum number of seeds
+	Min_slen       int    //minimum length of seeds
 }
 
 //Parameter used in alignment algorithm
 type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
 	Iter_num        int     //number of random iterations to find proper alignments
-	Max_match       int     //maximum number of seeds
-	Min_seed       	int     //minimum length of seeds
 	Max_ins 		int 	//maximum insert size of two aligned ends
-	Seq_err         float32 //average sequencing error, estmated from reads with real reads
-	Err_var_factor  int     //factor for standard variation of sequencing error
+	Err_rate        float32 //average sequencing error rate, estmated from reads with real reads
+	Err_var_factor  int     //factor for standard variation of sequencing error rate
+	Mut_rate        float32 //average mutation rate, estmated from reference genome
+	Mut_var_factor  int     //factor for standard variation of mutation rate
 	Iter_num_factor int     //factor for number of iterations 
 	Read_len        int     //read length, calculated from read files
 	Info_len		int 	//maximum size of array to store read headers
 }
 
 //SetPara sets values of parameters for alignment process
-func SetPara(read_len, info_len int, max_ins int, seq_err float32) *ParaInfo {
+func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *ParaInfo {
 	para_info := new(ParaInfo)
-	para_info.Max_match = 16
-	para_info.Min_seed = 19
 	para_info.Err_var_factor = 4
-	para_info.Iter_num_factor = 1
+	para_info.Mut_var_factor = 2
+	para_info.Iter_num_factor = 2
 	para_info.Max_ins = max_ins	//based on simulated data, will be estimated from reads with real data
-	para_info.Seq_err = seq_err //will be replaced by seq_err estimated from input reads
+	para_info.Err_rate = err_rate //will be replaced by error rate estimated from input reads
+	para_info.Mut_rate = mut_rate //will be replaced by error rate estimated from input reads
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
 	para_info.Info_len = info_len //will be replaced by maximum info length estimated from input reads
 
-	err := float64(para_info.Seq_err)
 	rlen := float64(para_info.Read_len)
-	k := float64(para_info.Err_var_factor)
-	para_info.Dist_thres = int(0.02 * rlen) + int(math.Ceil(err * rlen + k * math.Sqrt(rlen * err * (1 - err))))
-	//factor 0.02 above is assigned based on rate of SNP and INDEL reported in SNP profile of human genome
-	//it will be estimated from input info
+	err := float64(para_info.Err_rate)
+	mut := float64(para_info.Mut_rate)
+	k1 := float64(para_info.Err_var_factor)
+	k2 := float64(para_info.Mut_var_factor)
+	para_info.Dist_thres = int(math.Ceil(err * rlen + k1 * math.Sqrt(rlen * err * (1 - err)))) + 
+		int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
-	para_info.Dist_thres = 7
-	para_info.Iter_num = 8
-
-	log.Printf("Parameters: Dist_thres: %d, Iter_num: %d, Max_match: %d, Min_seed: %d, Max_ins: %d," + 
-		" Seq_err: %.5f, Read_len: %d, Info_len: %d, Err_var_factor: %d, Iter_num_factor: %d", 
-		para_info.Dist_thres, para_info.Iter_num, para_info.Max_match, para_info.Min_seed, para_info.Max_ins, 
-		para_info.Seq_err, para_info.Read_len, para_info.Info_len, para_info.Err_var_factor, para_info.Iter_num_factor)
+	log.Printf("Parameters: Dist_thres: %d, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
+		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 
+		para_info.Dist_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor, 
+		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len)
 	
 	return para_info
 }

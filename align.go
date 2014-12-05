@@ -88,7 +88,7 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 //--------------------------------------------------------------------------------------------------
 func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
 
-	var rev_sp, rev_ep int = 0, PARA_INFO.Max_match
+	var rev_sp, rev_ep int = 0, INPUT_INFO.Max_snum
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
 
 	rev_s_pos = len(read) - 1 - p
@@ -98,7 +98,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep - rev_sp + 1 <= PARA_INFO.Max_match {
+		if rev_ep - rev_sp + 1 <= INPUT_INFO.Max_snum && s_pos - e_pos >= INPUT_INFO.Min_slen {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
 				m_pos[idx - rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
 			}

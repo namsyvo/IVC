@@ -55,7 +55,10 @@ type SNP_Prof struct {
 //--------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) Init(input_info InputInfo) {
 	INPUT_INFO = input_info
-	PARA_INFO = *SetPara(100, 500, 1000, 0.0015)
+	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
+	//1000 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
+	//of simulated reads, 0.01 is mutation rate (currently is estimated from dbSNP of human genome)
+	PARA_INFO = *SetPara(100, 500, 1000, 0.0015, 0.01)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
@@ -183,7 +186,7 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 	//Initialize inter-function share variables
 	read_info := InitReadInfo(PARA_INFO.Read_len, PARA_INFO.Info_len)
 	align_info := InitAlignInfo(PARA_INFO.Read_len)
-	m_pos := make([]int, PARA_INFO.Max_match)
+	m_pos := make([]int, INPUT_INFO.Max_snum)
 
 	for read := range read_data {
 		PrintMemStats("Before copying all info from data chan")
@@ -234,14 +237,14 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	copy(at.read_info1, read_info.Info1)
 	copy(at.read_info2, read_info.Info2)
 
-	var dis, p_idx, s_idx int
+	var p_dis, p_idx, s_idx int
 
 	//Try to align both ends
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2 = S.FindSeedsFromPairedEnds(read_info)
-		dis = 2 * PARA_INFO.Dist_thres + 1
+		p_dis = 2 * PARA_INFO.Dist_thres + 1
 		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 
 			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
@@ -274,9 +277,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			PrintMemStats("After FindSNPsFromEnd2")
 
 			if m_dis1 != -1 && m_dis2 != -1 {
-				if dis > m_dis1 + m_dis2 {
-					//fmt.Println("Min dis", loop_num, dis, m_dis1, m_dis2)
-					dis = m_dis1 + m_dis2
+				if p_dis > m_dis1 + m_dis2 {
+					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1, m_dis2)
+					p_dis = m_dis1 + m_dis2
 					at.l_align_pos1 = l_align_pos1
 					at.l_align_pos2 = l_align_pos2
 					at.r_align_pos1 = r_align_pos1
@@ -307,8 +310,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
-		if dis <= 2 * PARA_INFO.Dist_thres {
-			//fmt.Println("Get SNP", loop_num, dis, len(snps_get1), len(snps_get2))
+		if p_dis <= 2 * PARA_INFO.Dist_thres {
+			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get1), len(snps_get2))
 			if len(snps_get1) > 0 {
 				for _, snp = range snps_get1 {
 					snp_results <- snp
@@ -336,7 +339,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2 = S.FindSeedsFromPairedEnds(read_info)
-		dis = PARA_INFO.Dist_thres + 1 //temp value
+		p_dis = PARA_INFO.Dist_thres + 1 //temp value
 		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 			//Find SNPs for the first end
 			PrintMemStats("Before FindSNPsFromEnd1")
@@ -350,9 +353,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			PrintMemStats("After FindSNPsFromEnd1")
 
 			if m_dis1 != -1 {
-				if dis > m_dis1 {
-					//fmt.Println("Min dis", loop_num, dis, m_dis1)
-					dis = m_dis1
+				if p_dis > m_dis1 {
+					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1)
+					p_dis = m_dis1
 					at.l_align_pos1 = l_align_pos1
 					at.l_align_pos2 = -1
 					at.r_align_pos1 = r_align_pos1
@@ -373,8 +376,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
-		if dis <= PARA_INFO.Dist_thres { //temp value
-			//fmt.Println("Get SNP", loop_num, dis, len(snps_get1), len(snps_get2))
+		if p_dis <= PARA_INFO.Dist_thres { //temp value
+			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get1), len(snps_get2))
 			if len(snps_get1) > 0 {
 				for _, snp = range snps_get1 {
 					snp_results <- snp
@@ -394,7 +397,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2 = S.FindSeedsFromPairedEnds(read_info)
-		dis = PARA_INFO.Dist_thres + 1
+		p_dis = PARA_INFO.Dist_thres + 1
 		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 			//Find SNPs for the second end
 			PrintMemStats("Before FindSNPsFromEnd2")
@@ -408,9 +411,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			PrintMemStats("After FindSNPsFromEnd2")
 
 			if m_dis2 != -1 {
-				if dis > m_dis2 {
-					//fmt.Println("Min dis", loop_num, dis, m_dis1)
-					dis = m_dis1
+				if p_dis > m_dis2 {
+					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1)
+					p_dis = m_dis1
 					at.l_align_pos1 = -1
 					at.l_align_pos2 = l_align_pos2
 					at.r_align_pos1 = -1
@@ -431,8 +434,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
-		if dis <= PARA_INFO.Dist_thres {
-			//fmt.Println("Get SNP", loop_num, dis, len(snps_get2), len(snps_get2))
+		if p_dis <= PARA_INFO.Dist_thres {
+			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get2), len(snps_get2))
 			if len(snps_get2) > 0 {
 				for _, snp = range snps_get2 {
 					snp_results <- snp
@@ -482,10 +485,10 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 		r_pos_r2_rc = RAND_GEN.Intn(len(read_info.Read2) - 5)
 	}
 
-	m_pos_r1_or := make([]int, PARA_INFO.Max_match)
-	m_pos_r1_rc := make([]int, PARA_INFO.Max_match)
-	m_pos_r2_or := make([]int, PARA_INFO.Max_match)
-	m_pos_r2_rc := make([]int, PARA_INFO.Max_match)
+	m_pos_r1_or := make([]int, INPUT_INFO.Max_snum)
+	m_pos_r1_rc := make([]int, INPUT_INFO.Max_snum)
+	m_pos_r2_or := make([]int, INPUT_INFO.Max_snum)
+	m_pos_r2_rc := make([]int, INPUT_INFO.Max_snum)
 
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
@@ -496,24 +499,32 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or = 
 			INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, m_pos_r1_or)
 		PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
-
+		if has_seeds_r1_or {
+			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
+		}
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc = 
 			INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, m_pos_r1_rc)
 		PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
-
+		if has_seeds_r1_rc {
+			PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
+		}
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or = 
 			INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, m_pos_r2_or)
 		PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
-
+		if has_seeds_r2_or {
+			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
+		}
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc = 
 			INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, m_pos_r2_rc)
 		PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
+		if has_seeds_r2_rc {
+			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
+		}
 		PrintMemStats("After FindSeeds, loop_num " + strconv.Itoa(loop_num))
 
-
 		if has_seeds_r1_or && has_seeds_r2_rc {
-			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
-			PrintExtendTraceInfo("r2_rc", read_info.Read1[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
+			PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
+			PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read1[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
 					//Check if alignments are likely pair-end alignments
@@ -532,8 +543,8 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			}
 		}
 		if has_seeds_r1_rc && has_seeds_r2_or {
-			PrintExtendTraceInfo("r1_rc", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
-			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
+			PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
+			PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_or; j++ {
 					//Check if alignments are likely pair-end alignments
@@ -593,7 +604,7 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			}
 		}
 		*/
-		if len(s_pos_r1) > 0 {
+		if len(s_pos_r1) == 1 {
 			return s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2
 		}
 		//Take a new position to search
@@ -612,7 +623,6 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 	}
 	return s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2
 }
-
 
 //---------------------------------------------------------------------------------------------------
 // FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
