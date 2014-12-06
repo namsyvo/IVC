@@ -170,7 +170,7 @@ func GetAlignReadInfo() {
 				}
 			}
 		}
-		fmt.Println("# of aligned reads:", len(ALIGN_READ_INFO_ARR))
+		log.Printf("# of aligned reads:\t%d", len(ALIGN_READ_INFO_ARR))
 	}
 }
 
@@ -180,7 +180,7 @@ func GetNoAlignReadInfo() {
 		for at := range NO_ALIGN_READ_INFO_CHAN {
 			NO_ALIGN_READ_INFO_ARR = append(NO_ALIGN_READ_INFO_ARR, at)
 		}
-		fmt.Println("# of no-aligned reads:", len(NO_ALIGN_READ_INFO_ARR))
+		log.Printf("# of no-aligned reads:\t%d", len(NO_ALIGN_READ_INFO_ARR))
 	}
 }
 

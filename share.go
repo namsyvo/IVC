@@ -33,8 +33,9 @@ type InputInfo struct {
 	Search_step    int    //step for searching in deterministic mode
 	Proc_num       int    //maximum number of CPUs using by Go
 	Routine_num    int    //number of goroutines
-	Max_snum      int    //maximum number of seeds
+	Max_snum       int    //maximum number of seeds
 	Min_slen       int    //minimum length of seeds
+	Max_psnum	   int 	  //maximum number of paired-seeds
 }
 
 //Parameter used in alignment algorithm
@@ -72,7 +73,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *P
 		int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 
-	log.Printf("Parameters: Dist_thres: %d, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
+	log.Printf("Parameters:\tDist_thres: %d, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 
 		para_info.Dist_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor, 
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len)
