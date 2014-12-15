@@ -795,7 +795,8 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	defer file.Close()
 
 	var snp_pos uint32
-	var str_pos, str_qual, str_prob, str_base_num string
+	var str_qual string
+	var line []string
 
 	SNP_Pos := make([]int, 0, len(S.SNP_Calls))
 	for snp_pos, _ = range S.SNP_Calls {
@@ -808,7 +809,6 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	var snp_num int
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
-		str_pos = strconv.Itoa(pos + 1)
 		snp_call_prob = 0
 		for snp, snp_prob = range S.SNP_Calls[snp_pos] {
 			if snp_call_prob < snp_prob {
@@ -816,24 +816,22 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		str_prob = strconv.FormatFloat(snp_call_prob, 'f', 5, 32)
+		line = make([]string, 0)
+		line = append(line, strconv.Itoa(pos + 1))
+		line = append(line, snp_call)
+		line = append(line, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
 		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
-		str_base_num = strconv.Itoa(S.SNP_Bases[snp_pos][snp_call])
 		if str_qual != "+Inf" {
-			_, err = file.WriteString(strings.Join([]string{str_pos, snp_call, str_qual, str_prob, str_base_num}, "\t"))
-			for snp, snp_num = range S.SNP_Bases[snp_pos] {
-				str_base_num = strconv.Itoa(snp_num)
-				_, err = file.WriteString(snp + "\t" + str_base_num + "\t")
-			}
-			_, err = file.WriteString("\n")
+			line = append(line, str_qual)
 		} else {
-			_, err = file.WriteString(strings.Join([]string{str_pos, snp_call, "1000", str_prob, str_base_num}, "\t"))
-			for snp, snp_num = range S.SNP_Bases[snp_pos] {
-				str_base_num = strconv.Itoa(snp_num)
-				_, err = file.WriteString(snp + "\t" + str_base_num + "\t")
-			}
-			_, err = file.WriteString("\n")
+			line = append(line, "1000")
 		}
+		line = append(line, strconv.Itoa(S.SNP_Bases[snp_pos][snp_call]))
+		for snp, snp_num = range S.SNP_Bases[snp_pos] {
+			line = append(line, snp)
+			line = append(line, strconv.Itoa(snp_num))
+		}
+		_, err = file.WriteString(strings.Join(line, "\t") + "\n")
 		if err != nil {
 			fmt.Println(err)
 			break
