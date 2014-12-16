@@ -1,3 +1,15 @@
+##0.4.1
+- Apply several filtering techniques for both alignment and snp calling processes.
+	+ Alignment: check for chromosomal distances of alignments of paired-ends reads and match strands of two ends.
+	 (for Illumina technology, two ends of the reads should include forward and reverse ends).
+	+ SNP calling: consider a cut-off quality to call SNPs, which is estimated based on input base quality
+	 and assigned prior probabilities of SNP calls.
+
+##0.4
+- Call new SNPs (new Indels are not considered at this point).
+	+ Detect mismatches between reads and multigenomes outside of known SNPs locations to discover new SNPs.
+	+ Assign proper prior probabilities for new SNPs.
+
 ## 0.3.7
 - Call SNPs and calculate SNP call quality during alignment phase.
     + Eliminate data structures for storing all possible SNPs during the alignment phase.

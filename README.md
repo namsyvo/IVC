@@ -49,12 +49,16 @@ go run main/isc.go -g test_data/refs/chr1.fasta -s test_data/refs/vcf_chr_1.vcf 
 
 ### 3.2 Commands and options
 
-3.2.1. Creating and indexing reference genomes with SNP profile:  
+3.2.1. Creating and indexing reference genomes with SNP profile:
+Required:
 	-g: reference genome (FASTA format).  
 	-s: SNP profile (dbSNP with VCF format).  
 	-i: directory for storing index.  
+Options:
 
-3.2.2. Calling SNPs:  
+
+3.2.2. Calling SNPs:
+Required:
 	-g: reference genome (FASTA format).  
 	-s: SNP profile (dbSNP with VCF format).  
 	-i: directory for storing index.  
@@ -62,12 +66,15 @@ go run main/isc.go -g test_data/refs/chr1.fasta -s test_data/refs/vcf_chr_1.vcf 
 	-2: the second end file (for pair-end reads) (FASTQ format).  
 	-o: called SNP result file (in VCF format).  
 
-Options:  
+Options:
 	-m: searching mode for finding seeds (1: random, 2: deterministic; default: 1).  
 	-p: starting position on reads for finding seeds (integer, default: 0).  
 	-j: step for searching in deterministic mode (integer, default: 5).  
 	-w: maximum number of CPUs using by Go (integer, default: number of CPU of runnign system).  
-	-t: number of used goroutines (integer, default: number of CPU of runnign system).  
+	-t: number of used goroutines (integer, default: number of CPU of runnign system).
+	-n: maximum number of seeds for each ends.
+	-l: minimum length of seeds for each ends.
+	-k: maximum number of paired-seeds which are considers as proper seeds for paired-end reads.
 
 
 ### 3.3 Parameters
@@ -80,8 +87,4 @@ Options:
 --------
 
 
-4. Contact
-----------
-+ nsvo1@memphis.edu
-+ qmtran@memphis.edu
-+ vphan@memphis.edu
+4. Contact: nsvo1@memphis.edu

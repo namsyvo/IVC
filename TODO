@@ -1,18 +1,13 @@
-(1) Check if alignment of pair-end reads have:
-    + Chromosome distance of seeds of two ends is small (< 1000).
-    + Distance(read, ref) is small (< 5), taking into account both original and reverse complement of reads, the smaller will be accepted.
-    + Matches are in reverse strands.
+(1) Analyze TP, FP, and FN of low-quality snp calls to remove possible FPs and decrease FNs.
 
 (2) Finish some back work:
     + Read fully allele frequency from SNP profile (VCF files).
     + Improve reading input (take names of index files from index directory), writing ouput (follow VCF format with more information).
 
 (3) Integrate indexing and SNP calling phases:
-    (1) Create or load the index:
+    (a) Create or load the index:
         + Create the index only if (A) it does not exist, or (B) it exists but there is an error loading it.
-    (2) Call SNPs.
-    (3) Save the index (both FM and SNP indexes) if the index was created newly.
+    (b) Call SNPs.
+    (c) Save the index (both FM and SNP indexes) if the index was created newly.
         + Tell users that the program has finished calling SNPs so they can go ahead to look at the result.
         + The program can go ahead to save the index (FM and SNP) while users are looking at the results.
-
-(4) Evaluate performance with both simulated and real reads.
