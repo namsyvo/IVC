@@ -691,8 +691,9 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.SNP_Calls[pos] = make(map[string]float64)
 		if snps, snp_prof_exist := INDEX.SNP_PROF[int(pos)]; snp_prof_exist {
 			snp_prof_num := len(snps)
+			std_base_num := len(STD_BASES)
 			for idx, snp := range snps {
-				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[int(pos)][idx]) - float64(snp_prof_num) * EPSILON
+				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[int(pos)][idx]) -  EPSILON * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
 			}
 		} else {
 			S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
