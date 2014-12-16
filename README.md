@@ -93,4 +93,7 @@ Options:
 --------
 
 
-4. Contact: nsvo1@memphis.edu
+4. Contact:
+-----------
+Nam Sy Vo  
+nsvo1@memphis.edu
