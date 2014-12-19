@@ -1,3 +1,7 @@
+##0.4.2 (TODO)
+- Apply other filtering techniques.
+    + Filter based on number of SNPs, edit distance, chromosomal distance.
+
 ##0.4.1
 - Apply several filtering techniques for both alignment and snp calling processes.
 	+ Alignment: check for chromosomal distances of alignments of paired-ends reads and match strands of two ends.
