@@ -36,6 +36,8 @@ type SNP struct {
 	Pos 	uint32 //SNP postion on ref
 	Bases 	[]byte //bases of SNP
 	BaseQ 	[]byte //quality of bases of SNP
+	ADis    int    //aligment distance
+	CDis    int    //chromosomal distance
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -47,6 +49,8 @@ type SNP struct {
 type SNP_Prof struct {
 	SNP_Calls 	map[uint32]map[string]float64
 	SNP_Bases 	map[uint32]map[string]int
+	Aln_Dis     map[uint32]map[string][]int
+	Chr_Dis     map[uint32]map[string][]int
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -62,6 +66,8 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
+	S.Aln_Dis = make(map[uint32]map[string][]int)
+	S.Chr_Dis = make(map[uint32]map[string][]int)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
@@ -295,6 +301,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 							snps_get1[s_idx].BaseQ = make([]byte, len(snps1[s_idx].BaseQ))
 							copy(snps_get1[s_idx].Bases, snps1[s_idx].Bases)
 							copy(snps_get1[s_idx].BaseQ, snps1[s_idx].BaseQ)
+							snps_get1[s_idx].ADis = m_dis1
+							snps_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 						}
 					}
 					snps_get2 = make([]SNP, len(snps2))
@@ -305,6 +313,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 							snps_get2[s_idx].BaseQ = make([]byte, len(snps2[s_idx].BaseQ))
 							copy(snps_get2[s_idx].Bases, snps2[s_idx].Bases)
 							copy(snps_get2[s_idx].BaseQ, snps2[s_idx].BaseQ)
+							snps_get2[s_idx].ADis = m_dis2
+							snps_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
 						}
 					}
 				}
@@ -680,8 +690,12 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 
 	if _, snp_base_exist := S.SNP_Calls[pos]; !snp_base_exist {
 		S.SNP_Bases[pos] = make(map[string]int)
+		S.Aln_Dis[pos] = make(map[string][]int)
+		S.Chr_Dis[pos] = make(map[string][]int)
 	}
 	S.SNP_Bases[pos][a] += 1
+	S.Aln_Dis[pos][a] = append(S.Aln_Dis[pos][a], snp.ADis)
+	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 
 	var p float64
 	p_ab := make(map[string]float64)
@@ -735,8 +749,12 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 
 	if _, snp_base_exist := S.SNP_Calls[pos]; !snp_base_exist {
 		S.SNP_Bases[pos] = make(map[string]int)
+		S.Aln_Dis[pos] = make(map[string][]int)
+		S.Chr_Dis[pos] = make(map[string][]int)
 	}
 	S.SNP_Bases[pos][a] += 1
+	S.Aln_Dis[pos][a] = append(S.Aln_Dis[pos][a], snp.ADis)
+	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 
 	var p float64
 	var qi byte
@@ -796,18 +814,18 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	defer file.Close()
 
 	var snp_pos uint32
-	var str_qual string
-	var line []string
-
 	SNP_Pos := make([]int, 0, len(S.SNP_Calls))
 	for snp_pos, _ = range S.SNP_Calls {
 		SNP_Pos = append(SNP_Pos, int(snp_pos))
 	}
 	sort.Ints(SNP_Pos)
 
+	var str_qual string
+	var line_a, line_b []string
+	var str_a, str_b string
 	var snp_call_prob, snp_prob float64
 	var snp_call, snp string
-	var snp_num int
+	var snp_num, aln_dis, idx int
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
 		snp_call_prob = 0
@@ -817,25 +835,32 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		line = make([]string, 0)
-		line = append(line, strconv.Itoa(pos + 1))
-		line = append(line, snp_call)
-		line = append(line, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
+		line_a = make([]string, 0)
+		line_a = append(line_a, strconv.Itoa(pos + 1))
+		line_a = append(line_a, snp_call)
+		line_a = append(line_a, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
 		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
 		if str_qual != "+Inf" {
-			line = append(line, str_qual)
+			line_a = append(line_a, str_qual)
 		} else {
-			line = append(line, "1000")
+			line_a = append(line_a, "1000")
 		}
-		line = append(line, strconv.Itoa(S.SNP_Bases[snp_pos][snp_call]))
+		line_a = append(line_a, strconv.Itoa(S.SNP_Bases[snp_pos][snp_call]))
+		str_a = strings.Join(line_a, "\t")
+		line_b = make([]string, 0)
 		for snp, snp_num = range S.SNP_Bases[snp_pos] {
-			line = append(line, snp)
-			line = append(line, strconv.Itoa(snp_num))
+			line_a = append(line_b, snp)
+			line_a = append(line_b, strconv.Itoa(snp_num))
 		}
-		_, err = file.WriteString(strings.Join(line, "\t") + "\n")
-		if err != nil {
-			fmt.Println(err)
-			break
+		str_b = strings.Join(line_b, "\t")
+		for idx, aln_dis = range S.Aln_Dis[snp_pos][snp_call] {
+			_, err = file.WriteString(str_a + "\t")
+			_, err = file.WriteString(strconv.Itoa(aln_dis) + "\t" + strconv.Itoa(S.Chr_Dis[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(str_b + "\n")
+			if err != nil {
+				fmt.Println(err)
+				break
+			}
 		}
 	}
 }
