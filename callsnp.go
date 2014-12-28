@@ -838,13 +838,13 @@ func (S *SNP_Prof) OutputSNPCalls() {
 		line_a = make([]string, 0)
 		line_a = append(line_a, strconv.Itoa(pos + 1))
 		line_a = append(line_a, snp_call)
-		line_a = append(line_a, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
 		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
 		} else {
 			line_a = append(line_a, "1000")
 		}
+		line_a = append(line_a, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
 		line_a = append(line_a, strconv.Itoa(S.SNP_Bases[snp_pos][snp_call]))
 		str_a = strings.Join(line_a, "\t")
 		line_b = make([]string, 0)
