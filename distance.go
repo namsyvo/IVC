@@ -82,10 +82,10 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 	}
 
 	D[0][0] = 0
-	for i = 1; i <= 100; i++ {
+	for i = 1; i <= PARA_INFO.Read_len; i++ {
 		D[i][0] = INF
 	}
-	for j = 1; j <= 100; j++ {
+	for j = 1; j <= PARA_INFO.Read_len; j++ {
 		D[0][j] = 0
 	}
 	var temp_dis, min_index int
@@ -236,10 +236,10 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 	}
 
 	D[0][0] = 0
-	for i = 1; i <= 100; i++ {
+	for i = 1; i <= PARA_INFO.Read_len; i++ {
 		D[i][0] = INF
 	}
-	for i = 1; i <= 100; i++ {
+	for i = 1; i <= PARA_INFO.Read_len; i++ {
 		D[0][i] = 0
 	}
 	var temp_dis, min_index int
