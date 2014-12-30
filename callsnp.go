@@ -253,7 +253,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2 = S.FindSeedsFromPairedEnds(read_info)
 		p_dis = 2 * PARA_INFO.Dist_thres + 1
-		p_prob = 1.0
+		p_prob = -1.0
 		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 
 			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
@@ -290,7 +290,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				m_prob := m_prob1 * m_prob2 * a_prob
 				log.Printf("%1.100f\t%1.100f\t%1.100f\t%1.100f\t%1.100f\t%d\t%d", m_prob1, m_prob2, a_prob, m_prob, p_prob, m_dis1 + m_dis2, p_dis)
 				//if p_dis > m_dis1 + m_dis2 {
-				if p_prob > m_prob {
+				if p_prob < m_prob {
 					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1, m_dis2)
 					p_dis = m_dis1 + m_dis2
 					p_prob = m_prob
@@ -329,7 +329,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			}
 		}
 		//if p_dis <= 2 * PARA_INFO.Dist_thres {
-		if p_prob < 1.0 {
+		if p_prob >= 0.0 {
 			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get1), len(snps_get2))
 			if len(snps_get1) > 0 {
 				for _, snp = range snps_get1 {
