@@ -16,6 +16,7 @@ import (
 	"sort"
 	"sync"
 	"strings"
+	"log"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -243,14 +244,16 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	copy(at.read_info1, read_info.Info1)
 	copy(at.read_info2, read_info.Info2)
 
-	var p_dis, p_idx, s_idx int
+	var p_idx, s_idx int
+	var p_prob, m_prob1, m_prob2 float64
 
 	//Try to align both ends
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2 = S.FindSeedsFromPairedEnds(read_info)
-		p_dis = 2 * PARA_INFO.Dist_thres + 1
+		//p_dis = 2 * PARA_INFO.Dist_thres + 1
+		p_prob = math.MaxFloat64
 		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 
 			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
@@ -263,10 +266,10 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			//Find SNPs for the first end
 			PrintMemStats("Before FindSNPsFromEnd1")
 			if strand_r1[p_idx] == true {
-				snps1, m_dis1, l_align_pos1, r_align_pos1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+				snps1, m_dis1, l_align_pos1, r_align_pos1, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
 					m_pos_r1[p_idx], read_info.Read1, read_info.Qual1, align_info)
 			} else {
-				snps1, m_dis1, l_align_pos1, r_align_pos1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+				snps1, m_dis1, l_align_pos1, r_align_pos1, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
 					m_pos_r1[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, align_info)
 			}
 			PrintMemStats("After FindSNPsFromEnd1")
@@ -274,18 +277,21 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			//Find SNPs for the second end
 			PrintMemStats("Before FindSNPsFromEnd2")
 			if strand_r2[p_idx] == true {
-				snps2, m_dis2, l_align_pos2, r_align_pos2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+				snps2, m_dis2, l_align_pos2, r_align_pos2, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
 					m_pos_r2[p_idx], read_info.Read2, read_info.Qual2, align_info)
 			} else {
-				snps2, m_dis2, l_align_pos2, r_align_pos2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+				snps2, m_dis2, l_align_pos2, r_align_pos2, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
 					m_pos_r2[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, align_info)
 			}
 			PrintMemStats("After FindSNPsFromEnd2")
 
 			if m_dis1 != -1 && m_dis2 != -1 {
-				if p_dis > m_dis1 + m_dis2 {
+				m_prob := m_prob1 * m_prob2 * math.Exp(-math.Pow(float64(l_align_pos1 - l_align_pos2 - 400), 2.0) / 50)
+				log.Printf("%1.30f\t%1.30f\t%1.30f", m_prob1, m_prob2, m_prob)
+				if p_prob > m_prob { // && p_dis > m_dis1 + m_dis2
 					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1, m_dis2)
-					p_dis = m_dis1 + m_dis2
+					//p_dis = m_dis1 + m_dis2
+					p_prob = m_prob
 					at.l_align_pos1 = l_align_pos1
 					at.l_align_pos2 = l_align_pos2
 					at.r_align_pos1 = r_align_pos1
@@ -320,7 +326,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
-		if p_dis <= 2 * PARA_INFO.Dist_thres {
+		//if p_dis <= 2 * PARA_INFO.Dist_thres {
+		if p_prob < math.MaxFloat64 {
 			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get1), len(snps_get2))
 			if len(snps_get1) > 0 {
 				for _, snp = range snps_get1 {
@@ -638,10 +645,11 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 // FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
 //---------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte, 
-	align_info *AlignInfo) ([]SNP, int, int, int) {
+	align_info *AlignInfo) ([]SNP, int, int, int, float64) {
 
 	var k int
 	var dis int
+	var prob float64
 
 	var l_most_pos, r_most_pos int
 	var l_snp_pos, r_snp_pos, l_snp_idx, r_snp_idx []int
@@ -652,8 +660,8 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	var has_match bool
 
 	PrintMemStats("Before FindExtensions, m_pos " + strconv.Itoa(m_pos))
-	dis, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, has_match =
-		INDEX.FindExtensions(read, s_pos, e_pos, m_pos, align_info)
+	dis, prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, has_match =
+		INDEX.FindExtensions(read, qual, s_pos, e_pos, m_pos, align_info)
 	PrintMemStats("After FindExtensions, m_pos " + strconv.Itoa(m_pos))
 	if has_match {
 		PrintMatchTraceInfo(m_pos, dis, l_most_pos, l_snp_pos, read)
@@ -663,6 +671,13 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 			copy(l_snp_qual, qual[l_snp_idx[k] : l_snp_idx[k] + len(l_snp_val[k])])
 			snp.Pos, snp.Bases, snp.BaseQ = uint32(l_snp_pos[k]), l_snp_val[k], l_snp_qual
 			snps_arr = append(snps_arr, snp)
+			for _, q := range(snp.BaseQ) {
+				if _, snp_call_exist := S.SNP_Calls[snp.Pos]; !snp_call_exist {
+					prob = prob * (1.0 - math.Pow(10, -(float64(q) - 33) / 10.0)) * EPSILON
+				} else {
+					prob = prob * (1.0 - math.Pow(10, -(float64(q) - 33) / 10.0)) * S.SNP_Calls[snp.Pos][string(snp.Bases)]
+				}
+			}
 			PrintMemStats("After GetSNP left, snp_num " + strconv.Itoa(k))
 		}
 		for k = 0; k < len(r_snp_pos); k++ {
@@ -671,11 +686,18 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 			copy(r_snp_qual, qual[r_snp_idx[k] : r_snp_idx[k] + len(r_snp_val[k])])
 			snp.Pos, snp.Bases, snp.BaseQ = uint32(r_snp_pos[k]), r_snp_val[k], r_snp_qual
 			snps_arr = append(snps_arr, snp)
+			for _, q := range(snp.BaseQ) {
+				if _, snp_call_exist := S.SNP_Calls[snp.Pos]; !snp_call_exist {
+					prob = prob * (1.0 - math.Pow(10, -(float64(q) - 33) / 10.0)) * EPSILON
+				} else {
+					prob = prob * (1.0 - math.Pow(10, -(float64(q) - 33) / 10.0)) * S.SNP_Calls[snp.Pos][string(snp.Bases)]
+				}
+			}
 			PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
 		}
-		return snps_arr, dis, l_most_pos, r_most_pos
+		return snps_arr, dis, l_most_pos, r_most_pos, prob
 	}
-	return snps_arr, -1, -1, -1
+	return snps_arr, -1, -1, -1, -1.0
 }
 
 //---------------------------------------------------------------------------------------------------

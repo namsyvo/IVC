@@ -6,6 +6,8 @@
 
 package isc
 
+import "math"
+
 //-------------------------------------------------------------------------------------------------
 // Cost functions for computing distance between reads and multi-genomes.
 // Input slices should have same length
@@ -26,7 +28,7 @@ func Cost(read, ref []byte) int {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte, []int) {
+func (I *Index) BackwardDistance(read, qual, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte, []int, float64) {
 
 	var i, j, k int
 
@@ -37,6 +39,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 	var is_snp, is_same_len_snp bool
 
 	d = 0
+	p := 1.0
 	m, n = len(read), len(ref)
 	var snp_pos []int
 	var snp_idx []int
@@ -51,6 +54,8 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 				snp := read[m - 1]
 				snp_val = append(snp_val, []byte{snp})
 				d++
+			} else {
+				p = p * (1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
 			}
 			m--
 			n--
@@ -63,7 +68,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 				}
 			}
 			if min_d >= INF {
-				return INF, 0, m, n, snp_pos, snp_val, snp_idx
+				return INF, 0, m, n, snp_pos, snp_val, snp_idx, p
 			}
 			snp_pos = append(snp_pos, pos + n - 1)
 			snp_idx = append(snp_idx, m - snp_len)
@@ -77,7 +82,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 			break
 		}
 		if d > PARA_INFO.Dist_thres {
-			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
+			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx, p
 		}
 	}
 
@@ -121,9 +126,9 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 		}
 	}
 	if D[m][n] >= INF {
-		return d, INF, m, n, snp_pos, snp_val, snp_idx
+		return d, INF, m, n, snp_pos, snp_val, snp_idx, p
 	}
-	return d, D[m][n], m, n, snp_pos, snp_val, snp_idx
+	return d, D[m][n], m, n, snp_pos, snp_val, snp_idx, p
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -132,7 +137,7 @@ func (I *Index) BackwardDistance(read, ref []byte, pos int, D [][]int, T [][][]b
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte, []int) {
+func (I Index) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte, []int, float64) {
 
 	var is_snp bool
 	var snp_len int
@@ -140,6 +145,7 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 	var snp_pos []int
 	var snp_idx []int
 	var snp_val [][]byte
+	p := 1.0
 	for i > 0 || j > 0 {
 		_, is_snp = I.SNP_PROF[pos + j - 1]
 		if i > 0 && j > 0 {
@@ -149,6 +155,8 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 					snp_idx = append(snp_idx, i - 1)
 					snp := read[i - 1]
 					snp_val = append(snp_val, []byte{snp})
+				} else {
+					p = p * (1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				}
 				i, j = i - 1, j - 1
 			} else {
@@ -170,7 +178,7 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 			i = i - 1
 		}
 	}
-	return snp_pos, snp_val, snp_idx
+	return snp_pos, snp_val, snp_idx, p
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -179,7 +187,7 @@ func (I Index) BackwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte, []int) {
+func (I *Index) ForwardDistance(read, qual, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte, []int, float64) {
 
 	var i, j, k int
 	var M, N = len(read), len(ref)
@@ -195,6 +203,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 	var snp_pos []int
 	var snp_idx []int
 	var snp_val [][]byte
+	p := 1.0
 	for m > 0 && n > 0 {
 		snp_values, is_snp = I.SNP_PROF[pos + N - n]
 		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + N - n]
@@ -205,6 +214,8 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
                 snp := read[M - m]
                 snp_val = append(snp_val, []byte{snp})
 				d++
+			} else {
+				p = p * (1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
 			}
 			m--
 			n--
@@ -217,7 +228,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 				}
 			}
 			if min_d >= INF {
-				return INF, 0, m, n, snp_pos, snp_val, snp_idx
+				return INF, 0, m, n, snp_pos, snp_val, snp_idx, p
 			}
 			snp_pos = append(snp_pos, pos + N - n)
 			snp_idx = append(snp_idx, M - m)
@@ -231,7 +242,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 			break
 		}
 		if d > PARA_INFO.Dist_thres {
-			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
+			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx, p
 		}
 	}
 
@@ -275,9 +286,9 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 		}
 	}
 	if D[m][n] >= INF {
-		return d, INF, m, n, snp_pos, snp_val, snp_idx
+		return d, INF, m, n, snp_pos, snp_val, snp_idx, p
 	}
-	return d, D[m][n], m, n, snp_pos, snp_val, snp_idx
+	return d, D[m][n], m, n, snp_pos, snp_val, snp_idx, p
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -286,7 +297,7 @@ func (I *Index) ForwardDistance(read, ref []byte, pos int, D [][]int, T [][][]by
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte, []int) {
+func (I *Index) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte, []int, float64) {
 	var is_snp bool
 	var snp_len int
 	var i, j int = m, n
@@ -296,6 +307,7 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 	var snp_pos []int
 	var snp_idx []int
 	var snp_val [][]byte
+	p := 1.0
 	for i > 0 || j > 0 {
 		_, is_snp = I.SNP_PROF[pos + N - j]
 		if i > 0 && j > 0 {
@@ -305,6 +317,8 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 					snp_idx = append(snp_idx, M - i)
 					snp := read[M - i]
 					snp_val = append(snp_val, []byte{snp})
+				} else {
+					p = p * (1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
 				}
 				i, j = i - 1, j - 1
 			} else {
@@ -326,5 +340,5 @@ func (I *Index) ForwardTraceBack(read, ref []byte, m, n int, pos int, T [][][]by
 			i = i - 1
 		}
 	}
-	return snp_pos, snp_val, snp_idx
+	return snp_pos, snp_val, snp_idx, p
 }

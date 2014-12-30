@@ -14,7 +14,7 @@ import (
 //Global constants and variables
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'} 	//Standard bases of DNA sequences
-	INF             = math.MaxInt16 				// Value for Infinity
+	INF             = math.MaxInt16 				//Value for Infinity
 	EPSILON         = 0.01							//Value for prior probability of new alleles
 )
 
