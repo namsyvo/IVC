@@ -286,10 +286,11 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			PrintMemStats("After FindSNPsFromEnd2")
 
 			if m_dis1 != -1 && m_dis2 != -1 {
-				m_prob := m_prob1 * m_prob2 * math.Exp(-math.Pow(float64(l_align_pos1 - l_align_pos2 - 400), 2.0) / 50)
-				log.Printf("%1.100f\t%1.100f\t%1.100f\t%1.100f", m_prob1, m_prob2, m_prob, p_prob)
-				if p_dis > m_dis1 + m_dis2 {
-				//if p_prob > m_prob {
+				a_prob := math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50) )
+				m_prob := m_prob1 * m_prob2 * a_prob
+				log.Printf("%1.100f\t%1.100f\t%1.100f\t%1.100f\t%1.100f\t%d\t%d", m_prob1, m_prob2, a_prob, m_prob, p_prob, m_dis1 + m_dis2, p_dis)
+				//if p_dis > m_dis1 + m_dis2 {
+				if p_prob > m_prob {
 					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1, m_dis2)
 					p_dis = m_dis1 + m_dis2
 					p_prob = m_prob
@@ -327,8 +328,8 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
-		if p_dis <= 2 * PARA_INFO.Dist_thres {
-		//if p_prob < math.MaxFloat64 {
+		//if p_dis <= 2 * PARA_INFO.Dist_thres {
+		if p_prob < 1.0 {
 			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get1), len(snps_get2))
 			if len(snps_get1) > 0 {
 				for _, snp = range snps_get1 {
