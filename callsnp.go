@@ -17,6 +17,7 @@ import (
 	"sync"
 	"strings"
 	"log"
+	"bytes"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -39,6 +40,9 @@ type SNP struct {
 	BaseQ 	[]byte //quality of bases of SNP
 	ADis    int    //aligment distance
 	CDis    int    //chromosomal distance
+	CDiff   int    //diff between aligned pos and true pos
+	AProb   float64 //correct alignment prob
+	CProb  float64 //correct paired-alignment prob
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -52,6 +56,9 @@ type SNP_Prof struct {
 	SNP_Bases 	map[uint32]map[string]int
 	Aln_Dis     map[uint32]map[string][]int
 	Chr_Dis     map[uint32]map[string][]int
+	Chr_Diff     map[uint32]map[string][]int
+	Aln_Prob     map[uint32]map[string][]float64
+	Chr_Prob     map[uint32]map[string][]float64
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -63,12 +70,15 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
 	//1000 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
 	//of simulated reads, 0.01 is mutation rate (currently is estimated from dbSNP of human genome)
-	PARA_INFO = *SetPara(100, 500, 1000, 0.0015, 0.01)
+	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01)
 	INDEX.Init()
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
 	S.Aln_Dis = make(map[uint32]map[string][]int)
 	S.Chr_Dis = make(map[uint32]map[string][]int)
+	S.Chr_Diff = make(map[uint32]map[string][]int)
+	S.Aln_Prob = make(map[uint32]map[string][]float64)
+	S.Chr_Prob = make(map[uint32]map[string][]float64)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
@@ -233,7 +243,6 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 
 	var s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2 []int
 	var strand_r1, strand_r2 []bool
-	var has_p_seeds bool
 
 	var at Align_trace_info
 	at.read1 = make([]byte, len(read_info.Read1))
@@ -245,6 +254,13 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	copy(at.read_info1, read_info.Info1)
 	copy(at.read_info2, read_info.Info2)
 
+    tokens := bytes.Split(at.read_info1, []byte{'_'})
+	var true_pos1, true_pos2 int64
+    if tokens[0][1] != 'r' {
+        true_pos1, _ = strconv.ParseInt(string(tokens[2]), 10, 64)
+		true_pos2, _ = strconv.ParseInt(string(tokens[3]), 10, 64)
+	}
+	
 	var p_dis, p_idx, s_idx int
 	var p_prob, m_prob1, m_prob2 float64
 
@@ -252,88 +268,92 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
-		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, has_p_seeds = S.FindSeedsFromPairedEnds(read_info)
+		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, _ = S.FindSeedsFromPairedEnds(read_info)
 		p_dis = 2 * PARA_INFO.Dist_thres + 1
 		p_prob = -1.0
-		if has_p_seeds {
-			for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
-
-				//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
-				//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
-				//For mate-pair, thewy can be R-F (need to be confirmed)
-				//if strand_r1[p_idx] == strand_r2[p_idx] {
-				//	continue
-				//}
-				
-				//Find SNPs for the first end
-				PrintMemStats("Before FindSNPsFromEnd1")
-				if strand_r1[p_idx] == true {
-					snps1, m_dis1, l_align_pos1, r_align_pos1, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
-						m_pos_r1[p_idx], read_info.Read1, read_info.Qual1, align_info)
-				} else {
-					snps1, m_dis1, l_align_pos1, r_align_pos1, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
-						m_pos_r1[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, align_info)
-				}
-				PrintMemStats("After FindSNPsFromEnd1")
-				
-				//Find SNPs for the second end
-				PrintMemStats("Before FindSNPsFromEnd2")
-				if strand_r2[p_idx] == true {
-					snps2, m_dis2, l_align_pos2, r_align_pos2, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
-						m_pos_r2[p_idx], read_info.Read2, read_info.Qual2, align_info)
-				} else {
-					snps2, m_dis2, l_align_pos2, r_align_pos2, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
-						m_pos_r2[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, align_info)
-				}
-				PrintMemStats("After FindSNPsFromEnd2")
-				
-				if m_dis1 != -1 && m_dis2 != -1 {
-					a_prob := math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50) )
-					m_prob := m_prob1 * m_prob2 * a_prob
-					log.Printf("Out\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%d\t%d\t%d", m_prob1, m_prob2, a_prob, m_prob, p_prob, m_dis1 + m_dis2, p_dis, len(s_pos_r1))
-					//if p_dis > m_dis1 + m_dis2 {
-					if p_prob < m_prob {
-						log.Printf("In \t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%d\t%d", m_prob1, m_prob2, a_prob, m_prob, p_prob, m_dis1 + m_dis2, p_dis)
-						//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1, m_dis2)
-						p_dis = m_dis1 + m_dis2
-						p_prob = m_prob
-						at.l_align_pos1 = l_align_pos1
-						at.l_align_pos2 = l_align_pos2
-						at.r_align_pos1 = r_align_pos1
-						at.r_align_pos2 = r_align_pos2
-						at.align_dis1 = m_dis1
-						at.align_dis2 = m_dis2
-						
-						snps_get1 = make([]SNP, len(snps1))
-						if len(snps1) > 0 {
-							for s_idx = 0; s_idx < len(snps1); s_idx++ {
-								snps_get1[s_idx].Pos = snps1[s_idx].Pos
-								snps_get1[s_idx].Bases = make([]byte, len(snps1[s_idx].Bases))
-								snps_get1[s_idx].BaseQ = make([]byte, len(snps1[s_idx].BaseQ))
-								copy(snps_get1[s_idx].Bases, snps1[s_idx].Bases)
-								copy(snps_get1[s_idx].BaseQ, snps1[s_idx].BaseQ)
-								snps_get1[s_idx].ADis = m_dis1
-								snps_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
-							}
+		for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
+			
+			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
+			//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
+			//For mate-pair, thewy can be R-F (need to be confirmed)
+			//if strand_r1[p_idx] == strand_r2[p_idx] {
+			//	continue
+			//}
+			
+			//Find SNPs for the first end
+			PrintMemStats("Before FindSNPsFromEnd1")
+			if strand_r1[p_idx] == true {
+				snps1, m_dis1, l_align_pos1, r_align_pos1, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+					m_pos_r1[p_idx], read_info.Read1, read_info.Qual1, align_info)
+			} else {
+				snps1, m_dis1, l_align_pos1, r_align_pos1, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+					m_pos_r1[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, align_info)
+			}
+			PrintMemStats("After FindSNPsFromEnd1")
+			
+			//Find SNPs for the second end
+			PrintMemStats("Before FindSNPsFromEnd2")
+			if strand_r2[p_idx] == true {
+				snps2, m_dis2, l_align_pos2, r_align_pos2, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+					m_pos_r2[p_idx], read_info.Read2, read_info.Qual2, align_info)
+			} else {
+				snps2, m_dis2, l_align_pos2, r_align_pos2, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+					m_pos_r2[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, align_info)
+			}
+			PrintMemStats("After FindSNPsFromEnd2")
+			
+			if m_dis1 != -1 && m_dis2 != -1 {
+				a_prob := math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50) )
+				m_prob := m_prob1 * m_prob2
+				log.Printf("Out\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%d\t%d\t%d", m_prob1, m_prob2, a_prob, m_prob, p_prob, m_dis1 + m_dis2, p_dis, len(s_pos_r1))
+				if p_dis > m_dis1 + m_dis2 {
+					//if p_prob < m_prob {
+					log.Printf("In \t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%d\t%d", m_prob1, m_prob2, a_prob, m_prob, p_prob, m_dis1 + m_dis2, p_dis)
+					//fmt.Println("Min p_dis", loop_num, p_dis, m_dis1, m_dis2)
+					p_dis = m_dis1 + m_dis2
+					p_prob = m_prob
+					at.l_align_pos1 = l_align_pos1
+					at.l_align_pos2 = l_align_pos2
+					at.r_align_pos1 = r_align_pos1
+					at.r_align_pos2 = r_align_pos2
+					at.align_dis1 = m_dis1
+					at.align_dis2 = m_dis2
+					
+					snps_get1 = make([]SNP, len(snps1))
+					if len(snps1) > 0 {
+						for s_idx = 0; s_idx < len(snps1); s_idx++ {
+							snps_get1[s_idx].Pos = snps1[s_idx].Pos
+							snps_get1[s_idx].Bases = make([]byte, len(snps1[s_idx].Bases))
+							snps_get1[s_idx].BaseQ = make([]byte, len(snps1[s_idx].BaseQ))
+							copy(snps_get1[s_idx].Bases, snps1[s_idx].Bases)
+							copy(snps_get1[s_idx].BaseQ, snps1[s_idx].BaseQ)
+							snps_get1[s_idx].ADis = m_dis1
+							snps_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
+							snps_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
+							snps_get1[s_idx].AProb = m_prob1
+							snps_get1[s_idx].CProb = a_prob
 						}
-						snps_get2 = make([]SNP, len(snps2))
-						if len(snps2) > 0 {
-							for s_idx = 0; s_idx < len(snps2); s_idx++ {
-								snps_get2[s_idx].Pos = snps2[s_idx].Pos
-								snps_get2[s_idx].Bases = make([]byte, len(snps2[s_idx].Bases))
-								snps_get2[s_idx].BaseQ = make([]byte, len(snps2[s_idx].BaseQ))
-								copy(snps_get2[s_idx].Bases, snps2[s_idx].Bases)
-								copy(snps_get2[s_idx].BaseQ, snps2[s_idx].BaseQ)
-								snps_get2[s_idx].ADis = m_dis2
-								snps_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
-							}
+					}
+					snps_get2 = make([]SNP, len(snps2))
+					if len(snps2) > 0 {
+						for s_idx = 0; s_idx < len(snps2); s_idx++ {
+							snps_get2[s_idx].Pos = snps2[s_idx].Pos
+							snps_get2[s_idx].Bases = make([]byte, len(snps2[s_idx].Bases))
+							snps_get2[s_idx].BaseQ = make([]byte, len(snps2[s_idx].BaseQ))
+							copy(snps_get2[s_idx].Bases, snps2[s_idx].Bases)
+							copy(snps_get2[s_idx].BaseQ, snps2[s_idx].BaseQ)
+							snps_get2[s_idx].ADis = m_dis2
+							snps_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
+							snps_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
+							snps_get2[s_idx].AProb = m_prob2
+							snps_get2[s_idx].CProb = a_prob
 						}
 					}
 				}
 			}
 		}
-		//if p_dis <= 2 * PARA_INFO.Dist_thres {
-		if p_prob >= 0.0 {
+		if p_dis <= 2 * PARA_INFO.Dist_thres {
+		//if p_prob >= 0.0 {
 			//fmt.Println("Get SNP", loop_num, p_dis, len(snps_get1), len(snps_get2))
 			if len(snps_get1) > 0 {
 				for _, snp = range snps_get1 {
@@ -720,10 +740,16 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.SNP_Bases[pos] = make(map[string]int)
 		S.Aln_Dis[pos] = make(map[string][]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
+		S.Chr_Diff[pos] = make(map[string][]int)
+		S.Aln_Prob[pos] = make(map[string][]float64)
+		S.Chr_Prob[pos] = make(map[string][]float64)
 	}
 	S.SNP_Bases[pos][a] += 1
 	S.Aln_Dis[pos][a] = append(S.Aln_Dis[pos][a], snp.ADis)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
+	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
+	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
+	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], snp.CProb)
 
 	var p float64
 	p_ab := make(map[string]float64)
@@ -779,10 +805,16 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		S.SNP_Bases[pos] = make(map[string]int)
 		S.Aln_Dis[pos] = make(map[string][]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
+		S.Chr_Diff[pos] = make(map[string][]int)
+		S.Aln_Prob[pos] = make(map[string][]float64)
+		S.Chr_Prob[pos] = make(map[string][]float64)
 	}
 	S.SNP_Bases[pos][a] += 1
 	S.Aln_Dis[pos][a] = append(S.Aln_Dis[pos][a], snp.ADis)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
+	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
+	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
+	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], snp.CProb)
 
 	var p float64
 	var qi byte
@@ -877,13 +909,17 @@ func (S *SNP_Prof) OutputSNPCalls() {
 		str_a = strings.Join(line_a, "\t")
 		line_b = make([]string, 0)
 		for snp, snp_num = range S.SNP_Bases[snp_pos] {
-			line_a = append(line_b, snp)
-			line_a = append(line_b, strconv.Itoa(snp_num))
+			line_b = append(line_b, snp)
+			line_b = append(line_b, strconv.Itoa(snp_num))
 		}
 		str_b = strings.Join(line_b, "\t")
 		for idx, aln_dis = range S.Aln_Dis[snp_pos][snp_call] {
 			_, err = file.WriteString(str_a + "\t")
-			_, err = file.WriteString(strconv.Itoa(aln_dis) + "\t" + strconv.Itoa(S.Chr_Dis[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(strconv.Itoa(aln_dis) + "\t")
+			_, err = file.WriteString(strconv.Itoa(S.Chr_Dis[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(strconv.Itoa(S.Chr_Diff[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(strconv.FormatFloat(S.Aln_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
+			_, err = file.WriteString(strconv.FormatFloat(S.Chr_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(str_b + "\n")
 			if err != nil {
 				fmt.Println(err)
