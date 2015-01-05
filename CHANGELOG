@@ -1,9 +1,10 @@
-##0.4.2 (TODO)
-- Apply other filtering techniques.
-    + Filter based on number of SNPs, edit distance, chromosomal distance.
+##0.4.2
+- Apply other filtering techniques for called SNPs.
+    + Filter based on correct alignment probability during alignment process.
+    + Filter based on number of SNPs, edit distance, and chromosomal distance for determining called SNPs.
 
 ##0.4.1
-- Apply several filtering techniques for both alignment and snp calling processes.
+- Apply several filtering techniques for both alignment and SNP determination processes.
 	+ Alignment: check for chromosomal distances of alignments of paired-ends reads and match strands of two ends.
 	 (for Illumina technology, two ends of the reads should include forward and reverse ends).
 	+ SNP calling: consider a cut-off quality to call SNPs, which is estimated based on input base quality
