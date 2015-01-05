@@ -15,16 +15,6 @@ import (
 	"sort"
 )
 
-//Index for SNP caller
-type Index struct {
-	SEQ            []byte            //store reference multigenomes
-	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
-	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
-	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
-	SORTED_SNP_POS []int             //sorted array of SNP positions
-	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
-}
-
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------

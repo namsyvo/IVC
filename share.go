@@ -6,6 +6,7 @@
 package isc
 
 import (
+	"github.com/vtphan/fmi" //to use FM index
 	"math"
 	"fmt"
 	"log"
@@ -17,6 +18,16 @@ var (
 	INF             = math.MaxInt16 				//Value for Infinity
 	EPSILON         = 0.01							//Value for prior probability of new alleles
 )
+
+//Index for SNP caller
+type Index struct {
+	SEQ            []byte            //store reference multigenomes
+	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
+	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
+	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
+	SORTED_SNP_POS []int             //sorted array of SNP positions
+	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
+}
 
 //Input information
 type InputInfo struct {
