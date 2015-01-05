@@ -1,4 +1,6 @@
-(1) Analyze TP, FP, and FN of low-quality snp calls to remove possible FPs and decrease FNs.
+(1) Implement probabilistic alignment strategy:
+	+ Cost of substitution is calculated based on SNP profile at the postion and the base aligned to that position.
+	+ Use updated SNP profile during alignment process.
 
 (2) Finish some back work:
     + Read fully allele frequency from SNP profile (VCF files).
