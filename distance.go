@@ -28,107 +28,109 @@ func Cost(read, ref []byte) int {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I *Index) BackwardDistance(read, qual, ref []byte, pos int, D [][]int, T [][][]byte) (int, int, int, int, []int, [][]byte, []int, float64) {
+func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]int, T [][][]byte) (float64, int, int, int, []int, [][]byte, []int) {
 
 	var i, j, k int
 
 	var cost int
-	var d, min_d, m, n int
+	var d, m, n int
 	var snp_len int
-	var snp_values [][]byte
+	var snp_str string
+	var min_d, snp_prob float64
+	var snp_prof map[string]float64
 	var is_snp, is_same_len_snp bool
 
-	d = 0
 	p := 1.0
 	m, n = len(read), len(ref)
 	var snp_pos []int
 	var snp_idx []int
 	var snp_val [][]byte
 	for m > 0 && n > 0 {
-		snp_values, is_snp = I.SNP_PROF[pos + n - 1]
-		snp_len, is_same_len_snp = I.SAME_LEN_SNP[pos + n - 1]
+		snp_prof, is_snp = S.SNP_Calls[pos + n - 1] //INDEX.SNP_PROF[pos + n - 1]
+		snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1]
 		if !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_idx = append(snp_idx, m - 1)
 				snp := read[m - 1]
 				snp_val = append(snp_val, []byte{snp})
-				d++
+				p = p * 0.01 * (1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
 			} else {
-				p = p * (1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
+				p = p * 0.97 * (1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
 			}
 			m--
 			n--
 		} else if is_same_len_snp {
-			min_d = 1000 * INF // 1000*INF is a value for testing, will change to a better solution later
-			for i = 0; i < len(snp_values); i++ {
-				cost = Cost(read[m - snp_len : m], snp_values[i])
+			min_d = float64(math.MaxFloat32)
+			for snp_str, snp_prob = range snp_prof {
+				cost = Cost(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m])
 				if min_d > cost {
 					min_d = cost
 				}
 			}
-			if min_d >= INF {
-				return INF, 0, m, n, snp_pos, snp_val, snp_idx, p
+			if min_d == float64(math.MaxFloat32) {
+				return min_d, 0, m, n, snp_pos, snp_val, snp_idx
 			}
 			snp_pos = append(snp_pos, pos + n - 1)
 			snp_idx = append(snp_idx, m - snp_len)
 			snp := make([]byte, snp_len)
 			copy(snp, read[m - snp_len : m])
 			snp_val = append(snp_val, snp)
-			d += min_d
+			p = p * cost
 			m -= snp_len
 			n--
 		} else {
 			break
 		}
-		if d > PARA_INFO.Dist_thres {
-			return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx, p
-		}
+		//if d > PARA_INFO.Dist_thres {
+		//	return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx, p
+		//}
 	}
 
-	D[0][0] = 0
+	D[0][0] = 0.0
 	for i = 1; i <= PARA_INFO.Read_len; i++ {
-		D[i][0] = INF
+		D[i][0] = float64(math.MaxFloat32)
 	}
 	for j = 1; j <= PARA_INFO.Read_len; j++ {
-		D[0][j] = 0
+		D[0][j] = 0.0
 	}
-	var temp_dis, min_index int
+	var temp_dis float64
+	var min_snp string
 	for i = 1; i <= m; i++ {
 		for j = 1; j <= n; j++ {
-			snp_values, is_snp = I.SNP_PROF[pos + j - 1]
+			snp_prof, is_snp = S.SNP_Calls[pos + j - 1]
 			if !is_snp {
-				if read[i - 1] != ref[j - 1] {
-					D[i][j] = D[i - 1][j - 1] + 1
+				if read[i - 1] != ref[pos + j - 1] {
+					D[i][j] = D[i - 1][j - 1] * 0.01 * (1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				} else {
-					D[i][j] = D[i - 1][j - 1]
+					D[i][j] = D[i - 1][j - 1] * 0.97 * (1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				}
 			} else {
-				D[i][j] = 1000 * INF //1000*INF is a value for testing, will change to a better solution later
-				min_index = 0
-				for k = 0; k < len(snp_values); k++ {
-					snp_len = len(snp_values[k])
+				D[i][j] = float64(math.MaxFloat32)
+				min_snp = ""
+				for snp_str, snp_prob = range snp_prof {
+					snp_len = len(snp_str)
 					//One possnble case: i - snp_len < 0 for all k
-					if i-snp_len >= 0 {
-						if snp_values[k][0] != '.' {
-							temp_dis = D[i - snp_len][j - 1] + Cost(read[i - snp_len : i], snp_values[k])
+					if i - snp_len >= 0 {
+						if snp_str[k][0] != '.' {
+							temp_dis = D[i - snp_len][j - 1] * Cost(read[i - snp_len : i], []byte(snp_str), qual[i - snp_len : i])
 						} else {
 							temp_dis = D[i][j - 1]
 						}
 						if D[i][j] > temp_dis {
 							D[i][j] = temp_dis
-							min_index = k
+							min_snp = snp_str
 						}
 					}
 				}
-				T[i - 1][j - 1] = snp_values[min_index]
+				T[i - 1][j - 1] = min_snp
 			}
 		}
 	}
-	if D[m][n] >= INF {
-		return d, INF, m, n, snp_pos, snp_val, snp_idx, p
-	}
-	return d, D[m][n], m, n, snp_pos, snp_val, snp_idx, p
+	//if D[m][n] >= INF {
+	//	return d, INF, m, n, snp_pos, snp_val, snp_idx, p
+	//}
+	return p, D[m][n], m, n, snp_pos, snp_val, snp_idx, p
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -137,7 +139,7 @@ func (I *Index) BackwardDistance(read, qual, ref []byte, pos int, D [][]int, T [
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (I Index) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte, []int, float64) {
+func (I Index) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, T [][][]byte) (float64, []int, [][]byte, []int) {
 
 	var is_snp bool
 	var snp_len int
@@ -150,13 +152,14 @@ func (I Index) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, T []
 		_, is_snp = I.SNP_PROF[pos + j - 1]
 		if i > 0 && j > 0 {
 			if !is_snp {
-				if read[i - 1] != ref[j - 1] {
+				if read[i - 1] != ref[pos + j - 1] {
 					snp_pos = append(snp_pos, pos + j - 1)
 					snp_idx = append(snp_idx, i - 1)
 					snp := read[i - 1]
 					snp_val = append(snp_val, []byte{snp})
+					p = p * 0.97 * (1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				} else {
-					p = p * (1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
+					p = p * 0.01 * (1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				}
 				i, j = i - 1, j - 1
 			} else {
@@ -178,7 +181,7 @@ func (I Index) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, T []
 			i = i - 1
 		}
 	}
-	return snp_pos, snp_val, snp_idx, p
+	return p, snp_pos, snp_val, snp_idx
 }
 
 //-------------------------------------------------------------------------------------------------
