@@ -52,6 +52,7 @@ type InputInfo struct {
 //Parameter used in alignment algorithm
 type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
+	Prob_thres      float64 //threshold for probabilities of correct alignment
 	Iter_num        int     //number of random iterations to find proper alignments
 	Max_ins 		int 	//maximum insert size of two aligned ends
 	Err_rate        float32 //average sequencing error rate, estmated from reads with real reads
@@ -83,6 +84,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *P
 	para_info.Dist_thres = int(math.Ceil(err * rlen + k1 * math.Sqrt(rlen * err * (1 - err)))) + 
 		int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
+	para_info.Prob_thres = 4.765644868248135e-12
 
 	log.Printf("Parameters:\tDist_thres: %d, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 
@@ -157,8 +159,8 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 
 //Alignment information, served as shared variables between functions for alignment process
 type AlignInfo struct {
-	Bw_Dis   [][]int    // Distance matrix for backward alignment
-	Fw_Dis   [][]int    // Distance matrix for forward alignment
+	Bw_Dis   [][]float64    // Distance matrix for backward alignment
+	Fw_Dis   [][]float64    // Distance matrix for forward alignment
 	Bw_Trace [][][]byte // SNP trace matrix for backward alignment
 	Fw_Trace [][][]byte // SNP trace matrix for forward alignment
 }
@@ -172,10 +174,10 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 }
 
 //InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
-func InitAlignMatrix(arr_len int) ([][]int, [][][]byte) {
-	dis_mtr := make([][]int, arr_len + 1)
+func InitAlignMatrix(arr_len int) ([][]float64, [][][]byte) {
+	dis_mtr := make([][]float64, arr_len + 1)
 	for i := 0; i <= arr_len; i++ {
-		dis_mtr[i] = make([]int, arr_len + 1)
+		dis_mtr[i] = make([]float64, arr_len + 1)
 	}
 	trace_mtr := make([][][]byte, arr_len)
 	for i := 0; i < arr_len; i++ {

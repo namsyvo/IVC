@@ -103,7 +103,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 // FindExtension function returns alignment (snp report) between between reads and multi-genomes.
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
-func (I *Index) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int, align_info *AlignInfo) (int, float64, 
+func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int, align_info *AlignInfo) (float64, 
 	[]int, [][]byte, []int, []int, [][]byte, []int, int, int, bool) {
 
 	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
@@ -113,55 +113,54 @@ func (I *Index) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int, a
 	l_ext_add_len, right_ext_add_len := 0, 0
 	i := 0
 	for i = m_pos - e_pos; i < m_pos; i++ {
-		_, isSNP = I.SNP_PROF[i]
-		_, isSameLenSNP = I.SAME_LEN_SNP[i]
+		_, isSNP = S.SNP_Calls[uint32(i)]
+		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
 			l_ext_add_len++
 		}
 	}
 	for i = m_pos + lcs_len; i < (m_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
-		_, isSNP = I.SNP_PROF[i]
-		_, isSameLenSNP = I.SAME_LEN_SNP[i]
+		_, isSNP = S.SNP_Calls[uint32(i)]
+		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
 			right_ext_add_len++
 		}
 	}
 	l_most_pos := m_pos - e_pos - l_ext_add_len
 	if l_most_pos >= 0 {
-		ref_l_flank = I.SEQ[l_most_pos : m_pos]
+		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos]
 	} else {
-		ref_l_flank = I.SEQ[0 : m_pos]
+		ref_l_flank = INDEX.SEQ[0 : m_pos]
 	}
 	r_most_pos := (m_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
-	if r_most_pos <= len(I.SEQ) {
-		ref_r_flank = I.SEQ[m_pos+lcs_len : r_most_pos]
+	if r_most_pos <= len(INDEX.SEQ) {
+		ref_r_flank = INDEX.SEQ[m_pos+lcs_len : r_most_pos]
 	} else {
-		ref_r_flank = I.SEQ[m_pos+lcs_len : len(I.SEQ)]
+		ref_r_flank = INDEX.SEQ[m_pos+lcs_len : len(INDEX.SEQ)]
 	}
 
 	read_l_flank = read[ : e_pos]
 	qual_l_flank = qual[ : e_pos]
-	left_d, left_D, l_m, l_n, l_snp_pos, l_snp_val, l_snp_idx, l_prob_h :=
-		I.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
+	left_d, left_D, l_m, l_n, l_snp_pos, l_snp_val, l_snp_idx :=
+		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
 
 	read_r_flank = read[s_pos + 1 : ]
 	qual_r_flank = qual[s_pos + 1 : ]
-	right_d, right_D, r_m, r_n, r_snp_pos, r_snp_val, r_snp_idx, r_prob_h :=
-		I.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
+	right_d, right_D, r_m, r_n, r_snp_pos, r_snp_val, r_snp_idx :=
+		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
-	dis := left_d + right_d + left_D + right_D
-	prob := 0.0
-	if dis <= PARA_INFO.Dist_thres {
-		l_pos, l_val, l_idx, l_prob_e := I.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
-		r_pos, r_val, r_idx, r_prob_e := I.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
+	prob := left_d * right_d * left_D * right_D
+	if prob >= PARA_INFO.Prob_thres {
+		l_prob_e, l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
+		r_prob_e, r_pos, r_val, r_idx := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
 		l_snp_pos = append(l_snp_pos, l_pos...)
 		r_snp_pos = append(r_snp_pos, r_pos...)
 		l_snp_val = append(l_snp_val, l_val...)
 		r_snp_val = append(r_snp_val, r_val...)
 		l_snp_idx = append(l_snp_idx, l_idx...)
 		r_snp_idx = append(r_snp_idx, r_idx...)
-		prob = l_prob_h * l_prob_e * r_prob_h * r_prob_e
-		return dis, prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, true
+		prob = prob * l_prob_e * r_prob_e
+		return prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, true
 	}
-	return dis, prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, false
+	return prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, false
 }
