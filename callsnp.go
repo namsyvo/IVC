@@ -307,9 +307,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			}
 			PrintMemStats("After FindSNPsFromEnd2")
 			
-			if m_prob1 != -1 && m_prob2 != -1 {
+			if m_prob1 != 0.0 && m_prob2 != 0.0 {
 				a_prob := math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50) )
-				m_prob := -math.Log10(m_prob1) - math.Log10(m_prob2)
+				m_prob := math.Log10(m_prob1) + math.Log10(m_prob2)
 				log.Printf("Out\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f", m_prob1, m_prob2, a_prob, m_prob, p_prob)
 				if p_prob > m_prob {
 					log.Printf("In \t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f", m_prob1, m_prob2, a_prob, m_prob, p_prob)
@@ -726,7 +726,7 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		}
 		return snps_arr, l_most_pos, r_most_pos, prob
 	}
-	return snps_arr, -1, -1, -1.0
+	return snps_arr, -1, -1, 0.0
 }
 
 //---------------------------------------------------------------------------------------------------

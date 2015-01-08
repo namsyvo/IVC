@@ -149,17 +149,16 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 	right_d, right_D, r_m, r_n, r_snp_pos, r_snp_val, r_snp_idx :=
 		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 
-	prob := left_d * right_d * left_D * right_D
+	prob := left_d + right_d + left_D + right_D
 	if prob >= PARA_INFO.Prob_thres {
-		l_prob_e, l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
-		r_prob_e, r_pos, r_val, r_idx := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
+		l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
+		r_pos, r_val, r_idx := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
 		l_snp_pos = append(l_snp_pos, l_pos...)
 		r_snp_pos = append(r_snp_pos, r_pos...)
 		l_snp_val = append(l_snp_val, l_val...)
 		r_snp_val = append(r_snp_val, r_val...)
 		l_snp_idx = append(l_snp_idx, l_idx...)
 		r_snp_idx = append(r_snp_idx, r_idx...)
-		prob = prob * l_prob_e * r_prob_e
 		return prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, true
 	}
 	return prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, false
