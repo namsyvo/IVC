@@ -86,9 +86,9 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *P
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 	para_info.Prob_thres = -100 * math.Log10(1 - err) - float64(para_info.Dist_thres) * math.Log10(EPSILON) - float64(para_info.Read_len - para_info.Dist_thres) * math.Log10(1 - 3 * EPSILON)
 
-	log.Printf("Parameters:\tDist_thres: %d, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
+	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 
-		para_info.Dist_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor, 
+		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor, 
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len)
 	
 	return para_info
