@@ -13,14 +13,10 @@ import "math"
 // Cost functions for computing distance between reads and multi-genomes.
 // Input slices should have same length
 //-------------------------------------------------------------------------------------------------
-func Cost(read, ref, qual []byte) float64 {
+func Cost(read, ref, qual []byte, prob float64) float64 {
 	cost := 0.0
 	for i := 0; i < len(read); i++ {
-		if read[i] != ref[i] {
-			cost = cost - math.Log10(0.01) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
-		} else {
-			cost = cost - math.Log10(0.97) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
-		}
+			cost = cost - math.Log10(prob) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
 	}
 	return cost
 }
@@ -66,7 +62,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			min_d = float64(math.MaxFloat32)
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
-					cost = -math.Log10(snp_prob) + Cost(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m])
+					cost = Cost(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m], snp_prob)
 					if min_d > cost {
 						min_d = cost
 					}
@@ -116,7 +112,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 					//One possnble case: i - snp_len < 0 for all k
 					if i - snp_len >= 0 {
 						if snp_str != "." {
-							temp_dis = D[i - snp_len][j - 1] - math.Log10(snp_prob) + Cost(read[i - snp_len : i], []byte(snp_str), qual[i - snp_len : i])
+							temp_dis = D[i - snp_len][j - 1] + Cost(read[i - snp_len : i], []byte(snp_str), qual[i - snp_len : i], snp_prob)
 						} else {
 							temp_dis = D[i][j - 1]
 						}
@@ -226,7 +222,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 			snp_prof, is_snp = S.SNP_Calls[uint32(pos + N - n)]
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
-					cost = -math.Log10(snp_prob) + Cost(read[M - m : M - (m - snp_len)], []byte(snp_str), qual[M - m : M - (m - snp_len)])
+					cost = Cost(read[M - m : M - (m - snp_len)], []byte(snp_str), qual[M - m : M - (m - snp_len)], snp_prob)
 					if min_d > cost {
 						min_d = cost
 					}
@@ -275,7 +271,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 					//One possnble case: i - snp_len < 0 for all k
 					if i - snp_len >= 0 {
 						if snp_str != "." {
-							temp_dis = D[i - snp_len][j - 1] - math.Log10(snp_prob) + Cost(read[M - i : M - (i - snp_len)], []byte(snp_str), qual[M - i : M - (i - snp_len)])
+							temp_dis = D[i - snp_len][j - 1] + Cost(read[M - i : M - (i - snp_len)], []byte(snp_str), qual[M - i : M - (i - snp_len)], snp_prob)
 						} else {
 							temp_dis = D[i][j - 1]
 						}

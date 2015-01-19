@@ -40,7 +40,7 @@ func LoadSNPLocation(file_name string) (map[int][][]byte, map[int][]float32, map
 	for {
 		line, err := br.ReadString('\n')
 		if err != nil {
-			fmt.Printf("%v\n", err)
+			fmt.Println("Finish reading SNP profile index file")
 			break
 		}
 		sline := string(line[:len(line)-1])
@@ -129,7 +129,7 @@ func BuildMultigenome(SNP_arr map[int]SNPProfile, seq []byte) []byte {
 func ReadFASTA(sequence_file string) []byte {
 	f, err := os.Open(sequence_file)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		fmt.Println("Error reading FASTA input file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -162,7 +162,7 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 	array := make(map[int]SNPProfile)
 	f, err := os.Open(sequence_file)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		fmt.Println("Error reading VCF input file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
