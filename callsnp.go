@@ -231,7 +231,7 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 
 	//Initialize inter-function share variables
 	read_info := InitReadInfo(PARA_INFO.Read_len, PARA_INFO.Info_len)
-	align_info := InitAlignInfo(PARA_INFO.Read_len)
+	align_info := InitAlignInfo(2 * PARA_INFO.Read_len)
 	m_pos := make([]int, INPUT_INFO.Max_snum)
 
 	for read := range read_data {

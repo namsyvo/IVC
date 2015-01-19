@@ -7,6 +7,7 @@
 package isc
 
 import "math"
+//import "log"
 
 //-------------------------------------------------------------------------------------------------
 // Cost functions for computing distance between reads and multi-genomes.
@@ -64,19 +65,23 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			snp_prof, _ = S.SNP_Calls[uint32(pos + n - 1)]		
 			min_d = float64(math.MaxFloat32)
 			for snp_str, snp_prob = range snp_prof {
-				cost = -math.Log10(snp_prob) + Cost(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m])
-				if min_d > cost {
-					min_d = cost
+				if m >= snp_len {
+					cost = -math.Log10(snp_prob) + Cost(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m])
+					if min_d > cost {
+						min_d = cost
+					}
 				}
 			}
-			p = p + cost
-			snp_pos = append(snp_pos, pos + n - 1)
-			snp_idx = append(snp_idx, m - snp_len)
-			snp := make([]byte, snp_len)
-			copy(snp, read[m - snp_len : m])
-			snp_val = append(snp_val, snp)
-			m -= snp_len
-			n--
+			if min_d < float64(math.MaxFloat32) {
+				p = p + cost
+				snp_pos = append(snp_pos, pos + n - 1)
+				snp_idx = append(snp_idx, m - snp_len)
+				snp := make([]byte, snp_len)
+				copy(snp, read[m - snp_len : m])
+				snp_val = append(snp_val, snp)
+				m -= snp_len
+				n--
+			}
 		} else {
 			break
 		}
@@ -86,10 +91,10 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 	}
 
 	D[0][0] = 0.0
-	for i = 1; i <= PARA_INFO.Read_len; i++ {
+	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
 		D[i][0] = float64(math.MaxFloat32)
 	}
-	for j = 1; j <= PARA_INFO.Read_len; j++ {
+	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
 		D[0][j] = 0.0
 	}
 	var temp_dis float64
@@ -110,7 +115,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 					snp_len = len(snp_str)
 					//One possnble case: i - snp_len < 0 for all k
 					if i - snp_len >= 0 {
-						if snp_str[0] != '.' {
+						if snp_str != "." {
 							temp_dis = D[i - snp_len][j - 1] - math.Log10(snp_prob) + Cost(read[i - snp_len : i], []byte(snp_str), qual[i - snp_len : i])
 						} else {
 							temp_dis = D[i][j - 1]
@@ -220,19 +225,23 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 			min_d = float64(math.MaxFloat32)
 			snp_prof, is_snp = S.SNP_Calls[uint32(pos + N - n)]
 			for snp_str, snp_prob = range snp_prof {
-				cost = -math.Log10(snp_prob) + Cost(read[M - m : M - (m - snp_len)], []byte(snp_str), qual[M - m : M - (m - snp_len)])
-				if min_d > cost {
-					min_d = cost
+				if m >= snp_len {
+					cost = -math.Log10(snp_prob) + Cost(read[M - m : M - (m - snp_len)], []byte(snp_str), qual[M - m : M - (m - snp_len)])
+					if min_d > cost {
+						min_d = cost
+					}
 				}
 			}
-			p = p + cost
-			snp_pos = append(snp_pos, pos + N - n)
-			snp_idx = append(snp_idx, M - m)
-			snp := make([]byte, snp_len)
-			copy(snp, read[M - m : M - (m - snp_len)])
-			snp_val = append(snp_val, snp)
-			m -= snp_len
-			n--
+			if min_d < float64(math.MaxFloat32) {
+				p = p + cost
+				snp_pos = append(snp_pos, pos + N - n)
+				snp_idx = append(snp_idx, M - m)
+				snp := make([]byte, snp_len)
+				copy(snp, read[M - m : M - (m - snp_len)])
+				snp_val = append(snp_val, snp)
+				m -= snp_len
+				n--
+			}
 		} else {
 			break
 		}
@@ -242,10 +251,10 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 	}
 
 	D[0][0] = 0.0
-	for i = 1; i <= PARA_INFO.Read_len; i++ {
+	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
 		D[i][0] = float64(math.MaxFloat32)
 	}
-	for j = 1; j <= PARA_INFO.Read_len; j++ {
+	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
 		D[0][j] = 0.0
 	}
 	var temp_dis float64
@@ -265,7 +274,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 					snp_len = len(snp_str)
 					//One possnble case: i - snp_len < 0 for all k
 					if i - snp_len >= 0 {
-						if snp_str[0] != '.' {
+						if snp_str != "." {
 							temp_dis = D[i - snp_len][j - 1] - math.Log10(snp_prob) + Cost(read[M - i : M - (i - snp_len)], []byte(snp_str), qual[M - i : M - (i - snp_len)])
 						} else {
 							temp_dis = D[i][j - 1]

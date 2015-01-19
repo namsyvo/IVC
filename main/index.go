@@ -80,18 +80,18 @@ func main() {
 	fmt.Println("Indexing multigenome...")
 
 	var idx fmi.Index
-
+/*
 	start_time = time.Now()
 
 	idx = *fmi.New(multigenome_file)
 	idx.Save(multigenome_file)
-
+*/
 	index_time := time.Since(start_time)
 	log.Printf("ISC-index: time for indexing multigenome:\t%s", index_time)
 
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC-index: memstats after indexing multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
-	
+
 	start_time = time.Now()
 
 	idx = *fmi.New(rev_multigenome_file)
