@@ -155,11 +155,12 @@ func (S *SNP_Prof) CallSNPs() {
 	//Collect SNPs from results channel and update SNPs and their probabilities
 	var snp SNP
 	for snp = range snp_results {
-		log.Printf("result\t%d\t%s\t%s", snp.Pos, string(snp.Bases), string(snp.RID))
 		if len(snp.Bases) == 1 {
 			S.UpdateSNPProb(snp)
+			log.Printf("result SNP\t%d\t%s\t%s", snp.Pos, string(snp.Bases), string(snp.RID))
 		} else {
 			S.UpdateIndelProb(snp)
+			log.Printf("result Indel\t%d\t%s\t%s", snp.Pos, string(snp.Bases), string(snp.RID))
 		}
 	}
 	//Output SNP calls

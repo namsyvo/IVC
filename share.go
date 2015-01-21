@@ -16,7 +16,7 @@ import (
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'} 	//Standard bases of DNA sequences
 	INF             = math.MaxInt16 				//Value for Infinity
-	EPSILON         = 0.01							//Value for prior probability of new alleles
+	EPSILON         = 0.00001							//Value for prior probability of new alleles
 )
 
 //Index for SNP caller
