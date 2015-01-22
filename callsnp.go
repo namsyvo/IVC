@@ -87,7 +87,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	var pos uint32
 	var snp []byte
 	var idx, snp_prof_num int
-	std_base_num := len(STD_BASES)	
+	std_base_num := len(STD_BASES)
 	for snp_pos, snp_value := range INDEX.SNP_PROF {
 		snp_prof_num = len(snp_value)
 		pos = uint32(snp_pos)
@@ -95,8 +95,14 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 		for idx, snp = range snp_value {
 			if len(snp) == 1 {
 				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][idx]) - EPSILON * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
+				if S.SNP_Calls[pos][string(snp)] < EPSILON {
+					S.SNP_Calls[pos][string(snp)] = EPSILON
+				}
 			} else {
 				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][idx]) - EPSILON * float64(snp_prof_num)
+				if S.SNP_Calls[pos][string(snp)] < EPSILON {
+					S.SNP_Calls[pos][string(snp)] = EPSILON
+				}
 			}
 			S.SNP_Bases[pos] = make(map[string]int)
 			S.Aln_Dis[pos] = make(map[string][]int)
@@ -107,7 +113,6 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 			S.Read_ID[pos] = make(map[string][][]byte)
 		}
 	}
-
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
@@ -131,17 +136,17 @@ func (S *SNP_Prof) CallSNPs() {
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
 		go S.FindSNPs(read_data, read_signal, snp_results, &wg)
 	}
-	/*
+	
 	//------------------------
 	//For debugging
-	go func() {
-		GetAlignReadInfo()
-	}()
-	go func() {
-		GetNoAlignReadInfo()
-	}()
+	//go func() {
+	//	GetAlignReadInfo()
+	//}()
+	//go func() {
+	//	GetNoAlignReadInfo()
+	//}()
 	//------------------------
-	*/
+
 	go func() {
 		wg.Wait()
 		close(snp_results)
@@ -166,14 +171,14 @@ func (S *SNP_Prof) CallSNPs() {
 	//Output SNP calls
 	fmt.Println("Outputing SNP calls...")
 	S.OutputSNPCalls()
-	/*
+	
 	//------------------------
 	//For debugging
-	ProcessNoAlignReadInfo(S.SNP_Calls)
-	ProcessFNSNPInfo(S.SNP_Calls)
-	ProcessTPFPSNPInfo(S.SNP_Calls)
+	//ProcessNoAlignReadInfo(S.SNP_Calls)
+	//ProcessFNSNPInfo(S.SNP_Calls)
+	//ProcessTPFPSNPInfo(S.SNP_Calls)
 	//------------------------
-	 */
+	
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -828,17 +833,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		a = "."
 		q = []byte{'I'} //need to be changed to a proper value
 	}
-
 	if _, snp_exist := S.SNP_Calls[pos]; !snp_exist {
-		S.SNP_Bases[pos] = make(map[string]int)
-		S.Aln_Dis[pos] = make(map[string][]int)
-		S.Chr_Dis[pos] = make(map[string][]int)
-		S.Chr_Diff[pos] = make(map[string][]int)
-		S.Aln_Prob[pos] = make(map[string][]float64)
-		S.Chr_Prob[pos] = make(map[string][]float64)
-		S.Read_ID[pos] = make(map[string][][]byte)
-	}
-	if _, snp_call_exist := S.SNP_Calls[pos]; !snp_call_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
 		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
 		for _, b := range STD_BASES {
@@ -846,6 +841,13 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 				S.SNP_Calls[pos][string(b)] = EPSILON
 			}
 		}
+		S.SNP_Bases[pos] = make(map[string]int)
+		S.Aln_Dis[pos] = make(map[string][]int)
+		S.Chr_Dis[pos] = make(map[string][]int)
+		S.Chr_Diff[pos] = make(map[string][]int)
+		S.Aln_Prob[pos] = make(map[string][]float64)
+		S.Chr_Prob[pos] = make(map[string][]float64)
+		S.Read_ID[pos] = make(map[string][][]byte)
 	}
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
 		S.SNP_Calls[pos][a] = EPSILON
