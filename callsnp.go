@@ -38,7 +38,6 @@ type SNP struct {
 	Pos 	uint32 //SNP postion on ref
 	Bases 	[]byte //bases of SNP
 	BaseQ 	[]byte //quality of bases of SNP
-	ADis    int    //aligment distance
 	CDis    int    //chromosomal distance
 	CDiff   int    //diff between aligned pos and true pos
 	AProb   float64 //correct alignment prob
@@ -55,7 +54,6 @@ type SNP struct {
 type SNP_Prof struct {
 	SNP_Calls 	map[uint32]map[string]float64
 	SNP_Bases 	map[uint32]map[string]int
-	Aln_Dis     map[uint32]map[string][]int
 	Chr_Dis     map[uint32]map[string][]int
 	Chr_Diff     map[uint32]map[string][]int
 	Aln_Prob     map[uint32]map[string][]float64
@@ -77,7 +75,6 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
-	S.Aln_Dis = make(map[uint32]map[string][]int)
 	S.Chr_Dis = make(map[uint32]map[string][]int)
 	S.Chr_Diff = make(map[uint32]map[string][]int)
 	S.Aln_Prob = make(map[uint32]map[string][]float64)
@@ -105,7 +102,6 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 				}
 			}
 			S.SNP_Bases[pos] = make(map[string]int)
-			S.Aln_Dis[pos] = make(map[string][]int)
 			S.Chr_Dis[pos] = make(map[string][]int)
 			S.Chr_Diff[pos] = make(map[string][]int)
 			S.Aln_Prob[pos] = make(map[string][]float64)
@@ -278,7 +274,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	var snp SNP
 	var snps1, snps2 []SNP
 	var snps_get1, snps_get2 []SNP
-	var m_dis1, l_align_pos1, r_align_pos1, m_dis2, l_align_pos2, r_align_pos2 int
+	var l_align_pos1, r_align_pos1, l_align_pos2, r_align_pos2 int
 
 	var s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2 []int
 	var strand_r1, strand_r2 []bool
@@ -366,18 +362,15 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 			PrintMemStats("After FindSNPsFromEnd2")
 			
 			if m_prob1 != -1 && m_prob2 != -1 {
-				//a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50)))
-				a_prob := 0.0
+				a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50)))
 				if p_prob > s_prob1 + s_prob2 + m_prob1 + m_prob2 {
-					//log.Printf("SNP call \t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f", 
-					//	s_prob1, s_prob2, m_prob1, m_prob2, a_prob, s_prob1 + s_prob2 + m_prob1 + m_prob2, p_prob)
 					p_prob = s_prob1 + s_prob2 + m_prob1 + m_prob2
+					log.Printf("SNP call \t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f\t%1.30f", 
+						s_prob1, s_prob2, m_prob1, m_prob2, a_prob, p_prob)
 					at.l_align_pos1 = l_align_pos1
 					at.l_align_pos2 = l_align_pos2
 					at.r_align_pos1 = r_align_pos1
 					at.r_align_pos2 = r_align_pos2
-					at.align_dis1 = m_dis1
-					at.align_dis2 = m_dis2
 					
 					snps_get1 = make([]SNP, len(snps1))
 					if len(snps1) > 0 {
@@ -387,7 +380,6 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 							snps_get1[s_idx].BaseQ = make([]byte, len(snps1[s_idx].BaseQ))
 							copy(snps_get1[s_idx].Bases, snps1[s_idx].Bases)
 							copy(snps_get1[s_idx].BaseQ, snps1[s_idx].BaseQ)
-							snps_get1[s_idx].ADis = m_dis1
 							snps_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 							snps_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
 							snps_get1[s_idx].AProb = m_prob1
@@ -403,7 +395,6 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 							snps_get2[s_idx].BaseQ = make([]byte, len(snps2[s_idx].BaseQ))
 							copy(snps_get2[s_idx].Bases, snps2[s_idx].Bases)
 							copy(snps_get2[s_idx].BaseQ, snps2[s_idx].BaseQ)
-							snps_get2[s_idx].ADis = m_dis2
 							snps_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
 							snps_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
 							snps_get2[s_idx].AProb = m_prob2
@@ -791,7 +782,6 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 			}
 		}
 		S.SNP_Bases[pos] = make(map[string]int)
-		S.Aln_Dis[pos] = make(map[string][]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -802,7 +792,6 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
 	S.SNP_Bases[pos][a] += 1
-	S.Aln_Dis[pos][a] = append(S.Aln_Dis[pos][a], snp.ADis)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
@@ -852,7 +841,6 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 			}
 		}
 		S.SNP_Bases[pos] = make(map[string]int)
-		S.Aln_Dis[pos] = make(map[string][]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -863,7 +851,6 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
 	S.SNP_Bases[pos][a] += 1
-	S.Aln_Dis[pos][a] = append(S.Aln_Dis[pos][a], snp.ADis)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
@@ -915,12 +902,11 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	}
 	sort.Ints(SNP_Pos)
 
-	var str_qual string
-	var line_a, line_b []string
+	var snp, snp_call, str_qual string
 	var str_a, str_b string
+	var line_a, line_b []string
 	var snp_call_prob, snp_prob float64
-	var snp_call, snp string
-	var snp_num, aln_dis, idx int
+	var snp_num, idx int
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
 		snp_call_prob = 0
@@ -948,9 +934,8 @@ func (S *SNP_Prof) OutputSNPCalls() {
 			line_b = append(line_b, strconv.Itoa(snp_num))
 		}
 		str_b = strings.Join(line_b, "\t")
-		for idx, aln_dis = range S.Aln_Dis[snp_pos][snp_call] {
+		for idx, _ = range S.Chr_Dis[snp_pos][snp_call] {
 			_, err = file.WriteString(str_a + "\t")
-			_, err = file.WriteString(strconv.Itoa(aln_dis) + "\t")
 			_, err = file.WriteString(strconv.Itoa(S.Chr_Dis[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(S.Chr_Diff[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(S.Aln_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
