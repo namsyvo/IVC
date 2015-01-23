@@ -136,17 +136,17 @@ func (S *SNP_Prof) CallSNPs() {
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
 		go S.FindSNPs(read_data, read_signal, snp_results, &wg)
 	}
-	
+	/*
 	//------------------------
 	//For debugging
-	//go func() {
-	//	GetAlignReadInfo()
-	//}()
-	//go func() {
-	//	GetNoAlignReadInfo()
-	//}()
+	go func() {
+		GetAlignReadInfo()
+	}()
+	go func() {
+		GetNoAlignReadInfo()
+	}()
 	//------------------------
-
+	*/
 	go func() {
 		wg.Wait()
 		close(snp_results)
@@ -171,14 +171,14 @@ func (S *SNP_Prof) CallSNPs() {
 	//Output SNP calls
 	fmt.Println("Outputing SNP calls...")
 	S.OutputSNPCalls()
-	
+	/*
 	//------------------------
 	//For debugging
-	//ProcessNoAlignReadInfo(S.SNP_Calls)
-	//ProcessFNSNPInfo(S.SNP_Calls)
-	//ProcessTPFPSNPInfo(S.SNP_Calls)
+	ProcessNoAlignReadInfo(S.SNP_Calls)
+	ProcessFNSNPInfo(S.SNP_Calls)
+	ProcessTPFPSNPInfo(S.SNP_Calls)
 	//------------------------
-	
+	 */
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -293,6 +293,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	copy(at.read_info1, read_info.Info1)
 	copy(at.read_info2, read_info.Info2)
 
+	//---------------------------------------------------------------------
+	//get info for simulated reads, with specific format of testing dataset
+	//need to be re-implemented for general data
     read_info1_tokens := bytes.Split(at.read_info1, []byte{'_'})
     read_info2_tokens := bytes.Split(at.read_info2, []byte{'_'})
 	var true_pos1, true_pos2 int64
@@ -301,8 +304,14 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
         true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
 		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64)
 		read_id1, read_id2 = read_info1_tokens[10], read_info2_tokens[10]
+	} else {
+        true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64)
+		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
+		read_id1, read_id2 = read_info1_tokens[9], read_info2_tokens[9]
 	}
 	log.Printf("read ID\t%s", string(read_id1))
+	//---------------------------------------------------------------------
+
 	var p_idx, s_idx, m_idx int
 	var p_prob, s_prob1, s_prob2, m_prob1, m_prob2 float64
 
@@ -833,6 +842,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		a = "."
 		q = []byte{'I'} //need to be changed to a proper value
 	}
+
 	if _, snp_exist := S.SNP_Calls[pos]; !snp_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
 		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
