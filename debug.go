@@ -26,11 +26,11 @@ var (
 	PRINT_MEM_STATS = false
 	PRINT_ALIGN_TRACE_INFO = false
 
-	GET_ALIGN_READ_INFO = true
+	GET_ALIGN_READ_INFO = false
 	PRINT_FN = false
 	PRINT_TPFP = false
 
-	GET_NO_ALIGN_READ_INFO = true
+	GET_NO_ALIGN_READ_INFO = false
 	PRINT_NA = false
 )
 

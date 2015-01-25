@@ -13,12 +13,12 @@ import "math"
 // Cost functions for computing distance between reads and multi-genomes.
 // Input slices should have same length
 //-------------------------------------------------------------------------------------------------
-func Cost(read, ref, qual []byte, prob float64) float64 {
-	cost := 0.0
+func AlignProb(read, ref, qual []byte, prob float64) float64 {
+	p := 0.0
 	for i := 0; i < len(read); i++ {
-			cost = cost - math.Log10(prob) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
+		p = p - math.Log10(prob) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
 	}
-	return cost
+	return p
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -29,47 +29,47 @@ func Cost(read, ref, qual []byte, prob float64) float64 {
 //-------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float64, T [][][]byte) (float64, float64, int, int, []int, [][]byte, []int) {
 
-	var i, j int
-
-	var cost float64
-	var m, n int
 	var snp_len int
 	var snp_str string
-	var min_d, snp_prob float64
-	var snp_prof map[string]float64
 	var is_snp, is_same_len_snp bool
+	var p, min_p, snp_prob float64
+	var snp_prof map[string]float64
 
-	p := 0.0
-	m, n = len(read), len(ref)
+	align_prob := 0.0
+	m, n := len(read), len(ref)
 	var snp_pos []int
 	var snp_idx []int
 	var snp_val [][]byte
+	//log.Printf("Before BackwardDistance, Hamming\t%d\t%d", m, n)
 	for m > 0 && n > 0 {
+		//log.Printf("Inside loop BackwardDistance, Hamming\t%d\t%d", m, n)
 		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_idx = append(snp_idx, m - 1)
 				snp := read[m - 1]
 				snp_val = append(snp_val, []byte{snp})
-				p = p - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
+				align_prob = align_prob - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
 			} else {
-				p = p - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
+				align_prob = align_prob - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
 			}
 			m--
 			n--
 		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1]; is_same_len_snp {
 			snp_prof, _ = S.SNP_Calls[uint32(pos + n - 1)]		
-			min_d = float64(math.MaxFloat32)
+			min_p = math.MaxFloat64
 			for snp_str, snp_prob = range snp_prof {
+				//log.Printf("snp_prof\t%s\t%.5f", snp_str, snp_prob)
 				if m >= snp_len {
-					cost = Cost(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m], snp_prob)
-					if min_d > cost {
-						min_d = cost
+					p = AlignProb(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m], snp_prob)
+					//log.Printf("cost\t%.5f\t%s\t%s\t%s\t%.5f", cost, string(read[m - snp_len : m]), snp_str, string(qual[m - snp_len : m]), snp_prob)
+					if min_p > p {
+						min_p = p
 					}
 				}
 			}
-			if min_d < float64(math.MaxFloat32) {
-				p = p + cost
+			if min_p < math.MaxFloat64 {
+				align_prob = align_prob + min_p
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_idx = append(snp_idx, m - snp_len)
 				snp := make([]byte, snp_len)
@@ -77,23 +77,27 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 				snp_val = append(snp_val, snp)
 				m -= snp_len
 				n--
+			} else {
+				//log.Printf("Infinite loop\t%d\t%d\t%d\t%d", m, n, pos + n - 1, snp_len)
+				break
 			}
 		} else {
 			break
 		}
-		//if d > PARA_INFO.Dist_thres {
-		//	return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx, p
-		//}
+		if align_prob > PARA_INFO.Prob_thres {
+			return PARA_INFO.Prob_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
+		}
 	}
-
+	//log.Printf("After BackwardDistance, Hamming\t%d\t%d", m, n)
+	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = float64(math.MaxFloat32)
+		D[i][0] = math.MaxFloat64
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
 		D[0][j] = 0.0
 	}
-	var temp_dis float64
+	var temp_p float64
 	var min_snp string
 	for i = 1; i <= m; i++ {
 		for j = 1; j <= n; j++ {
@@ -104,20 +108,20 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 					D[i][j] = D[i - 1][j - 1] - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				}
 			} else {
-				D[i][j] = float64(math.MaxFloat32)
+				D[i][j] = math.MaxFloat64
 				min_snp = ""
 				snp_prof, is_snp = S.SNP_Calls[uint32(pos + j - 1)]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
-					//One possnble case: i - snp_len < 0 for all k
+					//One possible case: i - snp_len < 0 for all k
 					if i - snp_len >= 0 {
 						if snp_str != "." {
-							temp_dis = D[i - snp_len][j - 1] + Cost(read[i - snp_len : i], []byte(snp_str), qual[i - snp_len : i], snp_prob)
+							temp_p = D[i - snp_len][j - 1] + AlignProb(read[i - snp_len : i], []byte(snp_str), qual[i - snp_len : i], snp_prob)
 						} else {
-							temp_dis = D[i][j - 1]
+							temp_p = D[i][j - 1]
 						}
-						if D[i][j] > temp_dis {
-							D[i][j] = temp_dis
+						if D[i][j] > temp_p {
+							D[i][j] = temp_p
 							min_snp = snp_str
 						}
 					}
@@ -126,9 +130,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			}
 		}
 	}
-	//if D[m][n] >= INF {
-	//	return d, INF, m, n, snp_pos, snp_val, snp_idx
-	//}
+	//log.Printf("BackwardDistance, Edit\t%.5f\t%.5f", p, D[m][n])
 	return p, D[m][n], m, n, snp_pos, snp_val, snp_idx
 }
 
@@ -142,11 +144,10 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 
 	var is_snp bool
 	var snp_len int
-	var i, j int = m, n
-	var snp_pos []int
-	var snp_idx []int
+	var snp_pos, snp_idx []int
 	var snp_val [][]byte
 
+	i, j := m, n
 	for i > 0 || j > 0 {
 		_, is_snp = INDEX.SNP_PROF[pos + j - 1]
 		if i > 0 && j > 0 {
@@ -188,22 +189,17 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 //-------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float64, T [][][]byte) (float64, float64, int, int, []int, [][]byte, []int) {
 
-	var i, j int
-	var M, N = len(read), len(ref)
-
-	var cost float64
-	var m, n int
 	var snp_len int
 	var snp_prof map[string]float64
 	var is_snp, is_same_len_snp bool
 	var min_snp, snp_str string
-	var min_d, snp_prob float64
-
-	m, n = M, N
-	var snp_pos []int
-	var snp_idx []int
+	var p, min_p, snp_prob float64
+	var snp_pos, snp_idx []int
 	var snp_val [][]byte
-	p := 0.0
+
+	align_prob := 0.0
+	M, N := len(read), len(ref)
+	m, n := M, N
 	for m > 0 && n > 0 {
 		if _, is_snp = INDEX.SNP_PROF[pos + N - n]; !is_snp {
 			if read[M - m] != ref[N - n] {
@@ -211,25 +207,25 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
                 snp_idx = append(snp_idx, M - m)
                 snp := read[M - m]
                 snp_val = append(snp_val, []byte{snp})
-				p = p - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
+				align_prob = align_prob - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
 			} else {
-				p = p - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
+				align_prob = align_prob - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
 			}
 			m--
 			n--
 		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n]; is_same_len_snp {
-			min_d = float64(math.MaxFloat32)
+			min_p = math.MaxFloat64
 			snp_prof, is_snp = S.SNP_Calls[uint32(pos + N - n)]
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
-					cost = Cost(read[M - m : M - (m - snp_len)], []byte(snp_str), qual[M - m : M - (m - snp_len)], snp_prob)
-					if min_d > cost {
-						min_d = cost
+					p = AlignProb(read[M - m : M - (m - snp_len)], []byte(snp_str), qual[M - m : M - (m - snp_len)], snp_prob)
+					if min_p > p {
+						min_p = p
 					}
 				}
 			}
-			if min_d < float64(math.MaxFloat32) {
-				p = p + cost
+			if min_p < math.MaxFloat64 {
+				align_prob = align_prob + min_p
 				snp_pos = append(snp_pos, pos + N - n)
 				snp_idx = append(snp_idx, M - m)
 				snp := make([]byte, snp_len)
@@ -237,15 +233,19 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 				snp_val = append(snp_val, snp)
 				m -= snp_len
 				n--
+			} else {
+				//log.Printf("Infinite loop\t%d\t%d\t%d", m, n, pos + N - n)
+				break
 			}
 		} else {
 			break
 		}
-		//if d > PARA_INFO.Dist_thres {
-		//	return PARA_INFO.Dist_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx, p
-		//}
+		if p > PARA_INFO.Prob_thres {
+			return PARA_INFO.Prob_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
+		}
 	}
 
+	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
 		D[i][0] = float64(math.MaxFloat32)
@@ -253,7 +253,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
 		D[0][j] = 0.0
 	}
-	var temp_dis float64
+	var temp_p float64
 	for i = 1; i <= m; i++ {
 		for j = 1; j <= n; j++ {
 			if _, is_snp = INDEX.SNP_PROF[pos + N - j]; !is_snp {
@@ -263,7 +263,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 					D[i][j] = D[i - 1][j - 1] - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - i]) - 33) / 10.0))
 				}
 			} else {
-				D[i][j] = float64(math.MaxFloat32)
+				D[i][j] = math.MaxFloat64
 				min_snp = ""
 				snp_prof, is_snp = S.SNP_Calls[uint32(pos + N - j)]
 				for snp_str, snp_prob = range snp_prof {
@@ -271,12 +271,12 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 					//One possnble case: i - snp_len < 0 for all k
 					if i - snp_len >= 0 {
 						if snp_str != "." {
-							temp_dis = D[i - snp_len][j - 1] + Cost(read[M - i : M - (i - snp_len)], []byte(snp_str), qual[M - i : M - (i - snp_len)], snp_prob)
+							temp_p = D[i - snp_len][j - 1] + AlignProb(read[M - i : M - (i - snp_len)], []byte(snp_str), qual[M - i : M - (i - snp_len)], snp_prob)
 						} else {
-							temp_dis = D[i][j - 1]
+							temp_p = D[i][j - 1]
 						}
-						if D[i][j] > temp_dis {
-							D[i][j] = temp_dis
+						if D[i][j] > temp_p {
+							D[i][j] = temp_p
 							min_snp = snp_str
 						}
 					}
@@ -285,9 +285,6 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 			}
 		}
 	}
-	//if D[m][n] >= INF {
-	//	return d, INF, m, n, snp_pos, snp_val, snp_idx
-	//}
 	return p, D[m][n], m, n, snp_pos, snp_val, snp_idx
 }
 
@@ -300,14 +297,12 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, T [][][]byte) ([]int, [][]byte, []int) {
 	var is_snp bool
 	var snp_len int
-	var i, j int = m, n
-	var M, N int = len(read), len(ref)
-
-	//Trace back from right-bottom conner of distance matrix T
-	var snp_pos []int
-	var snp_idx []int
+	var snp_pos, snp_idx []int
 	var snp_val [][]byte
 
+	//Trace back from right-bottom conner of distance matrix T
+	M, N := len(read), len(ref)
+	i, j := m, n
 	for i > 0 || j > 0 {
 		_, is_snp = INDEX.SNP_PROF[pos + N - j]
 		if i > 0 && j > 0 {
