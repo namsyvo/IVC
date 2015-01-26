@@ -7,7 +7,6 @@
 package isc
 
 import "math"
-//import "log"
 
 //-------------------------------------------------------------------------------------------------
 // Cost functions for computing distance between reads and multi-genomes.
@@ -40,9 +39,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 	var snp_pos []int
 	var snp_idx []int
 	var snp_val [][]byte
-	//log.Printf("Before BackwardDistance, Hamming\t%d\t%d", m, n)
 	for m > 0 && n > 0 {
-		//log.Printf("Inside loop BackwardDistance, Hamming\t%d\t%d", m, n)
 		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				snp_pos = append(snp_pos, pos + n - 1)
@@ -59,10 +56,8 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			snp_prof, _ = S.SNP_Calls[uint32(pos + n - 1)]		
 			min_p = math.MaxFloat64
 			for snp_str, snp_prob = range snp_prof {
-				//log.Printf("snp_prof\t%s\t%.5f", snp_str, snp_prob)
 				if m >= snp_len {
 					p = AlignProb(read[m - snp_len : m], []byte(snp_str), qual[m - snp_len : m], snp_prob)
-					//log.Printf("cost\t%.5f\t%s\t%s\t%s\t%.5f", cost, string(read[m - snp_len : m]), snp_str, string(qual[m - snp_len : m]), snp_prob)
 					if min_p > p {
 						min_p = p
 					}
@@ -78,7 +73,6 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 				m -= snp_len
 				n--
 			} else {
-				//log.Printf("Infinite loop\t%d\t%d\t%d\t%d", m, n, pos + n - 1, snp_len)
 				break
 			}
 		} else {
@@ -88,7 +82,6 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			return PARA_INFO.Prob_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
 		}
 	}
-	//log.Printf("After BackwardDistance, Hamming\t%d\t%d", m, n)
 	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
@@ -130,8 +123,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			}
 		}
 	}
-	//log.Printf("BackwardDistance, Edit\t%.5f\t%.5f", p, D[m][n])
-	return p, D[m][n], m, n, snp_pos, snp_val, snp_idx
+	return align_prob, D[m][n], m, n, snp_pos, snp_val, snp_idx
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -234,13 +226,12 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 				m -= snp_len
 				n--
 			} else {
-				//log.Printf("Infinite loop\t%d\t%d\t%d", m, n, pos + N - n)
 				break
 			}
 		} else {
 			break
 		}
-		if p > PARA_INFO.Prob_thres {
+		if align_prob > PARA_INFO.Prob_thres {
 			return PARA_INFO.Prob_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
 		}
 	}
@@ -285,7 +276,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 			}
 		}
 	}
-	return p, D[m][n], m, n, snp_pos, snp_val, snp_idx
+	return align_prob, D[m][n], m, n, snp_pos, snp_val, snp_idx
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -300,7 +291,6 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, T
 	var snp_pos, snp_idx []int
 	var snp_val [][]byte
 
-	//Trace back from right-bottom conner of distance matrix T
 	M, N := len(read), len(ref)
 	i, j := m, n
 	for i > 0 || j > 0 {
