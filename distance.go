@@ -46,9 +46,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 				snp_idx = append(snp_idx, m - 1)
 				snp := read[m - 1]
 				snp_val = append(snp_val, []byte{snp})
-				align_prob = align_prob - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
-			} else {
-				align_prob = align_prob - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m-1]) - 33) / 10.0))
+				align_prob = align_prob - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m - 1]) - 33) / 10.0))
 			}
 			m--
 			n--
@@ -98,7 +96,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 				if read[i - 1] != ref[j - 1] {
 					D[i][j] = D[i - 1][j - 1] - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 				} else {
-					D[i][j] = D[i - 1][j - 1] - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
+					D[i][j] = D[i - 1][j - 1]
 				}
 			} else {
 				D[i][j] = math.MaxFloat64
@@ -200,8 +198,6 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
                 snp := read[M - m]
                 snp_val = append(snp_val, []byte{snp})
 				align_prob = align_prob - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
-			} else {
-				align_prob = align_prob - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
 			}
 			m--
 			n--
@@ -251,7 +247,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 				if read[M - i] != ref[N - j] {
 					D[i][j] = D[i - 1][j - 1] - math.Log10(EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - i]) - 33) / 10.0))
 				} else {
-					D[i][j] = D[i - 1][j - 1] - math.Log10(1 - 3 * EPSILON) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - i]) - 33) / 10.0))
+					D[i][j] = D[i - 1][j - 1]
 				}
 			} else {
 				D[i][j] = math.MaxFloat64
