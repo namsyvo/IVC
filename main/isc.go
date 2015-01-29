@@ -68,7 +68,7 @@ func ReadInputInfo() isc.InputInfo {
 	var proc_num = flag.Int("w", 0, "maximum number of CPUs using by Go")
 	var routine_num = flag.Int("t", 0, "number of goroutines")
 	var max_snum = flag.Int("n", 1024, "maximum number of seeds")
-	var min_slen = flag.Int("l", 20, "minimum length of seeds")
+	var min_slen = flag.Int("l", 10, "minimum length of seeds")
 	var max_psnum = flag.Int("k", 1, "maximum number of paired-seeds")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()

@@ -235,7 +235,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = float64(math.MaxFloat32)
+		D[i][0] = math.MaxFloat64
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
 		D[0][j] = 0.0
