@@ -43,6 +43,7 @@ type SNP struct {
 	AProb   float64 //correct alignment prob
 	CProb  float64 //correct paired-alignment prob
 	RID    []byte  //read ID of aligned bases at SNP pos
+	Read 	[]byte //whole read
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -59,6 +60,7 @@ type SNP_Prof struct {
 	Aln_Prob     map[uint32]map[string][]float64
 	Chr_Prob     map[uint32]map[string][]float64
 	Read_ID      map[uint32]map[string][][]byte
+	Read 		map[uint32]map[string][][]byte
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -80,6 +82,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	S.Aln_Prob = make(map[uint32]map[string][]float64)
 	S.Chr_Prob = make(map[uint32]map[string][]float64)
 	S.Read_ID = make(map[uint32]map[string][][]byte)
+	S.Read = make(map[uint32]map[string][][]byte)
 
 	var pos uint32
 	var snp []byte
@@ -107,6 +110,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 			S.Aln_Prob[pos] = make(map[string][]float64)
 			S.Chr_Prob[pos] = make(map[string][]float64)
 			S.Read_ID[pos] = make(map[string][][]byte)
+			S.Read[pos] = make(map[string][][]byte)
 		}
 	}
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -293,17 +297,27 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	//get info for simulated reads, with specific format of testing dataset
 	//need to be re-implemented for general data
     read_info1_tokens := bytes.Split(read_info.Info1, []byte{'_'})
-    read_info2_tokens := bytes.Split(read_info.Info1, []byte{'_'})
+    read_info2_tokens := bytes.Split(read_info.Info2, []byte{'_'})
 	var true_pos1, true_pos2 int64
-	var read_id1, read_id2 []byte
+	var read1, read_id1, read2, read_id2 []byte
     if read_info1_tokens[0][1] != 'r' {
         true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
 		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64)
-		read_id1, read_id2 = read_info1_tokens[10], read_info2_tokens[10]
+		read_id1, read_id2 = make([]byte, len(read_info1_tokens[10])), make([]byte, len(read_info2_tokens[10]))
+		copy(read_id1, read_info1_tokens[10])
+		copy(read_id2, read_info2_tokens[10])
+		read1, read2 = make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
+		copy(read1, read_info.Info1)
+		copy(read2, read_info.Info2)
 	} else {
         true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64)
 		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
-		read_id1, read_id2 = read_info1_tokens[9], read_info2_tokens[9]
+		read_id1, read_id2 = make([]byte, len(read_info1_tokens[9])), make([]byte, len(read_info2_tokens[9]))
+		copy(read_id1, read_info1_tokens[9])
+		copy(read_id2, read_info2_tokens[9])
+		read1, read2 = make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
+		copy(read1, read_info.Info1)
+		copy(read2, read_info.Info2)
 	}
 	//log.Printf("read ID\t%s", string(read_id1))
 	//---------------------------------------------------------------------
@@ -380,6 +394,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 								snps_get1[s_idx].AProb = m_prob1
 								snps_get1[s_idx].CProb = a_prob
 								snps_get1[s_idx].RID = read_id1
+								snps_get1[s_idx].Read = read1
 							}
 						}
 						snps_get2 = make([]SNP, len(snps2))
@@ -395,6 +410,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 								snps_get2[s_idx].AProb = m_prob2
 								snps_get2[s_idx].CProb = a_prob
 								snps_get2[s_idx].RID = read_id2
+								snps_get2[s_idx].Read = read2
 							}
 						}
 					}
@@ -793,6 +809,7 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.Aln_Prob[pos] = make(map[string][]float64)
 		S.Chr_Prob[pos] = make(map[string][]float64)
 		S.Read_ID[pos] = make(map[string][][]byte)
+		S.Read[pos] = make(map[string][][]byte)
 	}
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
 		S.SNP_Calls[pos][a] = EPSILON
@@ -803,6 +820,7 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
 	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], snp.CProb)
 	S.Read_ID[pos][a] = append(S.Read_ID[pos][a], snp.RID)
+	S.Read[pos][a] = append(S.Read[pos][a], snp.Read)
 
 	//log.Printf("UpdateSNPInfo, before\t%d\t%s\t%.10f\t%s", pos, a, S.SNP_Calls[pos][a], string(snp.RID))
 	var p float64
@@ -852,6 +870,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		S.Aln_Prob[pos] = make(map[string][]float64)
 		S.Chr_Prob[pos] = make(map[string][]float64)
 		S.Read_ID[pos] = make(map[string][][]byte)
+		S.Read[pos] = make(map[string][][]byte)
 	}
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
 		S.SNP_Calls[pos][a] = EPSILON
@@ -862,6 +881,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
 	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], snp.CProb)
 	S.Read_ID[pos][a] = append(S.Read_ID[pos][a], snp.RID)
+	S.Read[pos][a] = append(S.Read[pos][a], snp.Read)
 
 	//log.Printf("UpdateIndelInfo, before\t%d\t%s\t%.10f\t%s", pos, a, S.SNP_Calls[pos][a], string(snp.RID))
 	var p float64
@@ -947,6 +967,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 			_, err = file.WriteString(strconv.FormatFloat(S.Aln_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(S.Chr_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(string(S.Read_ID[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(string(S.Read[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(str_b + "\n")
 			if err != nil {
 				fmt.Println(err)
