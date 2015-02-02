@@ -21,7 +21,7 @@ import (
 
 //Global variable for turnning on/off info profiling
 var (
-	PRINT_PROCESS_MEM = true
+	PRINT_PROCESS_MEM = false
 
 	PRINT_MEM_STATS = false
 	PRINT_ALIGN_TRACE_INFO = false
@@ -30,7 +30,7 @@ var (
 	PRINT_FN = false
 	PRINT_TPFP = false
 
-	GET_NO_ALIGN_READ_INFO = false
+	GET_NO_ALIGN_READ_INFO = true
 	PRINT_NA = false
 )
 
@@ -574,26 +574,7 @@ func ProcessNoAlignReadInfo(snp_call map[uint32]map[string]float64) {
 		file, _ := os.Create(INPUT_INFO.SNP_call_file + ".noalign")
 		defer file.Close()
 		for _, at := range NO_ALIGN_READ_INFO_ARR {
-			file.WriteString("None\t")
-			file.WriteString(strconv.Itoa(at.l_align_pos1) + "\t" + strconv.Itoa(at.l_align_pos2) + "\t")
-			file.WriteString(strconv.Itoa(at.r_align_pos1) + "\t" + strconv.Itoa(at.r_align_pos2) + "\t")
-			file.WriteString(strconv.Itoa(at.align_dis1) + "\t" + strconv.Itoa(at.align_dis2) + "\t")
-						
-			tokens := bytes.Split(at.read_info1, []byte{'_'})
-			if len(tokens) >= 11 {
-				true_pos1, err1 := strconv.ParseInt(string(tokens[2]), 10, 64)
-				true_pos2, err2 := strconv.ParseInt(string(tokens[3]), 10, 64)
-				if err1 == nil && err2 == nil {
-					file.WriteString(strconv.FormatInt(true_pos1 - true_pos2, 10) + "\t" + strconv.FormatInt(true_pos1, 10) + 
-						"\t" + strconv.FormatInt(true_pos2, 10) + "\t")
-				} else {
-					file.WriteString("None\tNone\tNone\t")
-				}
-				file.WriteString(string(tokens[10]) + "\t")
-			} else {
-				file.WriteString("None\tNone\tNone\tNone\t")
-			}
-			file.WriteString("\n")
+			file.WriteString(string(at.read_info1) + "\t" + string(at.read_info2) + "\n")
 		}
 		fmt.Println("Finish processing noaligned read info.")
 	}

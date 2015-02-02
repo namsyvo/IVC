@@ -13,7 +13,6 @@ package isc
 import (
 	"github.com/vtphan/fmi" //to use FM index
 	"sort"
-	//"log"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -53,7 +52,6 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 	ep = index.EP[c]
 	var sp0, ep0 uint32
 	for i := start_pos - 1; i >= 0; i-- {
-		//fmt.Println("pos, # candidates: ", i, ep - sp + 1)
 		c = pattern[i]
 		offset, ok = index.C[c]
 		if ok {
@@ -142,22 +140,18 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 
 	read_l_flank = read[ : e_pos]
 	qual_l_flank = qual[ : e_pos]
-	//log.Printf("left read-ref info\t%s\t%s", read_l_flank, ref_l_flank)
 	left_d, left_D, l_m, l_n, l_snp_pos, l_snp_val, l_snp_idx :=
 		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
-	//log.Printf("After BackwardDistance\t%.5f\t%.5f", left_d, left_D)
+
 	read_r_flank = read[s_pos + 1 : ]
 	qual_r_flank = qual[s_pos + 1 : ]
-	//log.Printf("right read-ref info\t%s\t%s", read_r_flank, ref_r_flank)
 	right_d, right_D, r_m, r_n, r_snp_pos, r_snp_val, r_snp_idx :=
 		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
-	//log.Printf("After ForwardDistance\t%.5f\t%.5f", right_d, right_D)
+
 	prob := left_d + right_d + left_D + right_D
 	if prob <= PARA_INFO.Prob_thres {
 		l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
-		//log.Printf("After BackwardTraceBack\t%d", l_pos)
 		r_pos, r_val, r_idx := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
-		//log.Printf("After ForwardTraceBack\t%d", r_pos)
 		l_snp_pos = append(l_snp_pos, l_pos...)
 		r_snp_pos = append(r_snp_pos, r_pos...)
 		l_snp_val = append(l_snp_val, l_val...)

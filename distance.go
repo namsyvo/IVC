@@ -83,10 +83,10 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = math.MaxFloat64
+		D[i][0] = 1.0
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
-		D[0][j] = 0.0
+		D[0][j] = 1.0
 	}
 	var temp_p float64
 	var min_snp string
@@ -235,10 +235,10 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = math.MaxFloat64
+		D[i][0] = 1.0
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
-		D[0][j] = 0.0
+		D[0][j] = 1.0
 	}
 	var temp_p float64
 	for i = 1; i <= m; i++ {
