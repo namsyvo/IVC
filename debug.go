@@ -94,7 +94,7 @@ func PrintExtendTraceInfo(mess string, match []byte, e_pos, s_pos, match_num int
 	}
 }
 
-func PrintMatchTraceInfo(pos, dis, left_most_pos int, left_snp_pos []int, read []byte) {
+func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_snp_pos []int, read []byte) {
 	if PRINT_ALIGN_TRACE_INFO {
 		fmt.Print("Match\t", pos, "\t", dis, "\t", left_most_pos, "\t", string(read), "\t")
 		for _, pos := range left_snp_pos {
