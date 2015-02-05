@@ -479,7 +479,7 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
 					//Check if alignments are likely pair-end alignments
-					if (m_pos_r1_or[i] < m_pos_r2_rc[j]) && (m_pos_r2_rc[j] - m_pos_r1_or[i]) <= PARA_INFO.Max_ins {
+					if (m_pos_r2_rc[j] - m_pos_r1_or[i]) > PARA_INFO.Read_len && (m_pos_r2_rc[j] - m_pos_r1_or[i]) <= PARA_INFO.Max_ins + PARA_INFO.Read_len {
 						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", m_pos_r1_or[i], m_pos_r2_rc[j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
@@ -499,7 +499,7 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_or; j++ {
 					//Check if alignments are likely pair-end alignments
-					if (m_pos_r1_rc[i] > m_pos_r2_or[j]) && (m_pos_r1_rc[i] - m_pos_r2_or[j]) <= PARA_INFO.Max_ins {
+					if (m_pos_r1_rc[i] - m_pos_r2_or[j]) > PARA_INFO.Read_len && (m_pos_r1_rc[i] - m_pos_r2_or[j]) <= PARA_INFO.Max_ins + PARA_INFO.Read_len {
 						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", m_pos_r1_rc[i], m_pos_r2_or[j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
