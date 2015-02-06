@@ -308,12 +308,12 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 
 	//Try to align both ends
 	loop_num := 1
-	has_seeds := false
+	//has_seeds := false
 	p_prob = math.MaxFloat64
-	for loop_num <= PARA_INFO.Iter_num/2 { //temp value, will be replaced later
+	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
-		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, has_seeds = S.FindSeedsFromPairedEnds(read_info)
-		if has_seeds {
+		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, _ = S.FindSeedsFromPairedEnds(read_info)
+		//if has_seeds {
 			for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 				//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
 				//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
@@ -388,7 +388,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 					}
 				}
 			}
-		}
+		//}
 		loop_num++
 	}
 	if p_prob <= 2 * PARA_INFO.Prob_thres {
