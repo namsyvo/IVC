@@ -111,9 +111,9 @@ var (
 	SNP_TRACE_INFO_MAP = make(map[uint32][]SNP_trace_info)
     NO_ALIGN_READ_INFO_CHAN = make(chan Align_trace_info)
 	NO_ALIGN_READ_INFO_ARR = make([]Align_trace_info, 0)
-    TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/old-mutant/mutate-0.3300/variant_comp.txt")
-    TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/old-mutant/mutate-0.3300/variant_part.txt")
-    TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/old-mutant/mutate-0.3300/variant_none.txt")
+    TRUE_VAR_COMP = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_comp.txt")
+    TRUE_VAR_PART = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_part.txt")
+    TRUE_VAR_NONE = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_none.txt")
 	QUAL_THRES = 25.0
 )
 
