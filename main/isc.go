@@ -69,6 +69,7 @@ func ReadInputInfo() isc.InputInfo {
 	var routine_num = flag.Int("t", 0, "number of goroutines")
 	var max_snum = flag.Int("n", 1024, "maximum number of seeds")
 	var min_slen = flag.Int("l", 10, "minimum length of seeds")
+	var max_slen = flag.Int("h", 100, "maximum length of seeds")
 	var max_psnum = flag.Int("k", 1, "maximum number of paired-seeds")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
@@ -98,6 +99,7 @@ func ReadInputInfo() isc.InputInfo {
 	}
 	input_info.Max_snum = *max_snum
 	input_info.Min_slen = *min_slen
+	input_info.Max_slen = *max_slen
 	input_info.Max_psnum = *max_psnum
 
 	log.Printf("Input files:\tGenome_file: %s, SNP_file: %s, Index_file: %s, Rev_index_file: %s," + 
@@ -106,9 +108,9 @@ func ReadInputInfo() isc.InputInfo {
 		input_info.Read_file_2, input_info.SNP_call_file)
 
 	log.Printf("Input parameters:\tSearch_mode: %d, Start_pos: %d, Search_step: %d, Proc_num: %d," + 
-		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_psnum: %d", 
+		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_slen: %d, Max_psnum: %d", 
 		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Routine_num, 
-		input_info.Max_snum, input_info.Min_slen, input_info.Max_psnum)
+		input_info.Max_snum, input_info.Min_slen, input_info.Max_slen, input_info.Max_psnum)
 
 	return input_info
 }

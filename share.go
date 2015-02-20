@@ -46,6 +46,7 @@ type InputInfo struct {
 	Routine_num    int    //number of goroutines
 	Max_snum       int    //maximum number of seeds
 	Min_slen       int    //minimum length of seeds
+	Max_slen       int    //maximum length of seeds
 	Max_psnum	   int 	  //maximum number of paired-seeds
 }
 
@@ -69,7 +70,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *P
 	para_info := new(ParaInfo)
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
-	para_info.Iter_num_factor = 5
+	para_info.Iter_num_factor = 2
 	para_info.Max_ins = max_ins	//based on simulated data, will be estimated from reads with real data
 	para_info.Err_rate = err_rate //will be replaced by error rate estimated from input reads
 	para_info.Mut_rate = mut_rate //will be replaced by error rate estimated from input reads

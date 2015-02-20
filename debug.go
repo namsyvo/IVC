@@ -82,7 +82,6 @@ func PrintPairedSeedInfo(mess string, match_pos_r1, match_pos_r2 int) {
 	}
 }
 
-
 func PrintExtendTraceInfo(mess string, match []byte, e_pos, s_pos, match_num int, match_pos []int) {
 	if PRINT_ALIGN_TRACE_INFO {
 		fmt.Println(mess, " extend\t", string(match), "\t", e_pos, "\t", s_pos, "\t", match_num)

@@ -51,7 +51,8 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 	}
 	ep = index.EP[c]
 	var sp0, ep0 uint32
-	for i := start_pos - 1; i >= 0; i-- {
+	var i int
+	for i = start_pos - 1; i >= 0 && i >= start_pos - INPUT_INFO.Max_slen; i-- {
 		c = pattern[i]
 		offset, ok = index.C[c]
 		if ok {
@@ -68,7 +69,7 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 			//return 0, -1, -1
 		}
 	}
-	return int(sp), int(ep), 0
+	return int(sp), int(ep), i + 1
 }
 
 //--------------------------------------------------------------------------------------------------
