@@ -15,7 +15,9 @@ import "math"
 func AlignProb(read, ref, qual []byte, prob float64) float64 {
 	p := 0.0
 	for i := 0; i < len(read); i++ {
-		p = p - math.Log10(prob) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
+		if read[i] != ref[i] {
+			p = p - math.Log10(prob) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
+		}
 	}
 	return p
 }
@@ -83,10 +85,10 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = 1.0
+		D[i][0] = float64(i) * (-math.Log10(EPSILON)) //need to replaced by more appropriate values
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
-		D[0][j] = 1.0
+		D[0][j] = 0.0
 	}
 	var temp_p float64
 	var min_snp string
@@ -231,14 +233,13 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 			return PARA_INFO.Prob_thres + 1, 0, m, n, snp_pos, snp_val, snp_idx
 		}
 	}
-
 	var i, j int
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = 1.0
+		D[i][0] = float64(i) * (-math.Log10(EPSILON)) //need to replaced by more appropriate values
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
-		D[0][j] = 1.0
+		D[0][j] = 0.0
 	}
 	var temp_p float64
 	for i = 1; i <= m; i++ {
