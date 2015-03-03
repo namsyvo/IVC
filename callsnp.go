@@ -57,6 +57,7 @@ type SNP struct {
 type SNP_Prof struct {
 	SNP_Calls 	map[uint32]map[string]float64
 	SNP_Bases 	map[uint32]map[string]int
+	SNP_BaseQ 	map[uint32]map[string][][]byte
 	Chr_Dis     map[uint32]map[string][]int
 	Chr_Diff     map[uint32]map[string][]int
 	Aln_Prob     map[uint32]map[string][]float64
@@ -82,6 +83,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Bases = make(map[uint32]map[string]int)
+	S.SNP_BaseQ = make(map[uint32]map[string][][]byte)
 	S.Chr_Dis = make(map[uint32]map[string][]int)
 	S.Chr_Diff = make(map[uint32]map[string][]int)
 	S.Aln_Prob = make(map[uint32]map[string][]float64)
@@ -113,6 +115,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 				}
 			}
 			S.SNP_Bases[pos] = make(map[string]int)
+			S.SNP_BaseQ[pos] = make(map[string][][]byte)
 			S.Chr_Dis[pos] = make(map[string][]int)
 			S.Chr_Diff[pos] = make(map[string][]int)
 			S.Aln_Prob[pos] = make(map[string][]float64)
@@ -597,6 +600,7 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 			}
 		}
 		S.SNP_Bases[pos] = make(map[string]int)
+		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -611,6 +615,7 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
 	S.SNP_Bases[pos][a] += 1
+	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
@@ -662,6 +667,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 			}
 		}
 		S.SNP_Bases[pos] = make(map[string]int)
+		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -676,6 +682,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		S.SNP_Calls[pos][a] = EPSILON
 	}
 	S.SNP_Bases[pos][a] += 1
+	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
@@ -763,6 +770,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 		str_b = strings.Join(line_b, "\t")
 		for idx, _ = range S.Chr_Dis[snp_pos][snp_call] {
 			_, err = file.WriteString(str_a + "\t")
+			_, err = file.WriteString(string(S.SNP_BaseQ[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(S.Chr_Dis[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(S.Chr_Diff[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(S.Aln_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
