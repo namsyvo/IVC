@@ -660,12 +660,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 
 	if _, snp_exist := S.SNP_Calls[pos]; !snp_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
-		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
-		for _, b := range STD_BASES {
-			if _, ok := S.SNP_Calls[pos][string(b)]; !ok {
-				S.SNP_Calls[pos][string(b)] = EPSILON
-			}
-		}
+		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos): int(pos) + len(a)])] = 1 - EPSILON
 		S.SNP_Bases[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
