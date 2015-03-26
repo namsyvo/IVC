@@ -25,6 +25,7 @@ var (
 
 	PRINT_MEM_STATS = false
 	PRINT_ALIGN_TRACE_INFO = false
+	PRINT_EDIT_DIST_INFO = true
 
 	GET_ALIGN_READ_INFO = false
 	PRINT_FN = false
@@ -51,7 +52,6 @@ func PrintProcessMem(mesg string) {
 	}
 }
 
-//Printing memory information
 func PrintMemStats(mesg string) {
 	if PRINT_MEM_STATS {
 		runtime.ReadMemStats(MEM_STATS)
@@ -63,7 +63,10 @@ func PrintMemStats(mesg string) {
 	}
 }
 
+/*------------------------
 //Printing ALignment info
+------------------------*/
+
 func PrintLoopTraceInfo(loop_num int, mess string) {
 	if PRINT_ALIGN_TRACE_INFO {
 		fmt.Println("Loop\t", loop_num, "\t", mess)
@@ -103,7 +106,80 @@ func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_snp_pos []int
 	}
 }
 
+
+/*-----------------------
+//Printing Edit dis info
+-----------------------*/
+
+func PrintEditDisInput(mess string, str_val ...[]byte) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess)
+		if str_val != nil {
+			for _, v := range str_val {
+				fmt.Println(string(v))
+			}
+		}
+	}
+}
+
+func PrintEditDisMat(mess string, D [][]float64, m, n int) {
+	if PRINT_EDIT_DIST_INFO {
+		for i := 0; i <= m; i++ {
+			for j := 0; j <= n; j++ {
+				fmt.Print(D[i][j], "\t")
+			}
+			fmt.Println()
+		}
+	}
+}
+
+func PrintEditTraceMat(mess string, BT [][]string, m, n int) {
+	if PRINT_EDIT_DIST_INFO {
+		for i := 0; i <= m; i++ {
+			for j := 0; j <= n; j++ {
+				fmt.Print(BT[i][j], "\t")
+			}
+			fmt.Println()
+		}
+	}
+}
+
+func PrintEditDisInfo(mess string, i, j int, d float64) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess, i, j, d)
+	}
+}
+
+func PrintEditTraceDirection(mess string, i, j int, d1, d2 float64) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess, i, j, d1, d2)
+	}
+}
+
+func PrintEditTraceStep(mess string, i, j int, read, ref byte) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess, i, j, string(read), string(ref))
+	}
+}
+
+func PrintEditTraceStepKnownLoc(mess string, i, j int, read []byte, ref byte) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess, i, j, string(read), string(ref))
+	}
+}
+
+func PrintEditAlignInfo(mess string, read, ref []byte) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess)
+		fmt.Println(string(read))
+		fmt.Println(string(ref))
+	}
+}
+
+/*----------------------------------------
 //Global variable for tp, fp, fn profiling
+----------------------------------------*/
+
 var (
     ALIGN_READ_INFO_CHAN = make(chan Align_trace_info)
 	ALIGN_READ_INFO_ARR = make([]Align_trace_info, 0)
@@ -135,7 +211,7 @@ type SNP_trace_info struct {
 	end_from byte
 }
 
-//Read align trace info from channel and store them
+//Reading align trace info from channel and store them
 func GetAlignReadInfo() {
 	if GET_ALIGN_READ_INFO {
 		var i int
@@ -173,7 +249,7 @@ func GetAlignReadInfo() {
 	}
 }
 
-//Read noalign reads and related info from channel and store them
+//Reading noalign reads and related info from channel and store them
 func GetNoAlignReadInfo() {
 	if GET_NO_ALIGN_READ_INFO {
 		for at := range NO_ALIGN_READ_INFO_CHAN {
@@ -210,7 +286,7 @@ func GetNoAlignReadInfo() {
 */
 //--------------------------------------------------------------------------------------------------
 
-//Process TP, FP variants info
+//Processing TP, FP variants info
 func ProcessTPFPSNPInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_TPFP {
 		fmt.Println("Processing TP, FP SNP info...")
@@ -254,7 +330,7 @@ func ProcessTPFPSNPInfo(snp_call map[uint32]map[string]float64) {
 	}
 }
 
-//Output TP, FP variants info to proper files
+//Outputing TP, FP variants info to proper files
 func OutputTPFPSNPInfo(files []*os.File, st SNP_trace_info, snp_pos uint32) {
 	var ok bool
 	var val []byte
@@ -309,7 +385,7 @@ func OutputTPFPSNPInfo(files []*os.File, st SNP_trace_info, snp_pos uint32) {
 	}
 }
 
-//Write TP, FP variants info to files
+//Writing TP, FP variants info to files
 func WriteTPFPSNPInfo(file *os.File, st SNP_trace_info, snp_pos uint32, true_var []byte) {
 	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(true_var) + "\t" + string(st.snp_base) + "\t")
 	file.WriteString(strconv.FormatFloat(QualtoProb(st.snp_baseq[0]), 'f', 5, 32) + "\t")
@@ -381,7 +457,7 @@ var (
 	TPFP_VAR_CALL = make(map[int]bool)
 )
 
-//Process FN variants and realted info
+//Processing FN variants and realted info
 func ProcessFNSNPInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_FN {
 		fmt.Println("Processing FN SNP info...")
@@ -464,7 +540,7 @@ func ProcessFNSNPInfo(snp_call map[uint32]map[string]float64) {
 	}
 }
 
-//Output FN variants info to proper files
+//Outputing FN variants info to proper files
 func OutputFNSNPInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 	var at Align_trace_info
 	var true_var []byte
@@ -524,7 +600,7 @@ func OutputFNSNPInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 	}
 }
 
-//Write to file FN variants with all reads aligned to FN locations
+//Writing to file FN variants with all reads aligned to FN locations
 func WriteFNSNPInfo(file *os.File, at Align_trace_info, pos int, true_var []byte, snp_call SNP_CALL) {
 
 	file.WriteString(strconv.Itoa(pos) + "\t" + string(true_var) + "\t")
@@ -566,7 +642,7 @@ func WriteFNSNPInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 	file.Sync()
 }
 
-//Process noalign reads and related info
+//Processing noalign reads and related info
 func ProcessNoAlignReadInfo(snp_call map[uint32]map[string]float64) {
 	if PRINT_NA {
 		fmt.Println("Processing noaligned read info...")
@@ -579,7 +655,7 @@ func ProcessNoAlignReadInfo(snp_call map[uint32]map[string]float64) {
 	}
 }
 
-//Load true variants which are used to generate the mutant genome
+//Loading true variants which are used to generate the mutant genome
 func LoadTrueVar(file_name string) map[int][]byte {
 	barr := make(map[int][]byte)
 
@@ -605,9 +681,11 @@ func LoadTrueVar(file_name string) map[int][]byte {
 	return barr
 }
 
-/*----
-Utilities
-*/
+
+/*---------------
+Utility funtions
+---------------*/
+
 //QualtoProb converts base qualities decoded by ASCII codes to probabilities
 func QualtoProb(e byte) float64 {
 	return math.Pow(10, -(float64(e) - 33)/10.0)

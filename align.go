@@ -151,8 +151,8 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 
 	prob := left_d + right_d + left_D + right_D
 	if prob <= PARA_INFO.Prob_thres {
-		l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
-		r_pos, r_val, r_idx := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Trace)
+		l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
+		r_pos, r_val, r_idx := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
 		l_snp_pos = append(l_snp_pos, l_pos...)
 		r_snp_pos = append(r_snp_pos, r_pos...)
 		l_snp_val = append(l_snp_val, l_val...)

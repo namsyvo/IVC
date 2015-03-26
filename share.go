@@ -16,7 +16,8 @@ import (
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'} 	//Standard bases of DNA sequences
 	INF             = math.MaxInt16 				//Value for Infinity
-	EPSILON         = 0.00001						//Value for prior probability of new alleles
+	NEW_SNP_RATE    = 0.00001						//Value for prior probability of new alleles
+	NEW_INDEL_RATE  = 0.000001						//Value for prior probability of new indels
 )
 
 //Index for SNP caller
@@ -85,7 +86,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *P
 	para_info.Dist_thres = int(math.Ceil(err * rlen + k1 * math.Sqrt(rlen * err * (1 - err)))) + 
 		int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
 	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
-	para_info.Prob_thres = -float64(para_info.Dist_thres) * math.Log10(1 - err) - float64(para_info.Dist_thres) * math.Log10(EPSILON)
+	para_info.Prob_thres = -float64(para_info.Dist_thres) * math.Log10(1 - err) - float64(para_info.Dist_thres) * math.Log10(NEW_INDEL_RATE)
 
 	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 

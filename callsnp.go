@@ -104,14 +104,14 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 		S.SNP_Calls[pos] = make(map[string]float64)
 		for idx, snp = range snp_value {
 			if len(snp) == 1 {
-				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][idx]) - EPSILON * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
-				if S.SNP_Calls[pos][string(snp)] < EPSILON {
-					S.SNP_Calls[pos][string(snp)] = EPSILON
+				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][idx]) - NEW_SNP_RATE * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
+				if S.SNP_Calls[pos][string(snp)] < NEW_SNP_RATE {
+					S.SNP_Calls[pos][string(snp)] = NEW_SNP_RATE
 				}
 			} else {
-				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][idx]) - EPSILON * float64(snp_prof_num)
-				if S.SNP_Calls[pos][string(snp)] < EPSILON {
-					S.SNP_Calls[pos][string(snp)] = EPSILON
+				S.SNP_Calls[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][idx]) - NEW_SNP_RATE * float64(snp_prof_num)
+				if S.SNP_Calls[pos][string(snp)] < NEW_SNP_RATE {
+					S.SNP_Calls[pos][string(snp)] = NEW_SNP_RATE
 				}
 			}
 			S.SNP_Bases[pos] = make(map[string]int)
@@ -593,10 +593,10 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 
 	if _, snp_exist := S.SNP_Calls[pos]; !snp_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
-		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * EPSILON
+		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * NEW_SNP_RATE
 		for _, b := range STD_BASES {
 			if _, ok := S.SNP_Calls[pos][string(b)]; !ok {
-				S.SNP_Calls[pos][string(b)] = EPSILON
+				S.SNP_Calls[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
 		S.SNP_Bases[pos] = make(map[string]int)
@@ -612,7 +612,7 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.Strand2[pos] = make(map[string][]bool)
 	}
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
-		S.SNP_Calls[pos][a] = EPSILON
+		S.SNP_Calls[pos][a] = NEW_SNP_RATE
 	}
 	S.SNP_Bases[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
@@ -660,7 +660,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 
 	if _, snp_exist := S.SNP_Calls[pos]; !snp_exist {
 		S.SNP_Calls[pos] = make(map[string]float64)
-		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos): int(pos) + len(a)])] = 1 - EPSILON
+		S.SNP_Calls[pos][string(INDEX.SEQ[int(pos): int(pos) + len(a)])] = 1 - NEW_SNP_RATE
 		S.SNP_Bases[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
@@ -674,7 +674,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		S.Strand2[pos] = make(map[string][]bool)
 	}
 	if _, ok := S.SNP_Calls[pos][a]; !ok {
-		S.SNP_Calls[pos][a] = EPSILON
+		S.SNP_Calls[pos][a] = NEW_SNP_RATE
 	}
 	S.SNP_Bases[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
