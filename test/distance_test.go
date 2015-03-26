@@ -16,11 +16,12 @@ type type_samelensnp map[int]int
 type TestCase struct {
 	Profile type_snpprofile
 	SNPlen type_samelensnp
-	genome string
+	ref string
 	read string
-	d int
+	qual string
+	d float64
 }
-
+/*
 // Test for alignment between reads and "starred" multi-genomes
 func TestBackwarddistance2MultiAlignment(t *testing.T) {
 	defer __(o_())
@@ -220,6 +221,33 @@ func TestForwarddistance2MultiAlignment2(t *testing.T) {
 			for k, v := range snp {
 				fmt.Println(k, string(v))
 			}
+		}
+	}
+}
+*/
+// Test for alignment between reads and "starred" multi-genomes
+// Some more complex cases
+func TestBackwardAffineGapEditDistance(t *testing.T) {
+	defer __(o_())
+
+	var test_cases = []TestCase{
+		//test for 2 snp pos
+		{ type_snpprofile{3230632: {{'A'}, {'A', 'C'}}, 3230636: {{'G'}, {'G', 'G', 'G', 'G', 'G', 'T'}}, 3230637: {{'G'}, {'C'}} },
+		 type_samelensnp{3230637: 1}, "GAATGCCGTCCTTCCCC*CCG**GGGG", "CCTTCCCCACCCGGGGGGTGCGGGG", "@>=?>=>>>???@;@@>?>=>>?=>", 38.0 },
+	}
+	isc.INDEX.SNP_PROF, _, isc.INDEX.SAME_LEN_SNP = isc.LoadSNPLocation("/data/nsvo/test-data/GRCh37_chr1/indexes/af_mutant_index/index_0.70/isc_snp_prof_0.70.vcf.idx")
+	isc.PARA_INFO = *isc.SetPara(100, 500, 700, 0.0015, 0.01)
+	align_info := isc.InitAlignInfo(2 * isc.PARA_INFO.Read_len)
+	var snp_prof isc.SNP_Prof
+	for i := 0; i < len(test_cases); i++ {
+		//index.Init(genome_file, snp_file, index_file, rev_index_file, read_len, seq_err, k, a, n)
+		//Init(DIST_THRES, test_cases[i].Profile, test_cases[i].SNPlen, 100)
+		read, qual, ref := []byte(test_cases[i].read), []byte(test_cases[i].qual), []byte(test_cases[i].ref)
+		d, D, m, n, _, _, _ := snp_prof.BackwardDistance(read, qual, ref, 3230615, align_info.Bw_Dis, align_info.Bw_Trace)
+		fmt.Println("Successful alignment (distance2, read, ref, profile, m, n, case):", d + D, string([]byte(test_cases[i].read)), string([]byte(test_cases[i].ref)), test_cases[i].Profile, m, n, i)
+		l_pos, l_val, l_idx := snp_prof.BackwardTraceBack(read, qual, ref, m, n, 3230615, align_info.Bw_Dis, align_info.Bw_Trace)
+		for i := 0; i < len(l_pos); i++ {
+				fmt.Println(l_pos[i], string(l_val[i]), l_idx[i])
 		}
 	}
 }
