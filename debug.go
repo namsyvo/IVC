@@ -133,7 +133,7 @@ func PrintEditDisMat(mess string, D [][]float64, m, n int) {
 	}
 }
 
-func PrintEditTraceMat(mess string, BT [][]string, m, n int) {
+func PrintEditTraceMat(mess string, BT [][][]int, m, n int) {
 	if PRINT_EDIT_DIST_INFO {
 		for i := 0; i <= m; i++ {
 			for j := 0; j <= n; j++ {

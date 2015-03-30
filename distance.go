@@ -8,7 +8,6 @@ package isc
 
 import (
 	"math"
-	"strconv"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -33,7 +32,7 @@ func AlignProb(read, ref, qual []byte, prob float64) float64 {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float64, T [][][]byte) (float64, float64, int, int, []int, [][]byte, []int) {
+func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float64, T [][][]byte, BT [][][]int) (float64, float64, int, int, []int, [][]byte, []int) {
 
 	var snp_len int
 	var snp_str string
@@ -93,20 +92,27 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 	PrintEditDisInfo("bw H dis", m, n, align_prob)
 
 	var i, j int
-	BT := make([][]string, 2 * PARA_INFO.Read_len + 1)
+
+	/*
+	Backtrace matrix, for each BT[i][j]:
+	BT[i][j][0]: direction, can be 0: d (diagonal arrow, back to i-1,j-1), 1: u (up arrow, back to i-1,j), 2: l (left arrow, back to i,j-1)
+	BT[i][j][1]: number of shift (equal to length of called variant) at known variant loc, can be any integer number, for example 5 means back to i-5,j-1
+	*/
 	for i := 0; i <= 2 * PARA_INFO.Read_len; i++ {
-		BT[i] = make([]string, 2 * PARA_INFO.Read_len + 1)
+		BT[i] = make([][]int, 2 * PARA_INFO.Read_len + 1)
+		for j := 0; j < len(BT[i]); j++ {
+			BT[i][j] = make([]int, 2)
+		}
 	}
 
-	BT[0][0] = ""
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
 		D[i][0] = float64(i) * (-math.Log10(NEW_SNP_RATE)) //need to replaced by more appropriate values
-		BT[i][0] = "u"
+		BT[i][0][0] = 1
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
 		D[0][j] = 0.0
-		BT[0][j] = "l"
+		BT[0][j][0] = 2
 	}
 
 	var temp_p float64
@@ -116,18 +122,18 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 			if _, is_snp = INDEX.SNP_PROF[pos + j - 1]; !is_snp {
 				if read[i - 1] != ref[j - 1] {
 					D[i][j] = D[i - 1][j - 1] - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
-					BT[i][j] = "d"
+					BT[i][j][0] = 0
 					if D[i][j] > D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0)) {
 						D[i][j] = D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
-						BT[i][j] = "u"
+						BT[i][j][0] = 1
 					}
 					if D[i][j] > D[i][j - 1] - math.Log10(NEW_INDEL_RATE) {
 						D[i][j] = D[i][j - 1] - math.Log10(NEW_INDEL_RATE)
-						BT[i][j] = "l"
+						BT[i][j][0] = 2
 					}
 				} else {
 					D[i][j] = D[i - 1][j - 1]
-					BT[i][j] = "d"
+					BT[i][j][0] = 0
 				}
 			} else {
 				D[i][j] = float64(math.MaxFloat32)
@@ -145,8 +151,9 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 					}
 				}
 				if min_snp != "" {
-					T[i - 1][j - 1] = []byte(min_snp)					
-					BT[i][j] = "d" + strconv.Itoa(len(min_snp))
+					T[i - 1][j - 1] = []byte(min_snp)
+					BT[i][j][0] = 0
+					BT[i][j][1] = len(min_snp)
 				}
 			}
 		}
@@ -164,7 +171,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, D [][]float64, T [][][]byte) ([]int, [][]byte, []int) {
+func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT [][][]int, T [][][]byte) ([]int, [][]byte, []int) {
 
 	var is_snp bool
 	var snp_len int
@@ -174,73 +181,46 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	PrintEditDisInput("bw E, read, qual, ref", read[ : m], qual[ : m], ref[ : n])
 
 	var aligned_read, aligned_ref []byte
-	var min_dis float64
-	var direction byte
 	i, j := m, n
 	for i > 0 || j > 0 {
 		_, is_snp = INDEX.SNP_PROF[pos + j - 1]
-		if i > 0 && j > 0 {
-			if !is_snp { //unknown VARIANT location
-				min_dis = D[i][j - 1] - math.Log10(NEW_INDEL_RATE)
-				direction = 'l'
-				if min_dis > D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0)) {
-					min_dis = D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
-					direction = 't'
+		if !is_snp { //unknown VARIANT location
+			if BT[i][j][0] == 0 {
+				if read[i - 1] != ref[j - 1] {
+					snp_pos = append(snp_pos, pos + j - 1)
+					snp_idx = append(snp_idx, i - 1)
+					snp := read[i - 1]
+					snp_val = append(snp_val, []byte{snp})
 				}
-				if min_dis > D[i - 1][j - 1] - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0)) {
-					min_dis = D[i - 1][j - 1] - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
-					direction = 'd'
-				}
-				PrintEditTraceDirection("l, D[i][j - 1]", i, j-1, D[i][j - 1], D[i][j - 1] - math.Log10(NEW_INDEL_RATE))
-				PrintEditTraceDirection("t, D[i - 1][j]", i-1, j, D[i - 1][j], D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0)))
-				PrintEditTraceDirection("d, D[i - 1][j - 1]", i-1, j-1, D[i - 1][j - 1], D[i - 1][j - 1] - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0)))
-				if direction == 'd' {
-					if read[i - 1] != ref[j - 1] {
-						snp_pos = append(snp_pos, pos + j - 1)
-						snp_idx = append(snp_idx, i - 1)
-						snp := read[i - 1]
-						snp_val = append(snp_val, []byte{snp})
-					}
-					aligned_read = append(read[i - 1 : i], aligned_read...)
-					aligned_ref = append(ref[j - 1 : j], aligned_ref...)
-					PrintEditTraceStep("1", i, j, read[i - 1], ref[j - 1])
-					i, j = i - 1, j - 1
-				} else if direction == 't' {
-					aligned_read = append(read[i - 1 : i], aligned_read...)
-					aligned_ref = append([]byte{'-'}, aligned_ref...)
-					PrintEditTraceStep("2", i, j, read[i - 1], '-')
-					i, j = i - 1, j
-				} else {
-					aligned_read = append([]byte{'-'}, aligned_read...)
-					aligned_ref = append(ref[j - 1 : j], aligned_ref...)
-					PrintEditTraceStep("3", i, j, '-', ref[j - 1])
-					i, j = i, j - 1
-				}
-			} else { //known VARIANT location
-				snp_len = len(T[i - 1][j - 1])
-				snp_pos = append(snp_pos, pos + j - 1)
-				snp_idx = append(snp_idx, i - snp_len)
-				snp := make([]byte, snp_len)
-				copy(snp, read[i - snp_len : i])
-				snp_val = append(snp_val, snp)
-				aligned_read = append(read[i - snp_len : i], aligned_read...)
+				aligned_read = append(read[i - 1 : i], aligned_read...)
 				aligned_ref = append(ref[j - 1 : j], aligned_ref...)
-				for k := 0; k < snp_len - 1; k++ {
-					aligned_ref = append([]byte{'='}, aligned_ref...)
-				}
-				PrintEditTraceStepKnownLoc("5", i, j, read[i - snp_len : i], ref[j - 1])
-				i, j = i - snp_len, j - 1
+				PrintEditTraceStep("1", i, j, read[i - 1], ref[j - 1])
+				i, j = i - 1, j - 1
+			} else if BT[i][j][0] == 1 {
+				aligned_read = append(read[i - 1 : i], aligned_read...)
+				aligned_ref = append([]byte{'-'}, aligned_ref...)
+				PrintEditTraceStep("2", i, j, read[i - 1], '-')
+				i, j = i - 1, j
+			} else {
+				aligned_read = append([]byte{'-'}, aligned_read...)
+				aligned_ref = append(ref[j - 1 : j], aligned_ref...)
+				PrintEditTraceStep("3", i, j, '-', ref[j - 1])
+				i, j = i, j - 1
 			}
-		} else if i == 0 {
-			PrintEditTraceStep("6", i, j, '-', ref[j - 1])
-			aligned_read = append([]byte{'-'}, aligned_read...)
+		} else { //known VARIANT location
+			snp_len = len(T[i - 1][j - 1])
+			snp_pos = append(snp_pos, pos + j - 1)
+			snp_idx = append(snp_idx, i - snp_len)
+			snp := make([]byte, snp_len)
+			copy(snp, read[i - snp_len : i])
+			snp_val = append(snp_val, snp)
+			aligned_read = append(read[i - snp_len : i], aligned_read...)
 			aligned_ref = append(ref[j - 1 : j], aligned_ref...)
-			j = j - 1
-		} else if j == 0 {
-			PrintEditTraceStep("7", i, j, read[i - 1], '-')
-			aligned_read = append(read[i - 1 : i], aligned_read...)
-			aligned_ref = append([]byte{'-'}, aligned_ref...)
-			i = i - 1
+			for k := 0; k < snp_len - 1; k++ {
+				aligned_ref = append([]byte{'='}, aligned_ref...)
+			}
+			PrintEditTraceStepKnownLoc("5", i, j, read[i - snp_len : i], ref[j - 1])
+			i, j = i - snp_len, j - 1
 		}
 	}
 	PrintEditAlignInfo("bw aligned read/ref E", aligned_read, aligned_ref)
