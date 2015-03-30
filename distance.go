@@ -32,7 +32,7 @@ func AlignProb(read, ref, qual []byte, prob float64) float64 {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float64, T [][][]byte, BT [][][]int) (float64, float64, int, int, []int, [][]byte, []int) {
+func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float64, BT [][][]int) (float64, float64, int, int, []int, [][]byte, []int) {
 
 	var snp_len int
 	var snp_str string
@@ -45,16 +45,18 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 
 	PrintEditDisInput("bw dis input: read, qual, ref", read, qual, ref)
 	var snp_pos []int
-	var snp_idx []int
+ 	var snp_idx []int
 	var snp_val [][]byte
+	var sub_m float64
 	for m > 0 && n > 0 {
+		sub_m = NEW_SNP_RATE_LOG - math.Log10(1.0 - math.Pow(10, -(float64(qual[m - 1]) - 33) / 10.0))
 		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_idx = append(snp_idx, m - 1)
 				snp := read[m - 1]
 				snp_val = append(snp_val, []byte{snp})
-				align_prob = align_prob - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[m - 1]) - 33) / 10.0))
+				align_prob = align_prob + sub_m
 			}
 			m--
 			n--
@@ -99,15 +101,14 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 	BT[i][j][1]: number of shift (equal to length of called variant) at known variant loc, can be any integer number, for example 5 means back to i-5,j-1
 	*/
 	for i := 0; i <= 2 * PARA_INFO.Read_len; i++ {
-		BT[i] = make([][]int, 2 * PARA_INFO.Read_len + 1)
-		for j := 0; j < len(BT[i]); j++ {
-			BT[i][j] = make([]int, 2)
+		for j := 0; j <= 2 * PARA_INFO.Read_len; j++ {
+			BT[i][j][0], BT[i][j][1] = 0, 0
 		}
 	}
 
 	D[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = float64(i) * (-math.Log10(NEW_SNP_RATE)) //need to replaced by more appropriate values
+		D[i][0] = float64(i) * NEW_SNP_RATE_LOG
 		BT[i][0][0] = 1
 	}
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
@@ -115,20 +116,22 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 		BT[0][j][0] = 2
 	}
 
-	var temp_p float64
+	var temp_p, sub_i, id_i float64
 	var min_snp string
 	for i = 1; i <= m; i++ {
+		sub_i = NEW_SNP_RATE_LOG - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
+		id_i =  NEW_INDEL_RATE_LOG - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 		for j = 1; j <= n; j++ {
 			if _, is_snp = INDEX.SNP_PROF[pos + j - 1]; !is_snp {
 				if read[i - 1] != ref[j - 1] {
-					D[i][j] = D[i - 1][j - 1] - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
+					D[i][j] = D[i - 1][j - 1] + sub_i
 					BT[i][j][0] = 0
-					if D[i][j] > D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0)) {
-						D[i][j] = D[i - 1][j] - math.Log10(NEW_INDEL_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
+					if D[i][j] > D[i - 1][j] + id_i {
+						D[i][j] = D[i - 1][j] + id_i
 						BT[i][j][0] = 1
 					}
-					if D[i][j] > D[i][j - 1] - math.Log10(NEW_INDEL_RATE) {
-						D[i][j] = D[i][j - 1] - math.Log10(NEW_INDEL_RATE)
+					if D[i][j] > D[i][j - 1] + NEW_INDEL_RATE_LOG {
+						D[i][j] = D[i][j - 1] + NEW_INDEL_RATE_LOG
 						BT[i][j][0] = 2
 					}
 				} else {
@@ -151,7 +154,6 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 					}
 				}
 				if min_snp != "" {
-					T[i - 1][j - 1] = []byte(min_snp)
 					BT[i][j][0] = 0
 					BT[i][j][1] = len(min_snp)
 				}
@@ -171,7 +173,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D [][]float
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT [][][]int, T [][][]byte) ([]int, [][]byte, []int) {
+func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT [][][]int) ([]int, [][]byte, []int) {
 
 	var is_snp bool
 	var snp_len int
@@ -208,7 +210,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				i, j = i, j - 1
 			}
 		} else { //known VARIANT location
-			snp_len = len(T[i - 1][j - 1])
+			snp_len = BT[i][j][1]
 			snp_pos = append(snp_pos, pos + j - 1)
 			snp_idx = append(snp_idx, i - snp_len)
 			snp := make([]byte, snp_len)
@@ -246,7 +248,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float64, T [][][]byte) (float64, float64, int, int, []int, [][]byte, []int) {
+func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float64, BT [][][]int) (float64, float64, int, int, []int, [][]byte, []int) {
 
 	var snp_len int
 	var snp_prof map[string]float64
@@ -326,7 +328,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 					D[i][j] = D[i - 1][j - 1]
 				}
 			} else {
-				D[i][j] = math.MaxFloat64
+				D[i][j] = float64(math.MaxFloat32)
 				min_snp = ""
 				snp_prof, is_snp = S.SNP_Calls[uint32(pos + N - j)]
 				for snp_str, snp_prob = range snp_prof {
@@ -344,7 +346,10 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 						}
 					}
 				}
-				T[i - 1][j - 1] = []byte(min_snp)
+				if min_snp != "" {
+					BT[i][j][0] = 0
+					BT[i][j][1] = len(min_snp)
+				}
 			}
 		}
 	}
@@ -357,7 +362,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, D [][]float64, T [][][]byte) ([]int, [][]byte, []int) {
+func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT [][][]int) ([]int, [][]byte, []int) {
 	var is_snp bool
 	var snp_len int
 	var snp_pos, snp_idx []int
@@ -377,11 +382,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, D
 				}
 				i, j = i - 1, j - 1
 			} else {
-				if string(T[i - 1][j - 1]) != "." {
-					snp_len = len(T[i - 1][j - 1])
-				} else {
-					snp_len = 0
-				}
+				snp_len = BT[i][j][1]
 				snp_pos = append(snp_pos, pos + N - j)
 				snp_idx = append(snp_idx, M - i)
 				snp := make([]byte, snp_len)

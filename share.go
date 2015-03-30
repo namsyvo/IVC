@@ -18,6 +18,8 @@ var (
 	INF             = math.MaxInt16 				//Value for Infinity
 	NEW_SNP_RATE    = 0.00001						//Value for prior probability of new alleles
 	NEW_INDEL_RATE  = 0.000001						//Value for prior probability of new indels
+	NEW_SNP_RATE_LOG = -math.Log10(NEW_SNP_RATE)
+	NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
 )
 
 //Index for SNP caller
@@ -163,8 +165,8 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 type AlignInfo struct {
 	Bw_Dis   [][]float64    // Distance matrix for backward alignment
 	Fw_Dis   [][]float64    // Distance matrix for forward alignment
-	Bw_Trace [][][]byte // SNP trace matrix for backward alignment
-	Fw_Trace [][][]byte // SNP trace matrix for forward alignment
+	Bw_Trace [][][]int // SNP trace matrix for backward alignment
+	Fw_Trace [][][]int // SNP trace matrix for forward alignment
 }
 
 //InitAlignInfo allocates memory for share variables for alignment process
@@ -176,16 +178,19 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 }
 
 //InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
-func InitAlignMatrix(arr_len int) ([][]float64, [][][]byte) {
-	dis_mtr := make([][]float64, arr_len + 1)
+func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
+	dis_mat := make([][]float64, arr_len + 1)
 	for i := 0; i <= arr_len; i++ {
-		dis_mtr[i] = make([]float64, arr_len + 1)
+		dis_mat[i] = make([]float64, arr_len + 1)
 	}
-	trace_mtr := make([][][]byte, arr_len)
-	for i := 0; i < arr_len; i++ {
-		trace_mtr[i] = make([][]byte, arr_len)
+	trace_mat := make([][][]int, arr_len + 1)
+	for i := 0; i <= arr_len; i++ {
+		trace_mat[i] = make([][]int, arr_len + 1)
+        for j := 0; j <= arr_len; j++ {
+            trace_mat[i][j] = make([]int, 2)
+		}
 	}
-	return dis_mtr, trace_mtr
+	return dis_mat, trace_mat
 }
 
 //--------------------------------------------------------------------------------------------------
