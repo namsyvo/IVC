@@ -51,6 +51,8 @@ type InputInfo struct {
 	Min_slen       int    //minimum length of seeds
 	Max_slen       int    //maximum length of seeds
 	Max_psnum	   int 	  //maximum number of paired-seeds
+	Dist_thres     int    //threshold for distances between reads and multigenomes
+	Iter_num       int    //number of random iterations to find proper alignments
 }
 
 //Parameter used in alignment algorithm
@@ -69,7 +71,7 @@ type ParaInfo struct {
 }
 
 //SetPara sets values of parameters for alignment process
-func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *ParaInfo {
+func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres, iter_num int) *ParaInfo {
 	para_info := new(ParaInfo)
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
@@ -80,15 +82,24 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32) *P
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
 	para_info.Info_len = info_len //will be replaced by maximum info length estimated from input reads
 
-	rlen := float64(para_info.Read_len)
 	err := float64(para_info.Err_rate)
-	mut := float64(para_info.Mut_rate)
-	k1 := float64(para_info.Err_var_factor)
-	k2 := float64(para_info.Mut_var_factor)
-	para_info.Dist_thres = int(math.Ceil(err * rlen + k1 * math.Sqrt(rlen * err * (1 - err)))) + 
-		int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
-	para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
+	if dist_thres != 0 {
+		para_info.Dist_thres = dist_thres
+	} else {
+		rlen := float64(para_info.Read_len)
+		mut := float64(para_info.Mut_rate)
+		k1 := float64(para_info.Err_var_factor)
+		k2 := float64(para_info.Mut_var_factor)
+		para_info.Dist_thres = int(math.Ceil(err * rlen + k1 * math.Sqrt(rlen * err * (1 - err)))) + 
+			int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
+	}
 	para_info.Prob_thres = -float64(para_info.Dist_thres) * math.Log10(1 - err) - float64(para_info.Dist_thres) * math.Log10(NEW_INDEL_RATE)
+
+	if iter_num != 0 {
+		para_info.Iter_num = iter_num
+	} else {
+		para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
+	}
 
 	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 

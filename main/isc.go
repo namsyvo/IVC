@@ -71,6 +71,8 @@ func ReadInputInfo() isc.InputInfo {
 	var min_slen = flag.Int("l", 10, "minimum length of seeds")
 	var max_slen = flag.Int("h", 100, "maximum length of seeds")
 	var max_psnum = flag.Int("k", 1, "maximum number of paired-seeds")
+	var dist_thres = flag.Int("d", 0, "threshold of alignment distances")
+	var iter_num = flag.Int("r", 0, "maximum number of iterations")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
 
@@ -101,16 +103,18 @@ func ReadInputInfo() isc.InputInfo {
 	input_info.Min_slen = *min_slen
 	input_info.Max_slen = *max_slen
 	input_info.Max_psnum = *max_psnum
+	input_info.Dist_thres = *dist_thres
+	input_info.Iter_num = *iter_num
 
 	log.Printf("Input files:\tGenome_file: %s, SNP_file: %s, Index_file: %s, Rev_index_file: %s," + 
 		" Read_file_1: %s, Read_file_2: %s, SNP_call_file: %s", 
-		input_info.Genome_file, input_info.SNP_file, input_info.Index_file, input_info.Rev_index_file, input_info.Read_file_1, 
-		input_info.Read_file_2, input_info.SNP_call_file)
+		input_info.Genome_file, input_info.SNP_file, input_info.Index_file, input_info.Rev_index_file, 
+		input_info.Read_file_1, input_info.Read_file_2, input_info.SNP_call_file)
 
 	log.Printf("Input parameters:\tSearch_mode: %d, Start_pos: %d, Search_step: %d, Proc_num: %d," + 
-		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_slen: %d, Max_psnum: %d", 
+		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_slen: %d, Max_psnum: %d, Dist_thres: %d, Iter_num: %d", 
 		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Routine_num, 
-		input_info.Max_snum, input_info.Min_slen, input_info.Max_slen, input_info.Max_psnum)
+		input_info.Max_snum, input_info.Min_slen, input_info.Max_slen, input_info.Max_psnum, input_info.Dist_thres, input_info.Iter_num)
 
 	return input_info
 }

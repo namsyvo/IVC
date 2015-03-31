@@ -78,7 +78,7 @@ func (S *SNP_Prof) Init(input_info InputInfo) {
 	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
 	//1000 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
 	//of simulated reads, 0.01 is mutation rate (currently is estimated from dbSNP of human genome)
-	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01)
+	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01, INPUT_INFO.Dist_thres, INPUT_INFO.Iter_num)
 	INDEX.Init()
 
 	S.SNP_Calls = make(map[uint32]map[string]float64)
