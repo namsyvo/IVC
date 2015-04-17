@@ -25,7 +25,7 @@ var (
 
 	PRINT_MEM_STATS = false
 	PRINT_ALIGN_TRACE_INFO = false
-	PRINT_EDIT_DIST_INFO = true
+	PRINT_EDIT_DIST_INFO = false
 
 	GET_ALIGN_READ_INFO = false
 	PRINT_FN = false
