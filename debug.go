@@ -124,6 +124,7 @@ func PrintEditDisInput(mess string, str_val ...[]byte) {
 
 func PrintEditDisMat(mess string, D [][]float64, m, n int) {
 	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess)
 		for i := 0; i <= m; i++ {
 			for j := 0; j <= n; j++ {
 				fmt.Print(D[i][j], "\t")
@@ -135,6 +136,7 @@ func PrintEditDisMat(mess string, D [][]float64, m, n int) {
 
 func PrintEditTraceMat(mess string, BT [][][]int, m, n int) {
 	if PRINT_EDIT_DIST_INFO {
+		fmt.Println(mess)
 		for i := 0; i <= m; i++ {
 			for j := 0; j <= n; j++ {
 				fmt.Print(BT[i][j], "\t")

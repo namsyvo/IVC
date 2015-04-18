@@ -194,18 +194,18 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 					snp := read[i - 1]
 					snp_val = append(snp_val, []byte{snp})
 				}
-				aligned_read = append(read[i - 1 : i], aligned_read...)
-				aligned_ref = append(ref[j - 1 : j], aligned_ref...)
+				aligned_read = append(aligned_read, read[i - 1])
+				aligned_ref = append(aligned_ref, ref[j - 1])
 				PrintEditTraceStep("1", i, j, read[i - 1], ref[j - 1])
 				i, j = i - 1, j - 1
 			} else if BT[i][j][0] == 1 {
-				aligned_read = append(read[i - 1 : i], aligned_read...)
-				aligned_ref = append([]byte{'-'}, aligned_ref...)
+				aligned_read = append(aligned_read, read[i - 1])
+				aligned_ref = append(aligned_ref, '-')
 				PrintEditTraceStep("2", i, j, read[i - 1], '-')
 				i, j = i - 1, j
 			} else {
-				aligned_read = append([]byte{'-'}, aligned_read...)
-				aligned_ref = append(ref[j - 1 : j], aligned_ref...)
+				aligned_read = append(aligned_read, '-')
+				aligned_ref = append(aligned_ref, ref[j - 1])
 				PrintEditTraceStep("3", i, j, '-', ref[j - 1])
 				i, j = i, j - 1
 			}
@@ -216,15 +216,21 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			snp := make([]byte, snp_len)
 			copy(snp, read[i - snp_len : i])
 			snp_val = append(snp_val, snp)
-			aligned_read = append(read[i - snp_len : i], aligned_read...)
-			aligned_ref = append(ref[j - 1 : j], aligned_ref...)
 			for k := 0; k < snp_len - 1; k++ {
-				aligned_ref = append([]byte{'='}, aligned_ref...)
+				aligned_ref = append(aligned_ref, '+')
+				aligned_read = append(aligned_read, read[i - 1 - k])
 			}
+			aligned_ref = append(aligned_ref, ref[j - 1])
+			aligned_read = append(aligned_read, read[i - snp_len])
 			PrintEditTraceStepKnownLoc("5", i, j, read[i - snp_len : i], ref[j - 1])
 			i, j = i - snp_len, j - 1
 		}
 	}
+	PrintEditDisInput("bw E, read, qual, ref, after backtrace", read[ : m], qual[ : m], ref[ : n])
+    for i, j := 0, len(aligned_read) - 1; i < j; i, j = i + 1, j - 1 {
+        aligned_read[i], aligned_read[j] = aligned_read[j], aligned_read[i]
+        aligned_ref[i], aligned_ref[j] = aligned_ref[j], aligned_ref[i]
+    }
 	PrintEditAlignInfo("bw aligned read/ref E", aligned_read, aligned_ref)
 	ref_pos := 1
 	for i = 1; i < len(aligned_ref); i++ {
@@ -411,18 +417,18 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					snp := read[M - i]
 					snp_val = append(snp_val, []byte{snp})
 				}
-				aligned_read = append(read[M - i : M - i + 1], aligned_read...)
-				aligned_ref = append(ref[N - j : N - j + 1], aligned_ref...)
+				aligned_read = append(aligned_read, read[M - i])
+				aligned_ref = append(aligned_ref, ref[N - j])
 				PrintEditTraceStep("1", i, j, read[M - i], ref[N - j])
 				i, j = i - 1, j - 1
 			} else if BT[i][j][0] == 1 {
-				aligned_read = append(read[M - i : M - i + 1], aligned_read...)
-				aligned_ref = append([]byte{'-'}, aligned_ref...)
+				aligned_read = append(aligned_read, read[M - i])
+				aligned_ref = append(aligned_ref, '-')
 				PrintEditTraceStep("2", i, j, read[M - i], '-')
 				i, j = i - 1, j
 			} else {
-				aligned_read = append([]byte{'-'}, aligned_read...)
-				aligned_ref = append(ref[N - j : N - j + 1], aligned_ref...)
+				aligned_read = append(aligned_read, '-')
+				aligned_ref = append(aligned_ref, ref[N - j])
 				PrintEditTraceStep("3", i, j, '-', ref[N - j])
 				i, j = i, j - 1
 			}
@@ -433,15 +439,17 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			snp := make([]byte, snp_len)
 			copy(snp, read[M - i : M - (i - snp_len)])
 			snp_val = append(snp_val, snp)
-			aligned_read = append(read[M - i : M - (i - snp_len)], aligned_read...)
-			aligned_ref = append(ref[N - j : N - j + 1], aligned_ref...)
 			for k := 0; k < snp_len - 1; k++ {
-				aligned_ref = append([]byte{'='}, aligned_ref...)
+				aligned_ref = append(aligned_ref, '+')
+				aligned_read = append(aligned_read, read[M - (i - snp_len) - 1 - k])
 			}
+			aligned_ref = append(aligned_ref, ref[N - j])
+			aligned_read = append(aligned_read, read[M - i])
 			PrintEditTraceStepKnownLoc("5", i, j, read[M - i : M - (i - snp_len)], ref[N - j])
 			i, j = i - snp_len, j - 1
 		}
 	}
+	PrintEditDisInput("fw E, read, qual, ref, after backtrace", read[M - m :], qual[M - m :], ref[N - n :])
 	PrintEditAlignInfo("fw aligned read/ref E", aligned_read, aligned_ref)
 	ref_pos := 1
 	for i = 1; i < len(aligned_ref); i++ {
