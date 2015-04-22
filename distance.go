@@ -243,9 +243,9 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	for i = 1; i < len(aligned_ref); i++ {
 		if aligned_ref[i] == '-' {
 			snp_pos = append(snp_pos, pos + ref_pos - 1)
-			snp_idx = append(snp_idx, ref_pos - 1)
+			snp_idx = append(snp_idx, i - 1)
 			snp := make([]byte, 0)
-			snp = append(snp, aligned_read[ref_pos - 1])
+			snp = append(snp, aligned_read[i - 1])
 			for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
 				snp = append(snp, aligned_read[j])
 			}
@@ -402,7 +402,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D [][]float6
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT [][][]int) ([]int, [][]byte, []int) {
+func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos, r_pos int, BT [][][]int) ([]int, [][]byte, []int) {
 
 	var is_snp bool
 	var snp_len int
@@ -469,9 +469,9 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	for i = 1; i < len(aligned_ref); i++ {
 		if aligned_ref[i] == '-' {
 			snp_pos = append(snp_pos, pos + N - n + ref_pos - 1)
-			snp_idx = append(snp_idx, M - m + ref_pos - 1)
+			snp_idx = append(snp_idx, r_pos + M - m + i - 1)
 			snp := make([]byte, 0)
-			snp = append(snp, aligned_read[ref_pos - 1])
+			snp = append(snp, aligned_read[i - 1])
 			for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
 				snp = append(snp, aligned_read[j])
 			}
