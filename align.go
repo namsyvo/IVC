@@ -104,7 +104,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 // The alignment is built within a given threshold of distance.
 //-----------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int, align_info *AlignInfo) (float64, 
-	[]int, [][]byte, []int, []int, [][]byte, [][]byte, int, int, bool) {
+	[]int, [][]byte, [][]byte, []int, [][]byte, [][]byte, int, int, bool) {
 
 	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
 	var lcs_len int = s_pos - e_pos + 1
@@ -141,7 +141,7 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 
 	read_l_flank = read[ : e_pos]
 	qual_l_flank = qual[ : e_pos]
-	left_d, left_D, l_m, l_n, l_snp_pos, l_snp_val, l_snp_idx :=
+	left_d, left_D, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual :=
 		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dis, align_info.Bw_Trace)
 
 	read_r_flank = read[s_pos + 1 : ]
@@ -151,15 +151,15 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 
 	prob := left_d + right_d + left_D + right_D
 	if prob <= PARA_INFO.Prob_thres {
-		l_pos, l_val, l_idx := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
+		l_pos, l_base, l_qual := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, align_info.Bw_Trace)
 		r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, s_pos + 1, align_info.Fw_Trace)
 		l_snp_pos = append(l_snp_pos, l_pos...)
-		l_snp_val = append(l_snp_val, l_val...)
-		l_snp_idx = append(l_snp_idx, l_idx...)
+		l_snp_base = append(l_snp_base, l_base...)
+		l_snp_qual = append(l_snp_qual, l_qual...)
 		r_snp_pos = append(r_snp_pos, r_pos...)
 		r_snp_base = append(r_snp_base, r_base...)
 		r_snp_qual = append(r_snp_qual, r_qual...)
-		return prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, true
+		return prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, true
 	}
-	return prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, false
+	return prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, false
 }
