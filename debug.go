@@ -170,10 +170,11 @@ func PrintEditTraceStepKnownLoc(mess string, i, j int, read []byte, ref byte) {
 	}
 }
 
-func PrintEditAlignInfo(mess string, read, ref []byte) {
+func PrintEditAlignInfo(mess string, read, qual, ref []byte) {
 	if PRINT_EDIT_DIST_INFO {
 		fmt.Println(mess)
 		fmt.Println(string(read))
+		fmt.Println(string(qual))
 		fmt.Println(string(ref))
 	}
 }

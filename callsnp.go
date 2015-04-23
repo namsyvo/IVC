@@ -547,15 +547,15 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	var prob float64
 
 	var l_most_pos, r_most_pos int
-	var l_snp_pos, r_snp_pos, l_snp_idx, r_snp_idx []int
-	var l_snp_val, r_snp_val [][]byte
+	var l_snp_pos, r_snp_pos, l_snp_idx []int
+	var l_snp_val, r_snp_base, r_snp_qual [][]byte
 
 	var snp SNP
 	var snps_arr []SNP
 	var has_match bool
 
 	PrintMemStats("Before FindExtensions, m_pos " + strconv.Itoa(m_pos))
-	prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_val, r_snp_idx, l_most_pos, r_most_pos, has_match =
+	prob, l_snp_pos, l_snp_val, l_snp_idx, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, has_match =
 		S.FindExtensions(read, qual, s_pos, e_pos, m_pos, align_info)
 	PrintMemStats("After FindExtensions, m_pos " + strconv.Itoa(m_pos))
 	if has_match {
@@ -570,9 +570,7 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		}
 		for k = 0; k < len(r_snp_pos); k++ {
 			PrintMemStats("Before GetSNP right, snp_num " + strconv.Itoa(k))
-			r_snp_qual := make([]byte, len(r_snp_val[k]))
-			copy(r_snp_qual, qual[r_snp_idx[k] : r_snp_idx[k] + len(r_snp_val[k])])
-			snp.Pos, snp.Bases, snp.BaseQ = uint32(r_snp_pos[k]), r_snp_val[k], r_snp_qual
+			snp.Pos, snp.Bases, snp.BaseQ = uint32(r_snp_pos[k]), r_snp_base[k], r_snp_qual[k]
 			snps_arr = append(snps_arr, snp)
 			PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
 		}
