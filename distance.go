@@ -91,8 +91,11 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			return PARA_INFO.Prob_thres + 1, 0, 0, m, n, snp_pos, snp_base, snp_qual
 		}
 	}
-
 	PrintDisInfo("bw H dis", m, n, align_prob)
+
+	if m == len(read) || n == len(ref) {
+		return align_prob, 0, 0, m, n, snp_pos, snp_base, snp_qual
+	}
 
 	/*
 	Backtrace matrix, for each BT[i][j]:
@@ -239,7 +242,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	var snp_pos []int
 	var snp_base, snp_qual [][]byte
 
-	PrintEditDisInput("BwEditTraceBack, read, qual, ref", read, qual, ref)
+	PrintEditDisInput("BwEditTraceBack, read, qual, ref", read[ : m], qual[ : m], ref[ : n])
 
 	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	bt_mat := BT_Mat
