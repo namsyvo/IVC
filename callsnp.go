@@ -364,12 +364,7 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 					if p_prob > m_prob1 + m_prob2 {
 						p_prob = m_prob1 + m_prob2
 						snps_get1 = make([]SNP, len(snps1))
-
-//						fmt.Println("callsnp.go, FindSNPsFromReads, inside loop SNP info:")
-//						for _, s := range snps1 {
-//							fmt.Println(string(s.Bases), string(s.BaseQ))
-//						}
-
+						PrintGetSNP(p_prob, m_prob1, m_prob2, snps1, snps2)
 						if len(snps1) > 0 {
 							for s_idx = 0; s_idx < len(snps1); s_idx++ {
 								snps_get1[s_idx].Pos = snps1[s_idx].Pos

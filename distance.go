@@ -88,13 +88,13 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			break
 		}
 		if align_prob > PARA_INFO.Prob_thres {
-			return PARA_INFO.Prob_thres + 1, 0, 0, m, n, snp_pos, snp_base, snp_qual
+			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, snp_pos, snp_base, snp_qual
 		}
 	}
 	PrintDisInfo("bw H dis", m, n, align_prob)
 
-	if m == len(read) || n == len(ref) {
-		return align_prob, 0, 0, m, n, snp_pos, snp_base, snp_qual
+	if m == 0 || n == 0 {
+		return align_prob, 0, -1, m, n, snp_pos, snp_base, snp_qual
 	}
 
 	/*
@@ -429,14 +429,14 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			break
 		}
 		if align_prob > PARA_INFO.Prob_thres {
-			return PARA_INFO.Prob_thres + 1, -1, -1, m, n, snp_pos, snp_base, snp_qual
+			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, snp_pos, snp_base, snp_qual
 		}
 	}
 
 	PrintDisInfo("fw H dis", m, n, align_prob)
 
-	if m == len(read) || n == len(ref) {
-		return align_prob, -1, -1, m, n, snp_pos, snp_base, snp_qual
+	if m == 0 || n == 0 {
+		return align_prob, 0, -1, m, n, snp_pos, snp_base, snp_qual
 	}
 
 	/*

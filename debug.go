@@ -216,6 +216,21 @@ func PrintVarInfo(mess string, snp_pos []int, snp_val, snp_qlt [][]byte) {
 	}
 }
 
+func PrintGetSNP(p_prob, m_prob1, m_prob2 float64, snps1, snps2 []SNP) {
+	if PRINT_EDIT_DIST_INFO {
+		fmt.Println("dis to get snps (bw, fw)", p_prob, m_prob1, m_prob2)
+		fmt.Println("bw snp")
+		for _, s := range snps1 {
+			fmt.Println(string(s.Bases), string(s.BaseQ))
+		}
+		fmt.Println("fw snp")
+			for _, s := range snps2 {
+			fmt.Println(string(s.Bases), string(s.BaseQ))
+		}
+	}
+}
+
+
 /*----------------------------------------
 //Global variable for tp, fp, fn profiling
 ----------------------------------------*/
