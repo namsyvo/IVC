@@ -108,48 +108,45 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 	[]int, [][]byte, [][]byte, []int, [][]byte, [][]byte, int, int, bool) {
 
 	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
-	var lcs_len int = s_pos - e_pos + 1
-
 	var isSNP, isSameLenSNP bool
-	l_ext_add_len, right_ext_add_len := 0, 0
-	i := 0
-	for i = m_pos - e_pos; i < m_pos; i++ {
+
+	l_ext_add_len := 0
+	l_most_pos := m_pos - e_pos - l_ext_add_len
+	for i := m_pos - e_pos; i < m_pos; i++ {
 		_, isSNP = INDEX.SNP_PROF[i]
 		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
 			l_ext_add_len++
 		}
 	}
-	for i = m_pos + lcs_len; i < (m_pos + lcs_len) + (len(read) - s_pos) - 1; i++ {
+	if l_most_pos >= 0 {
+		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos]
+	} else {
+		ref_l_flank = INDEX.SEQ[0 : m_pos]
+	}
+	read_l_flank, qual_l_flank = read[ : e_pos], qual[ : e_pos]
+	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual :=
+		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
+			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
+
+	right_ext_add_len := 0
+	r_most_pos := m_pos + s_pos - e_pos + 1
+	for i := r_most_pos; i < r_most_pos + (len(read) - s_pos) - 1; i++ {
 		_, isSNP = INDEX.SNP_PROF[i]
 		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
 		if isSNP && !isSameLenSNP {
 			right_ext_add_len++
 		}
 	}
-	l_most_pos := m_pos - e_pos - l_ext_add_len
-	if l_most_pos >= 0 {
-		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos]
+	if r_most_pos + (len(read) - s_pos) - 1 + right_ext_add_len <= len(INDEX.SEQ) {
+		ref_r_flank = INDEX.SEQ[r_most_pos : r_most_pos + (len(read) - s_pos) - 1 + right_ext_add_len]
 	} else {
-		ref_l_flank = INDEX.SEQ[0 : m_pos]
+		ref_r_flank = INDEX.SEQ[r_most_pos : len(INDEX.SEQ)]
 	}
-	r_most_pos := (m_pos + lcs_len) + (len(read) - s_pos) - 1 + right_ext_add_len
-	if r_most_pos <= len(INDEX.SEQ) {
-		ref_r_flank = INDEX.SEQ[m_pos + lcs_len : r_most_pos]
-	} else {
-		ref_r_flank = INDEX.SEQ[m_pos + lcs_len : len(INDEX.SEQ)]
-	}
-
-	read_l_flank = read[ : e_pos]
-	qual_l_flank = qual[ : e_pos]
-	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual :=
-		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
-			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
-
-	read_r_flank = read[s_pos + 1 : ]
-	qual_r_flank = qual[s_pos + 1 : ]
-	right_d, right_D, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual :=
-		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, m_pos + lcs_len, align_info.Fw_Dis, align_info.Fw_Trace)
+	read_r_flank, qual_r_flank = read[s_pos + 1 : ], qual[s_pos + 1 : ]
+	right_d, right_D, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual :=
+		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, r_most_pos, align_info.Fw_Dist_D, 
+			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
 
 	prob := left_d + right_d + left_D + right_D
 	if prob <= PARA_INFO.Prob_thres {
@@ -161,7 +158,8 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 			l_snp_qual = append(l_snp_qual, l_qual...)
 		}
 		if r_m < len(read_r_flank) && r_n < len(ref_r_flank) {
-			r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, m_pos + lcs_len, s_pos + 1, align_info.Fw_Trace)
+			r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, r_bt_mat, 
+				align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
 			r_snp_pos = append(r_snp_pos, r_pos...)
 			r_snp_base = append(r_snp_base, r_base...)
 			r_snp_qual = append(r_snp_qual, r_qual...)

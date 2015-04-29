@@ -106,7 +106,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 
 	para_info.Sub_cost = NEW_SNP_RATE_LOG
 	para_info.Gap_open_cost = NEW_INDEL_RATE_LOG
-	para_info.Gap_ext_cost = NEW_INDEL_RATE_LOG
+	para_info.Gap_ext_cost = NEW_SNP_RATE_LOG
 
 	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 
@@ -183,8 +183,8 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 type AlignInfo struct {
 	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT   [][]float64    // Distance matrix for backward alignment
 	Bw_Trace_D, Bw_Trace_IS, Bw_Trace_IT [][][]int 	   // Backtrace matrix for backward alignment
-	Fw_Dis   [][]float64    // Distance matrix for forward alignment
-	Fw_Trace [][][]int // SNP trace matrix for forward alignment
+	Fw_Dist_D, Fw_Dist_IS, Fw_Dist_IT   [][]float64    // Distance matrix for forward alignment
+	Fw_Trace_D, Fw_Trace_IS, Fw_Trace_IT [][][]int 	   // Backtrace matrix for forward alignment
 }
 
 //InitAlignInfo allocates memory for share variables for alignment process
@@ -193,7 +193,9 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 	align_info.Bw_Dist_D, align_info.Bw_Trace_D = InitAlignMatrix(arr_len)
 	align_info.Bw_Dist_IS, align_info.Bw_Trace_IS = InitAlignMatrix(arr_len)
 	align_info.Bw_Dist_IT, align_info.Bw_Trace_IT = InitAlignMatrix(arr_len)
-	align_info.Fw_Dis, align_info.Fw_Trace = InitAlignMatrix(arr_len)
+	align_info.Fw_Dist_D, align_info.Fw_Trace_D = InitAlignMatrix(arr_len)
+	align_info.Fw_Dist_IS, align_info.Fw_Trace_IS = InitAlignMatrix(arr_len)
+	align_info.Fw_Dist_IT, align_info.Fw_Trace_IT = InitAlignMatrix(arr_len)
 	return align_info
 }
 
