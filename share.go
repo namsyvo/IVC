@@ -20,7 +20,7 @@ var (
 	NEW_INDEL_RATE  = 0.000001						//Value for prior probability of new indels
 	NEW_SNP_RATE_LOG = -math.Log10(NEW_SNP_RATE)
 	NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
-	BACK_STEP		= 2
+	BACK_STEP		= 3
 )
 
 //Index for SNP caller
