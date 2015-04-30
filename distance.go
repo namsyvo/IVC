@@ -21,10 +21,10 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 		if read[i] != ref[i] {
 			return math.MaxFloat64
 		} else {
-			p = p - math.Log10(prob) - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
+			p = p - math.Log10(1.0 - math.Pow(10, -(float64(qual[i]) - 33) / 10.0))
 		}
 	}
-	return p
+	return p - math.Log10(prob) 
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -45,18 +45,21 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	align_prob := 0.0
 	m, n := len(read), len(ref)
 
-	PrintEditDisInput("bw dis input: read, qual, ref", read, qual, ref)
+	PrintEditDisInput("bw align input: read, qual, ref", read, qual, ref)
 	var snp_pos []int
 	var snp_base, snp_qual [][]byte
-	var sub_m float64
 	for m > 0 && n > 0 {
-		sub_m = NEW_SNP_RATE_LOG - math.Log10(1.0 - math.Pow(10, -(float64(qual[m - 1]) - 33) / 10.0))
+		if _, is_snp = INDEX.SNP_PROF[pos + n - 1 - BACK_STEP]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1 - BACK_STEP]; !is_same_len_snp {
+				break
+			}
+		}
 		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_base = append(snp_base, []byte{read[m - 1]})
 				snp_qual = append(snp_qual, []byte{qual[m - 1]})
-				align_prob = align_prob + sub_m
+				align_prob += PARA_INFO.Sub_cost - math.Log10(1.0 - math.Pow(10, -(float64(qual[m - 1]) - 33) / 10.0))
 			}
 			m--
 			n--
@@ -91,11 +94,13 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, snp_pos, snp_base, snp_qual
 		}
 	}
-	PrintDisInfo("bw H dis", m, n, align_prob)
+	PrintDisInfo("bw Ham dis", m, n, align_prob)
 
 	if m == 0 || n == 0 {
 		return align_prob, 0, -1, m, n, snp_pos, snp_base, snp_qual
 	}
+
+	PrintEditDisInput("bw align for Edit: read, qual, ref", read[ : m], qual[ : m], ref[ : n])
 
 	/*
 	Backtrace matrix, for each BT[i][j]:
@@ -392,12 +397,17 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
+		if _, is_snp = INDEX.SNP_PROF[pos + N - n + BACK_STEP]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n + BACK_STEP]; !is_same_len_snp {
+				break
+			}
+		}
 		if _, is_snp = INDEX.SNP_PROF[pos + N - n]; !is_snp {
 			if read[M - m] != ref[N - n] {
                 snp_pos = append(snp_pos, pos + N - n)
                 snp_base = append(snp_base, []byte{read[M - m]})
                 snp_qual = append(snp_qual, []byte{qual[M - m]})
-				align_prob = align_prob - math.Log10(NEW_SNP_RATE) - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
+				align_prob += PARA_INFO.Sub_cost - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
 			}
 			m--
 			n--
@@ -433,11 +443,13 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		}
 	}
 
-	PrintDisInfo("fw H dis", m, n, align_prob)
+	PrintDisInfo("fw Ham dis", m, n, align_prob)
 
 	if m == 0 || n == 0 {
 		return align_prob, 0, -1, m, n, snp_pos, snp_base, snp_qual
 	}
+
+	PrintEditDisInput("fw align for Edit: read, qual, ref", read[ : M - m], qual[ : M - m], ref[ : N - n])
 
 	/*
 	Backtrace matrix, for each BT[i][j]:
@@ -590,7 +602,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	var is_snp bool
 	var snp_len int
 	var snp_pos []int
-	var snp_val, snp_qlt [][]byte
+	var snp_base, snp_qual [][]byte
 
 	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	M, N := len(read), len(ref)
@@ -605,8 +617,8 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			if bt_mat == 0 {
 				if read[M - i] != ref[N - j] {
 					snp_pos = append(snp_pos, pos + N - j)
-					snp_val = append(snp_val, []byte{read[M - i]})
-					snp_qlt = append(snp_qlt, []byte{qual[M - i]})
+					snp_base = append(snp_base, []byte{read[M - i]})
+					snp_qual = append(snp_qual, []byte{qual[M - i]})
 				}
 				aligned_read = append(aligned_read, read[M - i])
 				aligned_qual = append(aligned_qual, qual[M - i])
@@ -637,8 +649,8 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					snp, qlt := make([]byte, snp_len), make([]byte, snp_len)
 					copy(snp, read[M - i : M - (i - snp_len)])
 					copy(qlt, qual[M - i : M - (i - snp_len)])
-					snp_val = append(snp_val, snp)
-					snp_qlt = append(snp_qlt, qlt)
+					snp_base = append(snp_base, snp)
+					snp_qual = append(snp_qual, qlt)
 					aligned_read = append(aligned_read, read[M - i])
 					aligned_qual = append(aligned_qual, qual[M - i])
 					aligned_ref = append(aligned_ref, ref[N - j])
@@ -702,8 +714,8 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					qlt = append(qlt, aligned_qual[j])
 					i++
 				}
-				snp_val = append(snp_val, snp)
-				snp_qlt = append(snp_qlt, qlt)
+				snp_base = append(snp_base, snp)
+				snp_qual = append(snp_qual, qlt)
 			} else {
 				for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
 					i++
@@ -720,13 +732,13 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			}
 			if j < len(aligned_read) {
 				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
-				snp_val = append(snp_val, snp)
-				snp_qlt = append(snp_qlt, qlt)
+				snp_base = append(snp_base, snp)
+				snp_qual = append(snp_qual, qlt)
 			}
 			i = j - 1
 		}
 		i++
 	}
-	PrintVarInfo("FwEditTraceBack, variant info", snp_pos, snp_val, snp_qlt)
-	return snp_pos, snp_val, snp_qlt
+	PrintVarInfo("FwEditTraceBack, variant info", snp_pos, snp_base, snp_qual)
+	return snp_pos, snp_base, snp_qual
 }

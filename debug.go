@@ -218,12 +218,12 @@ func PrintVarInfo(mess string, snp_pos []int, snp_val, snp_qlt [][]byte) {
 
 func PrintGetSNP(p_prob, m_prob1, m_prob2 float64, snps1, snps2 []SNP) {
 	if PRINT_EDIT_DIST_INFO {
-		fmt.Println("dis to get snps (bw, fw)", p_prob, m_prob1, m_prob2)
-		fmt.Println("bw snp")
+		fmt.Println("dis to get snps (1st-end, 2nd-end)", p_prob, m_prob1, m_prob2)
+		fmt.Println("1st-end snp")
 		for _, s := range snps1 {
 			fmt.Println(string(s.Bases), string(s.BaseQ))
 		}
-		fmt.Println("fw snp")
+		fmt.Println("2nd-end snp")
 			for _, s := range snps2 {
 			fmt.Println(string(s.Bases), string(s.BaseQ))
 		}
