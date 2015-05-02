@@ -8,47 +8,45 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/namsyvo/ISC"
 	"log"
 	"runtime"
 	"time"
 	"path"
+	"github.com/namsyvo/ISC"
 )
 
 func main() {
 
 	//Starting Program-----------------------------------------------------------//
-	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
-
+	fmt.Println("ISC - Integrated SNP Caller using Next-generation sequencing data.")
 	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
-	isc.PrintProcessMem("memstats at the beginning")
-
-	input_info := ReadInputInfo()
-	runtime.GOMAXPROCS(input_info.Proc_num)
-	var snp_prof isc.SNP_Prof
 	//--------------------------------------------------------------------------//
 
-	//Initializing Indexes------------------------------------------------------//
+	//Initializing Indexes and parameters---------------------------------------//
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
-	snp_prof.Init(input_info)
+	input_info := ReadInputInfo()
+	runtime.GOMAXPROCS(input_info.Proc_num)
+	snp_caller := isc.New_SNP_Caller(input_info)
 	index_time := time.Since(start_time)
 	log.Printf("time for initializing SNP caller\t%s", index_time)
 	isc.PrintProcessMem("memstats after initializing SNP caller")
+	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
 
 	//Call SNPs from read-multigenome alignment--------------------------------//
 	fmt.Println("Calling SNPs based on aligning reads to the mutigenome...")
 	start_time = time.Now()
-	snp_prof.CallSNPs()
-	align_time := time.Since(start_time)
-	log.Printf("time for calling SNPs:\t%s", align_time)
+	snp_caller.CallSNPs()
+	callsnp_time := time.Since(start_time)
+	log.Printf("time for calling SNPs:\t%s", callsnp_time)
 	isc.PrintProcessMem("memstats after calling SNPs")
+	fmt.Println("Finish calling SNPs.")
 	//-------------------------------------------------------------------------//
 
 	//Finishing Program--------------------------------------------------------//
 	WriteOutputInfo(input_info)
-	fmt.Println("Finish SNP calling process.")
+	fmt.Println("Done!")
 	//-------------------------------------------------------------------------//
 }
 

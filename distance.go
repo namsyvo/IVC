@@ -49,8 +49,8 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var snp_pos []int
 	var snp_base, snp_qual [][]byte
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[pos + n - 1 - BACK_STEP]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1 - BACK_STEP]; !is_same_len_snp {
+		if _, is_snp = INDEX.SNP_PROF[pos + n - 1 - PARA_INFO.Back_step]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1 - PARA_INFO.Back_step]; !is_same_len_snp {
 				break
 			}
 		}
@@ -64,7 +64,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			m--
 			n--
 		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1]; is_same_len_snp {
-			snp_prof, _ = S.SNP_Calls[uint32(pos + n - 1)]
+			snp_prof, _ = S.SNP_Prob[uint32(pos + n - 1)]
 			min_p = math.MaxFloat64
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
@@ -177,7 +177,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
-				snp_prof, _ = S.SNP_Calls[uint32(pos + j - 1)]
+				snp_prof, _ = S.SNP_Prob[uint32(pos + j - 1)]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
 					//One possible case: i - snp_len < 0 for all k
@@ -397,8 +397,8 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[pos + N - n + BACK_STEP]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n + BACK_STEP]; !is_same_len_snp {
+		if _, is_snp = INDEX.SNP_PROF[pos + N - n + PARA_INFO.Back_step]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n + PARA_INFO.Back_step]; !is_same_len_snp {
 				break
 			}
 		}
@@ -413,7 +413,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			n--
 		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n]; is_same_len_snp {
 			min_p = math.MaxFloat64
-			snp_prof, is_snp = S.SNP_Calls[uint32(pos + N - n)]
+			snp_prof, is_snp = S.SNP_Prob[uint32(pos + N - n)]
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
 					p = AlignCostKnownLoci(read[M - m : M - m + snp_len], []byte(snp_str), qual[M - m : M - m + snp_len], snp_prob)
@@ -524,7 +524,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			} else {
 				D[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
-				snp_prof, _ = S.SNP_Calls[uint32(pos + N - j)]
+				snp_prof, _ = S.SNP_Prob[uint32(pos + N - j)]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
 					//One possible case: i - snp_len < 0 for all k

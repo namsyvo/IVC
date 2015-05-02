@@ -11,15 +11,29 @@
 package isc
 
 import (
-	"github.com/vtphan/fmi" //to use FM index
-	"sort"
 	//"fmt"
+	"sort"
+	"github.com/vtphan/fmi" //to use FM index
 )
+
+//--------------------------------------------------------------------------------------------------
+//Index for SNP caller
+//--------------------------------------------------------------------------------------------------
+type Index struct {
+	SEQ            []byte            //store reference multigenomes
+	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
+	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
+	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
+	SORTED_SNP_POS []int             //sorted array of SNP positions
+	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
+}
 
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
-func (I *Index) Init() {
+func New_Index() *Index {
+
+	I := new(Index)
 
 	I.SEQ = LoadMultigenome(INPUT_INFO.Genome_file)
 	PrintMemStats("memstats after loading multigenome")
@@ -36,6 +50,8 @@ func (I *Index) Init() {
 
 	I.REV_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
 	PrintMemStats("memstats after loading index of reverse multigenome")
+
+	return I
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -98,73 +114,4 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 		return s_pos, e_pos, rev_ep - rev_sp + 1, false
 	}
 	return -1, -1, -1, false // will be changed later
-}
-
-//-----------------------------------------------------------------------------------------------------
-// FindExtension function returns alignment (snp report) between between reads and multi-genomes.
-// The alignment is built within a given threshold of distance.
-//-----------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int, align_info *AlignInfo) (float64, 
-	[]int, [][]byte, [][]byte, []int, [][]byte, [][]byte, int, int, bool) {
-
-	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
-	var isSNP, isSameLenSNP bool
-
-	l_ext_add_len := 0
-	l_most_pos := m_pos - e_pos - l_ext_add_len
-	for i := m_pos - e_pos; i < m_pos; i++ {
-		_, isSNP = INDEX.SNP_PROF[i]
-		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
-		if isSNP && !isSameLenSNP {
-			l_ext_add_len++
-		}
-	}
-	if l_most_pos >= 0 {
-		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos + BACK_STEP]
-	} else {
-		ref_l_flank = INDEX.SEQ[0 : m_pos + BACK_STEP]
-	}
-	read_l_flank, qual_l_flank = read[ : e_pos + BACK_STEP], qual[ : e_pos + BACK_STEP]
-	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual :=
-		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
-			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
-
-	right_ext_add_len := 0
-	r_most_pos := m_pos + s_pos - e_pos + 1 - BACK_STEP
-	for i := r_most_pos; i < r_most_pos + (len(read) - s_pos) - 1; i++ {
-		_, isSNP = INDEX.SNP_PROF[i]
-		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
-		if isSNP && !isSameLenSNP {
-			right_ext_add_len++
-		}
-	}
-	if r_most_pos + BACK_STEP + (len(read) - s_pos) - 1 + right_ext_add_len <= len(INDEX.SEQ) {
-		ref_r_flank = INDEX.SEQ[r_most_pos : r_most_pos + BACK_STEP + (len(read) - s_pos) - 1 + right_ext_add_len]
-	} else {
-		ref_r_flank = INDEX.SEQ[r_most_pos : len(INDEX.SEQ)]
-	}
-	read_r_flank, qual_r_flank = read[s_pos + 1 - BACK_STEP : ], qual[s_pos + 1 - BACK_STEP : ]
-	right_d, right_D, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual :=
-		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, r_most_pos, align_info.Fw_Dist_D, 
-			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
-
-	prob := left_d + right_d + left_D + right_D
-	if prob <= PARA_INFO.Prob_thres {
-		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, l_bt_mat, 
-				align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
-			l_snp_pos = append(l_snp_pos, l_pos...)
-			l_snp_base = append(l_snp_base, l_base...)
-			l_snp_qual = append(l_snp_qual, l_qual...)
-		}
-		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, r_bt_mat, 
-				align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
-			r_snp_pos = append(r_snp_pos, r_pos...)
-			r_snp_base = append(r_snp_base, r_base...)
-			r_snp_qual = append(r_snp_qual, r_qual...)
-		}
-		return prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, true
-	}
-	return prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, false
 }

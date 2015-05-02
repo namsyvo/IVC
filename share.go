@@ -6,13 +6,15 @@
 package isc
 
 import (
-	"github.com/vtphan/fmi" //to use FM index
-	"math"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 )
 
-//Global constants and variables
+//--------------------------------------------------------------------------------------------------
+// Global constants and variables
+//--------------------------------------------------------------------------------------------------
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'} 	//Standard bases of DNA sequences
 	INF             = math.MaxInt16 				//Value for Infinity
@@ -20,20 +22,21 @@ var (
 	NEW_INDEL_RATE  = 0.000001						//Value for prior probability of new indels
 	NEW_SNP_RATE_LOG = -math.Log10(NEW_SNP_RATE)
 	NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
-	BACK_STEP		= 3
 )
 
-//Index for SNP caller
-type Index struct {
-	SEQ            []byte            //store reference multigenomes
-	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
-	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
-	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
-	SORTED_SNP_POS []int             //sorted array of SNP positions
-	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
-}
+//--------------------------------------------------------------------------------------------------
+// Global variables for read alignment and SNP calling processes.
+//--------------------------------------------------------------------------------------------------
+var (
+	INPUT_INFO	InputInfo	//Input information
+	PARA_INFO	ParaInfo	//Parameters information
+	RAND_GEN	*rand.Rand 	//Pseudo-random number generator
+	INDEX		Index      	//Index for alignment
+)
 
+//--------------------------------------------------------------------------------------------------
 //Input information
+//--------------------------------------------------------------------------------------------------
 type InputInfo struct {
 	//File names for:
 	Genome_file    string //reference multigenome
@@ -56,7 +59,9 @@ type InputInfo struct {
 	Iter_num       int    //number of random iterations to find proper alignments
 }
 
+//--------------------------------------------------------------------------------------------------
 //Parameter used in alignment algorithm
+//--------------------------------------------------------------------------------------------------
 type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
 	Prob_thres      float64 //threshold for probabilities of correct alignment
@@ -67,6 +72,7 @@ type ParaInfo struct {
 	Mut_rate        float32 //average mutation rate, estmated from reference genome
 	Mut_var_factor  int     //factor for standard variation of mutation rate
 	Iter_num_factor int     //factor for number of iterations 
+	Back_step		int 	//number of extra bases to calculate alignment
 	Read_len        int     //read length, calculated from read files
 	Info_len		int 	//maximum size of array to store read headers
 	Sub_cost		float64
@@ -74,9 +80,12 @@ type ParaInfo struct {
 	Gap_ext_cost	float64
 }
 
+//--------------------------------------------------------------------------------------------------
 //SetPara sets values of parameters for alignment process
+//--------------------------------------------------------------------------------------------------
 func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres, iter_num int) *ParaInfo {
 	para_info := new(ParaInfo)
+	para_info.Back_step = 3
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
 	para_info.Iter_num_factor = 2
@@ -117,7 +126,9 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 	return para_info
 }
 
+//--------------------------------------------------------------------------------------------------
 //Read information
+//--------------------------------------------------------------------------------------------------
 type ReadInfo struct {
 	Read1, Read2        			[]byte 		//first and second ends
 	Qual1, Qual2					[]byte 		//quality info of the first read and second ends
@@ -128,7 +139,9 @@ type ReadInfo struct {
 	Info1, Info2		   			[]byte 		//info of the first and second ends
 }
 
+//--------------------------------------------------------------------------------------------------
 //InitReadInfo create a read info object and initializes its content
+//--------------------------------------------------------------------------------------------------
 func InitReadInfo(read_len, info_len int) *ReadInfo {
 	read_info := new(ReadInfo)
 	read_info.Read1, read_info.Read2 = make([]byte, read_len), make([]byte, read_len)
@@ -141,7 +154,9 @@ func InitReadInfo(read_len, info_len int) *ReadInfo {
 	return read_info
 }
 
+//--------------------------------------------------------------------------------------------------
 //PrintReads prints read information
+//--------------------------------------------------------------------------------------------------
 func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("read1: ", string(read_info.Read1))
 	fmt.Println("read2: ", string(read_info.Read2))
@@ -151,7 +166,9 @@ func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("info2: ", string(read_info.Info2))
 }
 
+//--------------------------------------------------------------------------------------------------
 //RevComp computes reverse, reverse complement, and complement of a read.
+//--------------------------------------------------------------------------------------------------
 func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
 	read_len := len(read)
 	for i, elem := range read {
@@ -180,7 +197,9 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 	}
 }
 
+//--------------------------------------------------------------------------------------------------
 //Alignment information, served as shared variables between functions for alignment process
+//--------------------------------------------------------------------------------------------------
 type AlignInfo struct {
 	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT   [][]float64    // Distance matrix for backward alignment
 	Bw_Trace_D, Bw_Trace_IS, Bw_Trace_IT [][][]int 	   // Backtrace matrix for backward alignment
@@ -188,7 +207,9 @@ type AlignInfo struct {
 	Fw_Trace_D, Fw_Trace_IS, Fw_Trace_IT [][][]int 	   // Backtrace matrix for forward alignment
 }
 
+//--------------------------------------------------------------------------------------------------
 //InitAlignInfo allocates memory for share variables for alignment process
+//--------------------------------------------------------------------------------------------------
 func InitAlignInfo(arr_len int) *AlignInfo {
 	align_info := new(AlignInfo)
 	align_info.Bw_Dist_D, align_info.Bw_Trace_D = InitAlignMatrix(arr_len)
@@ -200,7 +221,9 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 	return align_info
 }
 
+//--------------------------------------------------------------------------------------------------
 //InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
+//--------------------------------------------------------------------------------------------------
 func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
 	dis_mat := make([][]float64, arr_len + 1)
 	for i := 0; i <= arr_len; i++ {
