@@ -7,8 +7,8 @@
 package isc
 
 import (
-	"math"
 	//"fmt"
+	"math"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -211,9 +211,9 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	PrintDisInfo("BwEditDist, IS dis", m, n, IS[m][n])
 	PrintDisInfo("BwEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("BwEditDist, D mat", D, m, n)
-	PrintEditDisMat("BwEditDist, IS mat", IS, m, n)
-	PrintEditDisMat("BwEditDist, IT mat", IT, m, n)
+	PrintEditDisMat("BwEditDist, D mat", D, m, n, read[ : m], ref[ : n])
+	PrintEditDisMat("BwEditDist, IS mat", IS, m, n, read[ : m], ref[ : n])
+	PrintEditDisMat("BwEditDist, IT mat", IT, m, n, read[ : m], ref[ : n])
 
 	PrintEditTraceMat("BwEditDist, D trace mat", BT_D, m, n)
 	PrintEditTraceMat("BwEditDist, IS trace mat", BT_IS, m, n)
@@ -449,7 +449,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		return align_prob, 0, -1, m, n, snp_pos, snp_base, snp_qual
 	}
 
-	PrintEditDisInput("fw align for Edit: read, qual, ref", read[ : M - m], qual[ : M - m], ref[ : N - n])
+	PrintEditDisInput("fw align for Edit: read, qual, ref", read[M - m : M], qual[M - m : M], ref[N - n : N])
 
 	/*
 	Backtrace matrix, for each BT[i][j]:
@@ -523,6 +523,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				}
 			} else {
 				D[i][j] = float64(math.MaxFloat32)
+				IT[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
 				snp_prof, _ = S.SNP_Prob[uint32(pos + N - j)]
 				for snp_str, snp_prob = range snp_prof {
@@ -542,12 +543,12 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 1
 							selected_snp_len = len(snp_str)
 						}
+					*/
 						if D[i][j] > IT[i - snp_len][j - 1] + prob_i_snp {
 							D[i][j] = IT[i - snp_len][j - 1] + prob_i_snp
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 							selected_snp_len = len(snp_str)
 						}
-					 */
 					}
 				}
 				if selected_snp_len != 0 {
@@ -559,7 +560,6 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 					IS[i][j] = IS[i - 1][j] + ins_i_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
-				IT[i][j] = math.MaxFloat64
 			}
 		}
 	}
@@ -567,9 +567,9 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	PrintDisInfo("FwEditDist, IS dis", m, n, IS[m][n])
 	PrintDisInfo("FwEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("FwEditDist, D mat", D, m, n)
-	PrintEditDisMat("FwEditDist, IS mat", IS, m, n)
-	PrintEditDisMat("FwEditDist, IT mat", IT, m, n)
+	PrintEditDisMat("FwEditDist, D mat", D, m, n, read[M - m : M], ref[N - n : N])
+	PrintEditDisMat("FwEditDist, IS mat", IS, m, n, read[M - m : M], ref[N - n : N])
+	PrintEditDisMat("FwEditDist, IT mat", IT, m, n, read[M - m : M], ref[N - n : N])
 
 	PrintEditTraceMat("FwEditDist, D trace mat", BT_D, m, n)
 	PrintEditTraceMat("FwEditDist, IS trace mat", BT_IS, m, n)

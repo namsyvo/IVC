@@ -21,7 +21,7 @@ import (
 
 //Global variable for turnning on/off info profiling
 var (
-	PRINT_PROCESS_MEM = false
+	PRINT_PROCESS_MEM = true
 	PRINT_MEM_STATS = false
 
 	PRINT_EDIT_DIST_INFO = false
@@ -123,10 +123,21 @@ func PrintEditDisInput(mess string, str_val ...[]byte) {
 	}
 }
 
-func PrintEditDisMat(mess string, D [][]float64, m, n int) {
+func PrintEditDisMat(mess string, D [][]float64, m, n int, read, ref []byte) {
 	if PRINT_EDIT_DIST_MAT_INFO {
 		fmt.Println(mess)
-		for i := 0; i <= m; i++ {
+		fmt.Print("\t\t")
+		for j := 1; j <= n; j++ {
+			fmt.Print(string(ref[j - 1]), "\t")
+		}
+		fmt.Println()
+		fmt.Print("\t")
+		for j := 0; j <= n; j++ {
+			fmt.Print(D[0][j], "\t")
+		}
+		fmt.Println()
+		for i := 1; i <= m; i++ {
+			fmt.Print(string(read[i - 1]) + "\t")
 			for j := 0; j <= n; j++ {
 				fmt.Print(D[i][j], "\t")
 			}
