@@ -120,17 +120,24 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	}
 
 	D[0][0] = 0.0
-	IS[0][0] = 0.0
-	IT[0][0] = 0.0
+	IS[0][0] = float64(math.MaxFloat32)
+	IT[0][0] = float64(math.MaxFloat32)
+	IS[1][0] = PARA_INFO.Gap_open_cost
+	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
+
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = float64(math.MaxFloat32)//float64(i) * NEW_INDEL_RATE_LOG
-		IS[i][0] = float64(math.MaxFloat32)//float64(i) * NEW_INDEL_RATE_LOG
-		IT[i][0] = float64(math.MaxFloat32)//float64(i) * NEW_INDEL_RATE_LOG
+		D[i][0] = float64(math.MaxFloat32)
+		IT[i][0] = float64(math.MaxFloat32)
 	}
+	for i = 2; i <= 2 * PARA_INFO.Read_len; i++ {
+		IS[i][0] = PARA_INFO.Gap_ext_cost
+		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
+	}
+
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
-		D[0][j] = float64(math.MaxFloat32)//0.0
-		IS[0][j] = float64(math.MaxFloat32)//PARA_INFO.Gap_open_cost
-		IT[0][j] = 0.0//PARA_INFO.Gap_open_cost
+		D[0][j] = float64(math.MaxFloat32)
+		IS[0][j] = float64(math.MaxFloat32)
+		IT[0][j] = 0.0
 		BT_IT[0][j][0], BT_IT[0][j][1] = 2, 2
 	}
 
@@ -337,7 +344,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			ref_ori_pos++
 		}
 		if aligned_ref[i] == '-' {
-			if aligned_read[i - 1] != '-' {
+			if i >= 1 && aligned_read[i - 1] != '-' {
 				snp_pos = append(snp_pos, pos + ref_ori_pos)
 				snp, qlt := make([]byte, 0), make([]byte, 0)
 				snp = append(snp, aligned_read[i - 1])
@@ -469,17 +476,23 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	}
 
 	D[0][0] = 0.0
-	IS[0][0] = 0.0
-	IT[0][0] = 0.0
 	for i = 1; i <= 2 * PARA_INFO.Read_len; i++ {
-		D[i][0] = float64(math.MaxFloat32)//float64(i) * NEW_INDEL_RATE_LOG
-		IS[i][0] = float64(math.MaxFloat32)//float64(i) * NEW_INDEL_RATE_LOG
-		IT[i][0] = float64(math.MaxFloat32)//float64(i) * NEW_INDEL_RATE_LOG
+		D[i][0] = float64(math.MaxFloat32)
+		IT[i][0] = float64(math.MaxFloat32)
 	}
+	IS[0][0] = float64(math.MaxFloat32)
+	IS[1][0] = PARA_INFO.Gap_open_cost
+	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
+	for i = 2; i <= 2 * PARA_INFO.Read_len; i++ {
+		IS[i][0] = PARA_INFO.Gap_ext_cost
+		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
+	}
+
+	IT[0][0] = float64(math.MaxFloat32)
 	for j = 1; j <= 2 * PARA_INFO.Read_len; j++ {
-		D[0][j] = float64(math.MaxFloat32)//0.0
-		IS[0][j] = float64(math.MaxFloat32)//PARA_INFO.Gap_open_cost
-		IT[0][j] = 0.0//PARA_INFO.Gap_open_cost
+		D[0][j] = float64(math.MaxFloat32)
+		IS[0][j] = float64(math.MaxFloat32)
+		IT[0][j] = 0.0
 		BT_IT[0][j][0], BT_IT[0][j][1] = 2, 2
 	}
 
