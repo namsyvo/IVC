@@ -361,9 +361,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				}
 				i = j - 1
 			}
-		}
-		//Need to get quality in a proper way in this case!!!
-		if aligned_read[i] == '-' {
+		} else if aligned_read[i] == '-' { //Need to get quality in a proper way in this case!!!
 			snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
@@ -734,8 +732,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					i++
 				}
 			}
-		}
-		if aligned_read[i] == '-' {
+		} else if aligned_read[i] == '-' {
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
 			qlt = append(qlt, aligned_ref[i - 1])

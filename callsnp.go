@@ -716,18 +716,16 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 // Input: a snp of type SNP.
 // Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
 //---------------------------------------------------------------------------------------------------
+
+	// Notice: Need to correct!
 func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	pos := snp.Pos
 	a := string(snp.Bases)
 	q := snp.BaseQ
-	if len(a) == 0 {
-		a = "."
-		q = []byte{'I'} //need to be changed to a proper value
-	}
 
 	if _, snp_exist := S.SNP_Prob[pos]; !snp_exist {
 		S.SNP_Prob[pos] = make(map[string]float64)
-		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos): int(pos) + len(a)])] = 1 - NEW_SNP_RATE
+		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos): int(pos) + len(a)])] = 1 - 3 * NEW_SNP_RATE
 		S.SNP_Bases[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
@@ -763,11 +761,11 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	for b, p_b := range(S.SNP_Prob[pos]) {
 		p = 1
 		if a == b {
-			for _, qi = range q {
+			for _, qi = range q[0:1] { //temporary change
 				p *= (1.0 - math.Pow(10, -(float64(qi) - 33) / 10.0)) //Phred-encoding factor (33) need to be estimated from input data
 			}
 		} else {
-			for _, qi = range q {
+			for _, qi = range q[0:1] { //temporary change
 				p *= (math.Pow(10, -(float64(qi) - 33) / 10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
 			}
 		}
