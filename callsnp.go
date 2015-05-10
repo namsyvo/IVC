@@ -717,7 +717,7 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 // Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
 //---------------------------------------------------------------------------------------------------
 
-	// Notice: Need to correct!
+// Notice: Need to be corrected!
 func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	pos := snp.Pos
 	a := string(snp.Bases)
@@ -725,7 +725,12 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 
 	if _, snp_exist := S.SNP_Prob[pos]; !snp_exist {
 		S.SNP_Prob[pos] = make(map[string]float64)
-		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos): int(pos) + len(a)])] = 1 - 3 * NEW_SNP_RATE
+		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * NEW_SNP_RATE
+		for _, b := range STD_BASES {
+			if _, ok := S.SNP_Prob[pos][string(b)]; !ok {
+				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
+			}
+		}
 		S.SNP_Bases[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
