@@ -735,7 +735,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 		} else if aligned_read[i] == '-' {
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
-			qlt = append(qlt, aligned_ref[i - 1])
+			qlt = append(qlt, aligned_qual[i - 1]) //a temporary value, need to be corrected!
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				snp = append(snp, aligned_ref[j])
 				ref_ori_pos++
