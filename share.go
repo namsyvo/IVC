@@ -85,7 +85,7 @@ type ParaInfo struct {
 //--------------------------------------------------------------------------------------------------
 func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres, iter_num int) *ParaInfo {
 	para_info := new(ParaInfo)
-	para_info.Back_step = 3
+	para_info.Back_step = 6
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
 	para_info.Iter_num_factor = 2
