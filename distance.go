@@ -56,6 +56,11 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 		}
 		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
+				if m + 3 < len(read) && n + 3 < len(ref) {
+					m += 3
+					n += 3
+				}
+				break
 				snp_pos = append(snp_pos, pos + n - 1)
 				snp_base = append(snp_base, []byte{read[m - 1]})
 				snp_qual = append(snp_qual, []byte{qual[m - 1]})
@@ -409,6 +414,11 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		}
 		if _, is_snp = INDEX.SNP_PROF[pos + N - n]; !is_snp {
 			if read[M - m] != ref[N - n] {
+				if (M - (m + 3) > 0 && N - (n + 3) > 0 {
+					m += 3
+					n += 3
+				}
+				break
                 snp_pos = append(snp_pos, pos + N - n)
                 snp_base = append(snp_base, []byte{read[M - m]})
                 snp_qual = append(snp_qual, []byte{qual[M - m]})
