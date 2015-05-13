@@ -414,7 +414,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		}
 		if _, is_snp = INDEX.SNP_PROF[pos + N - n]; !is_snp {
 			if read[M - m] != ref[N - n] {
-				if (M - (m + 3) > 0 && N - (n + 3) > 0 {
+				if M - (m + 3) > 0 && N - (n + 3) > 0 {
 					m += 3
 					n += 3
 				}
