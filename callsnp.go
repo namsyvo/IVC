@@ -19,10 +19,10 @@ import (
 	"bytes"
 )
 
-//--------------------------------------------------------------------------------------------------
-// SNP represents SNP obtained during alignment phase.
-// It serves as temporary variable during SNP calling phase.
-//--------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+SNP represents SNP obtained during alignment phase.
+It serves as temporary variable during SNP calling phase.
+--------------------------------------------------------------------------------------------------*/
 type SNP struct {
 	Pos 	uint32 //SNP postion on ref
 	Bases 	[]byte //bases of SNP
@@ -32,59 +32,63 @@ type SNP struct {
 	AProb   float64 //correct alignment prob
 	CProb  float64 //correct paired-alignment prob
 	RInfo 	[]byte //whole read
-	EPos1 	int 	//starting pos on read1 of exact match
-	EPos2 	int 	//starting pos on read2 of exact match
+	SPos1 	int 	//starting pos on read1 of exact match (i.e. ending position from backward search with FM-index)
+	SPos2 	int 	//starting pos on read2 of exact match
 	Stra1 	bool 	//strand of read1 of exact match
 	Stra2 	bool 	//strand of read2 of exact match
 }
 
-//--------------------------------------------------------------------------------------------------
-// SNP_Prof represents all possible SNPs and their probablilties at all positions on reference multigenome.
-// This struct also has functions defined on it for calling SNPs.
-// SNP_Prob stores all possible variants at each position and their probablilities of being SNP calls.
-// Their initial (prior) probablities will be obtained from reference genomes and SNP profiles.
-// Their posterior probabilities will be updated during alignment phase based on information from read-multigenome alignment
-//--------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+SNP_Prof represents info of aligned reads and bases at the SNP call positions on reference multigenome.
+This struct also has functions defined on it for calling SNPs.
+--------------------------------------------------------------------------------------------------*/
 type SNP_Prof struct {
-	SNP_Prob 	map[uint32]map[string]float64
-	SNP_Bases 	map[uint32]map[string]int
-	SNP_BaseQ 	map[uint32]map[string][][]byte
-	Chr_Dis     map[uint32]map[string][]int
-	Chr_Diff     map[uint32]map[string][]int
-	Aln_Prob     map[uint32]map[string][]float64
-	Chr_Prob     map[uint32]map[string][]float64
-	Read_Info 		map[uint32]map[string][][]byte
-	End_Pos1     map[uint32]map[string][]int
-	End_Pos2     map[uint32]map[string][]int
-	Strand1     map[uint32]map[string][]bool
-	Strand2     map[uint32]map[string][]bool
+	/*
+	SNP_Prob stores all possible SNPs at each position and their confident probablilities.
+		Their initial (prior) probablities will be obtained from reference genomes and SNP profiles.
+		Their posterior probabilities will be updated during alignment phase based on incomming aligned bases
+	*/
+	SNP_Prob 	map[uint32]map[string]float64 	//Probability of SNP calls
+	SNP_BaseQ 	map[uint32]map[string][][]byte 	//Quality sequences (in FASTQ format) of aligned bases at the SNP call position
+	SNP_RNum 	map[uint32]map[string]int 		//Numer of reads (bases) aligned to the SNP call postion
+	Chr_Dis     map[uint32]map[string][]int 	//Chromosomal distance between two aligned ends
+	Chr_Diff    map[uint32]map[string][]int 	//Difference betwwen aligned postions and true postions (for simulated data)
+	Aln_Prob    map[uint32]map[string][]float64 //Alignment probability of aligned read at the SNP call position
+	Chr_Prob    map[uint32]map[string][]float64 //Paired-end mapping probability
+	Start_Pos1  map[uint32]map[string][]int 	//Start position of alignment of the first end
+	Start_Pos2  map[uint32]map[string][]int 	//Start position of alignment of the second end
+	Strand1     map[uint32]map[string][]bool 	//Strand indicator of the first end ("true" if identicaly with ref)
+	Strand2     map[uint32]map[string][]bool 	//Strand indicator of the second end
+	Read_Info 	map[uint32]map[string][][]byte 	//Info of aligned reads at the SNP call position
 }
 
-//--------------------------------------------------------------------------------------------------
-// InitIndex initializes indexes and parameters.
-// This function will be called from main program.
-//--------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+InitIndex initializes indexes and parameters.
+This function will be called from main program.
+--------------------------------------------------------------------------------------------------*/
 func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 
 	INPUT_INFO = input_info
-	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
-	//700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
-	//0.01 is mutation rate (currently is estimated from dbSNP of human genome)
+	/*
+	SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
+			700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
+			0.01 is mutation rate (currently is estimated from dbSNP of human genome)
+	*/
 	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Iter_num)
 	INDEX = *New_Index()
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	S := new(SNP_Prof)
 	S.SNP_Prob = make(map[uint32]map[string]float64)
-	S.SNP_Bases = make(map[uint32]map[string]int)
+	S.SNP_RNum = make(map[uint32]map[string]int)
 	S.SNP_BaseQ = make(map[uint32]map[string][][]byte)
 	S.Chr_Dis = make(map[uint32]map[string][]int)
 	S.Chr_Diff = make(map[uint32]map[string][]int)
 	S.Aln_Prob = make(map[uint32]map[string][]float64)
 	S.Chr_Prob = make(map[uint32]map[string][]float64)
 	S.Read_Info = make(map[uint32]map[string][][]byte)
-	S.End_Pos1 = make(map[uint32]map[string][]int)
-	S.End_Pos2 = make(map[uint32]map[string][]int)
+	S.Start_Pos1 = make(map[uint32]map[string][]int)
+	S.Start_Pos2 = make(map[uint32]map[string][]int)
 	S.Strand1 = make(map[uint32]map[string][]bool)
 	S.Strand2 = make(map[uint32]map[string][]bool)
 
@@ -98,25 +102,27 @@ func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 		S.SNP_Prob[pos] = make(map[string]float64)
 		for i, snp = range snp_value {
 			if len(snp) == 1 {
-				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - NEW_SNP_RATE * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
+				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - 
+					NEW_SNP_RATE * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
 				if S.SNP_Prob[pos][string(snp)] < NEW_SNP_RATE {
 					S.SNP_Prob[pos][string(snp)] = NEW_SNP_RATE
 				}
 			} else {
-				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - NEW_SNP_RATE * float64(snp_prof_num)
+				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - 
+					NEW_SNP_RATE * float64(snp_prof_num)
 				if S.SNP_Prob[pos][string(snp)] < NEW_SNP_RATE {
 					S.SNP_Prob[pos][string(snp)] = NEW_SNP_RATE
 				}
 			}
-			S.SNP_Bases[pos] = make(map[string]int)
+			S.SNP_RNum[pos] = make(map[string]int)
 			S.SNP_BaseQ[pos] = make(map[string][][]byte)
 			S.Chr_Dis[pos] = make(map[string][]int)
 			S.Chr_Diff[pos] = make(map[string][]int)
 			S.Aln_Prob[pos] = make(map[string][]float64)
 			S.Chr_Prob[pos] = make(map[string][]float64)
 			S.Read_Info[pos] = make(map[string][][]byte)
-			S.End_Pos1[pos] = make(map[string][]int)
-			S.End_Pos2[pos] = make(map[string][]int)
+			S.Start_Pos1[pos] = make(map[string][]int)
+			S.Start_Pos2[pos] = make(map[string][]int)
 			S.Strand1[pos] = make(map[string][]bool)
 			S.Strand2[pos] = make(map[string][]bool)
 		}
@@ -124,14 +130,15 @@ func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 	return S
 }
 
-//--------------------------------------------------------------------------------------------------
-// CallSNPs initializes share variables, channels, reads input reads, finds all possible SNPs,
-// and updates SNP information in SNP_Prof.
-// This function will be called from main program.
-//--------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+CallSNPs initializes share variables, channels, reads input reads, finds all possible SNPs,
+and updates SNP information in SNP_Prof.
+This function will be called from main program.
+--------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) CallSNPs() {
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindSNPs,
-	//when a FindSNPs goroutine finish copying a read to its own memory, it signals ReadReads goroutine to scan next reads.
+	//when a FindSNPs goroutine finish copying a read to its own memory, 
+	//it signals ReadReads goroutine to scan next reads.
 	read_signal := make(chan bool)
 
 	//Call a goroutine to read input reads
@@ -162,17 +169,12 @@ func (S *SNP_Prof) CallSNPs() {
 	//Collect SNPs from results channel and update SNPs and their probabilities
 	var snp SNP
 	for snp = range snp_results {
-
-//		fmt.Println("callsnp.go, CallSNPs, SNP info:")
-//		fmt.Println(string(snp.Bases), string(snp.BaseQ))
-
 		if len(snp.Bases) == 1 {
 			S.UpdateSNPProb(snp)
 		} else {
 			S.UpdateIndelProb(snp)
 		}
 	}
-	//Output SNP calls
 	fmt.Println("Outputing SNP calls...")
 	S.OutputSNPCalls()
 	//------------------------
@@ -181,9 +183,9 @@ func (S *SNP_Prof) CallSNPs() {
 	//------------------------
 }
 
-//--------------------------------------------------------------------------------------------------
-// ReadReads reads all reads from input FASTQ files and put them into data channel.
-//--------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+ReadReads reads all reads from input FASTQ files and put them into data channel.
+--------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 
 	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
@@ -231,9 +233,9 @@ func (S *SNP_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 	close(read_data)
 }
 
-//--------------------------------------------------------------------------------------------------
-// FindSNPs takes data from data channel, find all possible SNPs and put them into results channel.
-//--------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+FindSNPs takes data from data channel, find all possible SNPs and put them into results channel.
+--------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp_results chan SNP, 
 	wg *sync.WaitGroup) {
 	wg.Add(1)
@@ -259,21 +261,23 @@ func (S *SNP_Prof) FindSNPs(read_data chan *ReadInfo, read_signal chan bool, snp
 		<- read_signal
 		
 		PrintMemStats("After copying all info from data chan")
-		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1, read_info.Comp_read1, read_info.Rev_qual1)
+		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1, 
+			read_info.Comp_read1, read_info.Rev_qual1)
 		PrintMemStats("After calculating RevComp for Read1")
-		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2, read_info.Comp_read2, read_info.Rev_qual2)
+		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2, 
+			read_info.Comp_read2, read_info.Rev_qual2)
 		PrintMemStats("After calculating RevComp for Read2")
 
-		S.FindSNPsFromReads(read_info, snp_results, align_info, m_pos)
+		S.FindSNPsFromPairedEnds(read_info, snp_results, align_info, m_pos)
 		PrintMemStats("After finding all SNPs from reads")
 	}
 }
 
-//--------------------------------------------------------------------------------------------------
-// FindSNPsFromReads returns SNPs found from alignment between pair-end reads and the multigenome.
-// This version treats each end of the reads independently.
-//--------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, m_pos []int) {
+/*--------------------------------------------------------------------------------------------------
+FindSNPsFromPairedEndReads returns SNPs found from alignment between pair-end reads and the multigenome.
+This version treats each end of the reads independently.
+--------------------------------------------------------------------------------------------------*/
+func (S *SNP_Prof) FindSNPsFromPairedEnds(read_info *ReadInfo, snp_results chan SNP, align_info *AlignInfo, m_pos []int) {
 
 	var snp SNP
 	var snps1, snps2 []SNP
@@ -305,11 +309,11 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	//---------------------------------------------------------------------
 
 	var p_idx, s_idx int
-	var p_prob, m_prob1, m_prob2 float64
+	var paired_prob, align_prob1, align_prob2 float64
 
 	//Try to align both ends
 	loop_num := 1
-	p_prob = math.MaxFloat64
+	paired_prob = math.MaxFloat64
 	var has_seeds bool
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSNPsFromReads")
@@ -325,10 +329,10 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				//Find SNPs for the first end
 				PrintMemStats("Before FindSNPsFromEnd1")
 				if strand_r1[p_idx] == true {
-					snps1, l_align_pos1, _, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+					snps1, l_align_pos1, _, align_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
 						m_pos_r1[p_idx], read_info.Read1, read_info.Qual1, align_info)
 				} else {
-					snps1, l_align_pos1, _, m_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+					snps1, l_align_pos1, _, align_prob1 = S.FindSNPsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
 						m_pos_r1[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, align_info)
 				}
 				PrintMemStats("After FindSNPsFromEnd1")
@@ -336,20 +340,20 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				//Find SNPs for the second end
 				PrintMemStats("Before FindSNPsFromEnd2")
 				if strand_r2[p_idx] == true {
-					snps2, l_align_pos2, _, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+					snps2, l_align_pos2, _, align_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
 						m_pos_r2[p_idx], read_info.Read2, read_info.Qual2, align_info)
 				} else {
-					snps2, l_align_pos2, _, m_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+					snps2, l_align_pos2, _, align_prob2 = S.FindSNPsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
 						m_pos_r2[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, align_info)
 				}
 				PrintMemStats("After FindSNPsFromEnd2")
 				
-				if m_prob1 != -1 && m_prob2 != -1 {
+				if align_prob1 != -1 && align_prob2 != -1 {
 					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50)))
-					if p_prob > m_prob1 + m_prob2 {
-						p_prob = m_prob1 + m_prob2
+					if paired_prob > align_prob1 + align_prob2 {
+						paired_prob = align_prob1 + align_prob2
 						snps_get1 = make([]SNP, len(snps1))
-						PrintGetSNP(p_prob, m_prob1, m_prob2, snps1, snps2)
+						PrintGetSNP(paired_prob, align_prob1, align_prob2, snps1, snps2)
 						if len(snps1) > 0 {
 							for s_idx = 0; s_idx < len(snps1); s_idx++ {
 								snps_get1[s_idx].Pos = snps1[s_idx].Pos
@@ -359,11 +363,11 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 								copy(snps_get1[s_idx].BaseQ, snps1[s_idx].BaseQ)
 								snps_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 								snps_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
-								snps_get1[s_idx].AProb = m_prob1
+								snps_get1[s_idx].AProb = align_prob1
 								snps_get1[s_idx].CProb = a_prob
 								snps_get1[s_idx].RInfo = read_info1
-								snps_get1[s_idx].EPos1 = e_pos_r1[p_idx]
-								snps_get1[s_idx].EPos2 = e_pos_r2[p_idx]
+								snps_get1[s_idx].SPos1 = e_pos_r1[p_idx]
+								snps_get1[s_idx].SPos2 = e_pos_r2[p_idx]
 								snps_get1[s_idx].Stra1 = strand_r1[p_idx]
 								snps_get1[s_idx].Stra2 = strand_r2[p_idx]
 							}
@@ -378,11 +382,11 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 								copy(snps_get2[s_idx].BaseQ, snps2[s_idx].BaseQ)
 								snps_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
 								snps_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
-								snps_get2[s_idx].AProb = m_prob2
+								snps_get2[s_idx].AProb = align_prob2
 								snps_get2[s_idx].CProb = a_prob
 								snps_get2[s_idx].RInfo = read_info2
-								snps_get2[s_idx].EPos1 = e_pos_r1[p_idx]
-								snps_get2[s_idx].EPos2 = e_pos_r2[p_idx]
+								snps_get2[s_idx].SPos1 = e_pos_r1[p_idx]
+								snps_get2[s_idx].SPos2 = e_pos_r2[p_idx]
 								snps_get2[s_idx].Stra1 = strand_r1[p_idx]
 								snps_get2[s_idx].Stra2 = strand_r2[p_idx]
 							}
@@ -391,12 +395,12 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
-		if p_prob < 1 {
+		if paired_prob < 1 {
 			break
 		}
 		loop_num++
 	}
-	if p_prob <= 2 * PARA_INFO.Prob_thres {
+	if paired_prob <= 2 * PARA_INFO.Prob_thres {
 		if len(snps_get1) > 0 {
 			for _, snp = range snps_get1 {
 				snp_results <- snp
@@ -417,10 +421,11 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 	NO_ALIGN_READ_INFO_CHAN <- at
 }
 
-//---------------------------------------------------------------------------------------------------
-// FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
-//---------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, []int, []int, []int, []int, []bool, []bool, bool) {
+/*--------------------------------------------------------------------------------------------------
+FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
+--------------------------------------------------------------------------------------------------*/
+func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, []int, []int, []int, 
+	[]int, []bool, []bool, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
 	var s_pos_r1_or, e_pos_r1_or, m_num_r1_or, s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc int
@@ -456,35 +461,43 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, m_pos_r1_or)
 		PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
 		if has_seeds_r1_or {
-			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
+			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], 
+				e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
 		}
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc = 
 			INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, m_pos_r1_rc)
 		PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
 		if has_seeds_r1_rc {
-			PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
+			PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc : s_pos_r1_rc + 1], 
+				e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
 		}
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or = 
 			INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, m_pos_r2_or)
 		PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
 		if has_seeds_r2_or {
-			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
+			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], 
+				e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
 		}
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc = 
 			INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, m_pos_r2_rc)
 		PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
 		if has_seeds_r2_rc {
-			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
+			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc : s_pos_r2_rc + 1], 
+				e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
 		}
 		PrintMemStats("After FindSeeds, loop_num " + strconv.Itoa(loop_num))
 
 		if has_seeds_r1_or && has_seeds_r2_rc {
-			PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
-			PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc : s_pos_r2_rc + 1], e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
+			PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], 
+				e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
+			PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc : s_pos_r2_rc + 1], 
+				e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
 					//Check if alignments are likely pair-end alignments
-					if (m_pos_r2_rc[j] - m_pos_r1_or[i]) >= PARA_INFO.Read_len && (m_pos_r2_rc[j] - m_pos_r1_or[i]) <= PARA_INFO.Read_len + PARA_INFO.Max_ins{
+					if (m_pos_r2_rc[j] - m_pos_r1_or[i]) >= PARA_INFO.Read_len && 
+						(m_pos_r2_rc[j] - m_pos_r1_or[i]) <= PARA_INFO.Read_len + PARA_INFO.Max_ins {
+
 						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", m_pos_r1_or[i], m_pos_r2_rc[j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
@@ -499,12 +512,16 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			}
 		}
 		if has_seeds_r1_rc && has_seeds_r2_or {
-			PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
-			PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or : s_pos_r2_or + 1], e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
+			PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], 
+				e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
+			PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or : s_pos_r2_or + 1], 
+				e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_or; j++ {
 					//Check if alignments are likely pair-end alignments
-					if (m_pos_r1_rc[i] - m_pos_r2_or[j]) >= PARA_INFO.Read_len && (m_pos_r1_rc[i] - m_pos_r2_or[j]) <= PARA_INFO.Read_len + PARA_INFO.Max_ins {
+					if (m_pos_r1_rc[i] - m_pos_r2_or[j]) >= PARA_INFO.Read_len && 
+						(m_pos_r1_rc[i] - m_pos_r2_or[j]) <= PARA_INFO.Read_len + PARA_INFO.Max_ins {
+
 						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", m_pos_r1_rc[i], m_pos_r2_or[j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
@@ -538,60 +555,21 @@ func (S *SNP_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 	return s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, false
 }
 
-//---------------------------------------------------------------------------------------------------
-// FindSNPsFromEachEnd find SNPs from alignment between read (one end) and multigenome.
-//---------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+FindSNPsFromExtension determines SNPs based on alignment between reads and multi-genomes.
+	Extend read and ref from exact matches found from bachward search with FM-index
+	Perform backward (for left extension of read and ref) and forward alignment (for right extension)
+	between read and multigenome to determine aligned bases as candidates for SNP calls
+--------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte, 
 	align_info *AlignInfo) ([]SNP, int, int, float64) {
 
-	var k int
-	var prob float64
-
-	var l_most_pos, r_most_pos int
+	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
 	var l_snp_pos, r_snp_pos []int
 	var l_snp_base, l_snp_qual, r_snp_base, r_snp_qual [][]byte
-
-	var snps_arr []SNP
-	var has_match bool
-
-	PrintMemStats("Before FindExtensions, m_pos " + strconv.Itoa(m_pos))
-	prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, has_match =
-		S.FindExtensions(read, qual, s_pos, e_pos, m_pos, align_info)
-	PrintMemStats("After FindExtensions, m_pos " + strconv.Itoa(m_pos))
-	if has_match {
-		PrintMatchTraceInfo(m_pos, l_most_pos, prob, l_snp_pos, read)
-//		fmt.Println("callsnp.go, FindSNPsFromExtension, SNP info:")
-//		for i, s := range l_snp_base {
-//			fmt.Println(string(s), string(l_snp_qual[i]))
-//		}
-		for k = 0; k < len(l_snp_pos); k++ {
-			PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
-			var snp SNP
-			snp.Pos, snp.Bases, snp.BaseQ = uint32(l_snp_pos[k]), l_snp_base[k], l_snp_qual[k]
-			snps_arr = append(snps_arr, snp)
-			PrintMemStats("After GetSNP left, snp_num " + strconv.Itoa(k))
-		}
-		for k = 0; k < len(r_snp_pos); k++ {
-			PrintMemStats("Before GetSNP right, snp_num " + strconv.Itoa(k))
-			var snp SNP
-			snp.Pos, snp.Bases, snp.BaseQ = uint32(r_snp_pos[k]), r_snp_base[k], r_snp_qual[k]
-			snps_arr = append(snps_arr, snp)
-			PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
-		}
-		return snps_arr, l_most_pos, r_most_pos, prob
-	}
-	return snps_arr, -1, -1, -1
-}
-
-//-----------------------------------------------------------------------------------------------------
-// FindExtension determines SNPs based on alignment between reads and multi-genomes.
-//-----------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int, align_info *AlignInfo) (float64, 
-	[]int, [][]byte, [][]byte, []int, [][]byte, [][]byte, int, int, bool) {
-
-	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
 	var isSNP, isSameLenSNP bool
 
+	PrintMemStats("Before FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
 	l_ext_add_len := 0
 	l_most_pos := m_pos - e_pos - l_ext_add_len
 	for i := m_pos - e_pos; i < m_pos; i++ {
@@ -610,6 +588,7 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual :=
 		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
 			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
+
 
 	right_ext_add_len := 0
 	r_most_pos := m_pos + s_pos - e_pos + 1 - PARA_INFO.Back_step
@@ -630,32 +609,52 @@ func (S *SNP_Prof) FindExtensions(read, qual []byte, s_pos, e_pos int, m_pos int
 		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, r_most_pos, align_info.Fw_Dist_D, 
 			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
 
+	var snps_arr []SNP
 	prob := left_d + right_d + left_D + right_D
 	if prob <= PARA_INFO.Prob_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, l_bt_mat, 
-				align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
+			l_pos, l_base, l_qual := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, 
+				l_bt_mat, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
 			l_snp_pos = append(l_snp_pos, l_pos...)
 			l_snp_base = append(l_snp_base, l_base...)
 			l_snp_qual = append(l_snp_qual, l_qual...)
 		}
+		PrintMatchTraceInfo(m_pos, l_most_pos, prob, l_snp_pos, read)
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, r_bt_mat, 
-				align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
+			r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, 
+				r_bt_mat, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
 			r_snp_pos = append(r_snp_pos, r_pos...)
 			r_snp_base = append(r_snp_base, r_base...)
 			r_snp_qual = append(r_snp_qual, r_qual...)
 		}
-		return prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, true
+		PrintMatchTraceInfo(m_pos, r_most_pos, prob, r_snp_pos, read)
+		var k int
+		for k = 0; k < len(l_snp_pos); k++ {
+			PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
+			var snp SNP
+			snp.Pos, snp.Bases, snp.BaseQ = uint32(l_snp_pos[k]), l_snp_base[k], l_snp_qual[k]
+			snps_arr = append(snps_arr, snp)
+			PrintMemStats("After GetSNP left, snp_num " + strconv.Itoa(k))
+		}
+		for k = 0; k < len(r_snp_pos); k++ {
+			PrintMemStats("Before GetSNP right, snp_num " + strconv.Itoa(k))
+			var snp SNP
+			snp.Pos, snp.Bases, snp.BaseQ = uint32(r_snp_pos[k]), r_snp_base[k], r_snp_qual[k]
+			snps_arr = append(snps_arr, snp)
+			PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
+		}
+		PrintMemStats("After FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
+		return snps_arr, l_most_pos, r_most_pos, prob
 	}
-	return prob, l_snp_pos, l_snp_base, l_snp_qual, r_snp_pos, r_snp_base, r_snp_qual, l_most_pos, r_most_pos, false
+	PrintMemStats("After FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
+	return snps_arr, -1, -1, -1
 }
 
-//---------------------------------------------------------------------------------------------------
-// UpdateSNPProb updates SNP probablilities for all possible SNPs.
-// Input: a snp of type SNP.
-// Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
-//---------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+UpdateSNPProb updates SNP probablilities for all possible SNPs.
+	Input: a snp of type SNP.
+	Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
+--------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	pos := snp.Pos
 	a := string(snp.Bases)
@@ -669,30 +668,30 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.SNP_Bases[pos] = make(map[string]int)
+		S.SNP_RNum[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
 		S.Chr_Prob[pos] = make(map[string][]float64)
 		S.Read_Info[pos] = make(map[string][][]byte)
-		S.End_Pos1[pos] = make(map[string][]int)
-		S.End_Pos2[pos] = make(map[string][]int)
+		S.Start_Pos1[pos] = make(map[string][]int)
+		S.Start_Pos2[pos] = make(map[string][]int)
 		S.Strand1[pos] = make(map[string][]bool)
 		S.Strand2[pos] = make(map[string][]bool)
 	}
 	if _, ok := S.SNP_Prob[pos][a]; !ok {
 		S.SNP_Prob[pos][a] = NEW_SNP_RATE
 	}
-	S.SNP_Bases[pos][a] += 1
+	S.SNP_RNum[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
 	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], snp.CProb)
 	S.Read_Info[pos][a] = append(S.Read_Info[pos][a], snp.RInfo)
-	S.End_Pos1[pos][a] = append(S.End_Pos1[pos][a], snp.EPos1)
-	S.End_Pos2[pos][a] = append(S.End_Pos2[pos][a], snp.EPos2)
+	S.Start_Pos1[pos][a] = append(S.Start_Pos1[pos][a], snp.SPos1)
+	S.Start_Pos2[pos][a] = append(S.Start_Pos2[pos][a], snp.SPos2)
 	S.Strand1[pos][a] = append(S.Strand1[pos][a], snp.Stra1)
 	S.Strand2[pos][a] = append(S.Strand2[pos][a], snp.Stra2)
 
@@ -714,12 +713,11 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------
-// UpdateIndelProb updates Indel probablilities for all possible Indels.
-// Input: a snp of type SNP.
-// Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
-//---------------------------------------------------------------------------------------------------
-
+/*--------------------------------------------------------------------------------------------------
+UpdateIndelProb updates Indel probablilities for all possible Indels.
+	Input: a snp of type SNP.
+	Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
+--------------------------------------------------------------------------------------------------*/
 // Notice: Need to be corrected!
 func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	pos := snp.Pos
@@ -734,30 +732,30 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.SNP_Bases[pos] = make(map[string]int)
+		S.SNP_RNum[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
 		S.Chr_Prob[pos] = make(map[string][]float64)
 		S.Read_Info[pos] = make(map[string][][]byte)
-		S.End_Pos1[pos] = make(map[string][]int)
-		S.End_Pos2[pos] = make(map[string][]int)
+		S.Start_Pos1[pos] = make(map[string][]int)
+		S.Start_Pos2[pos] = make(map[string][]int)
 		S.Strand1[pos] = make(map[string][]bool)
 		S.Strand2[pos] = make(map[string][]bool)
 	}
 	if _, ok := S.SNP_Prob[pos][a]; !ok {
 		S.SNP_Prob[pos][a] = NEW_SNP_RATE
 	}
-	S.SNP_Bases[pos][a] += 1
+	S.SNP_RNum[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
 	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], snp.CProb)
 	S.Read_Info[pos][a] = append(S.Read_Info[pos][a], snp.RInfo)
-	S.End_Pos1[pos][a] = append(S.End_Pos1[pos][a], snp.EPos1)
-	S.End_Pos2[pos][a] = append(S.End_Pos2[pos][a], snp.EPos2)
+	S.Start_Pos1[pos][a] = append(S.Start_Pos1[pos][a], snp.SPos1)
+	S.Start_Pos2[pos][a] = append(S.Start_Pos2[pos][a], snp.SPos2)
 	S.Strand1[pos][a] = append(S.Strand1[pos][a], snp.Stra1)
 	S.Strand2[pos][a] = append(S.Strand2[pos][a], snp.Stra2)
 
@@ -785,10 +783,10 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	}
 }
 
-//-------------------------------------------------------------------------------------------------------
-// OutputSNPCalls determines SNP calls, convert their probabilities to Phred scores, and writes them to file
-// in proper format (VCF-like format in this version).
-//-------------------------------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------------------------
+OutputSNPCalls determines SNP calls, convert their probabilities to Phred scores, and writes them
+to file in proper format (VCF-like format at this stage).
+--------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) OutputSNPCalls() {
 
 	file, err := os.Create(INPUT_INFO.SNP_call_file)
@@ -828,10 +826,10 @@ func (S *SNP_Prof) OutputSNPCalls() {
 			line_a = append(line_a, "1000")
 		}
 		line_a = append(line_a, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
-		line_a = append(line_a, strconv.Itoa(S.SNP_Bases[snp_pos][snp_call]))
+		line_a = append(line_a, strconv.Itoa(S.SNP_RNum[snp_pos][snp_call]))
 		str_a = strings.Join(line_a, "\t")
 		line_b = make([]string, 0)
-		for snp, snp_num = range S.SNP_Bases[snp_pos] {
+		for snp, snp_num = range S.SNP_RNum[snp_pos] {
 			line_b = append(line_b, snp)
 			line_b = append(line_b, strconv.Itoa(snp_num))
 		}
@@ -843,9 +841,9 @@ func (S *SNP_Prof) OutputSNPCalls() {
 			_, err = file.WriteString(strconv.Itoa(S.Chr_Diff[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(S.Aln_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(S.Chr_Prob[snp_pos][snp_call][idx], 'f', 20, 64) + "\t")
-			_, err = file.WriteString(strconv.Itoa(S.End_Pos1[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(strconv.Itoa(S.Start_Pos1[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.FormatBool(S.Strand1[snp_pos][snp_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.Itoa(S.End_Pos2[snp_pos][snp_call][idx]) + "\t")
+			_, err = file.WriteString(strconv.Itoa(S.Start_Pos2[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.FormatBool(S.Strand2[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(string(S.Read_Info[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(str_b + "\n")
