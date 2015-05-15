@@ -114,18 +114,23 @@ func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 					S.SNP_Prob[pos][string(snp)] = NEW_SNP_RATE
 				}
 			}
-			S.SNP_RNum[pos] = make(map[string]int)
-			S.SNP_BaseQ[pos] = make(map[string][][]byte)
-			S.Chr_Dis[pos] = make(map[string][]int)
-			S.Chr_Diff[pos] = make(map[string][]int)
-			S.Aln_Prob[pos] = make(map[string][]float64)
-			S.Chr_Prob[pos] = make(map[string][]float64)
-			S.Read_Info[pos] = make(map[string][][]byte)
-			S.Start_Pos1[pos] = make(map[string][]int)
-			S.Start_Pos2[pos] = make(map[string][]int)
-			S.Strand1[pos] = make(map[string][]bool)
-			S.Strand2[pos] = make(map[string][]bool)
+			for _, b := range STD_BASES {
+				if _, ok := S.SNP_Prob[pos][string(b)]; !ok {
+					S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
+				}
+			}
 		}
+		S.SNP_RNum[pos] = make(map[string]int)
+		S.SNP_BaseQ[pos] = make(map[string][][]byte)
+		S.Chr_Dis[pos] = make(map[string][]int)
+		S.Chr_Diff[pos] = make(map[string][]int)
+		S.Aln_Prob[pos] = make(map[string][]float64)
+		S.Chr_Prob[pos] = make(map[string][]float64)
+		S.Read_Info[pos] = make(map[string][][]byte)
+		S.Start_Pos1[pos] = make(map[string][]int)
+		S.Start_Pos2[pos] = make(map[string][]int)
+		S.Strand1[pos] = make(map[string][]bool)
+		S.Strand2[pos] = make(map[string][]bool)
 	}
 	return S
 }
@@ -746,6 +751,7 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	}
 	if _, ok := S.SNP_Prob[pos][a]; !ok {
 		S.SNP_Prob[pos][a] = NEW_SNP_RATE
+		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos)])] -= NEW_SNP_RATE
 	}
 	S.SNP_RNum[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
