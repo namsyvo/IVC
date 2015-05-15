@@ -350,41 +350,40 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 		}
 	}
 	for i < len(aligned_ref) {
-		if aligned_ref[i] != '+' && aligned_ref[i] != '-' {
-			ref_ori_pos++
-		}
-		if aligned_ref[i] == '-' {
-			if i >= 1 && aligned_read[i - 1] != '-' {
-				snp_pos = append(snp_pos, pos + ref_ori_pos)
-				snp, qlt := make([]byte, 0), make([]byte, 0)
-				snp = append(snp, aligned_read[i - 1])
-				qlt = append(qlt, aligned_qual[i - 1])
-				for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
-					snp = append(snp, aligned_read[j])
-					qlt = append(qlt, aligned_qual[j])
-				}
+		if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+			snp, qlt := make([]byte, 0), make([]byte, 0)
+			snp = append(snp, aligned_read[i - 1])
+			qlt = append(qlt, aligned_qual[i - 1])
+			for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
+				snp = append(snp, aligned_read[j])
+				qlt = append(qlt, aligned_qual[j])
+			}
+			if j < len(aligned_ref) {
+				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
-				i = j - 1
-			} else {
-				for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
-				}
-				i = j - 1
 			}
-		} else if aligned_read[i] == '-' { //Need to get quality in a proper way in this case!!!
-			snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
+			i = j
+		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Need to get quality in a proper way in this case!!!
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
 			qlt = append(qlt, aligned_qual[i - 1])
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				snp = append(snp, aligned_ref[j])
-				ref_ori_pos++
 			}
-			snp_base = append(snp_base, snp)
-			snp_qual = append(snp_qual, qlt)
-			i = j - 1
+			if j < len(aligned_ref) {
+				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
+				snp_base = append(snp_base, snp)
+				snp_qual = append(snp_qual, qlt)
+			}
+			ref_ori_pos += j - i
+			i = j
+		} else if aligned_ref[i] == '+' {
+			i++
+		} else {
+			ref_ori_pos++
+			i++
 		}
-		i++
 	}
 	PrintVarInfo("BwEditTraceBack, variant info", snp_pos, snp_base, snp_qual)
 	return snp_pos, snp_base, snp_qual
@@ -717,7 +716,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := N - n - 2
+	ref_ori_pos := N - n
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
@@ -730,43 +729,40 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 		}
 	}
 	for i < len(aligned_ref) {
-		if aligned_ref[i] != '+' && aligned_ref[i] != '-' {
-			ref_ori_pos++
-		}
-		if aligned_ref[i] == '-' {
-			if i >= 1 && aligned_read[i - 1] != '-' {
-				snp_pos = append(snp_pos, pos + ref_ori_pos)
-				snp, qlt := make([]byte, 0), make([]byte, 0)
-				snp = append(snp, aligned_read[i - 1])
-				qlt = append(qlt, aligned_qual[i - 1])
-				for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
-					snp = append(snp, aligned_read[j])
-					qlt = append(qlt, aligned_qual[j])
-					i++
-				}
+		if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+			snp, qlt := make([]byte, 0), make([]byte, 0)
+			snp = append(snp, aligned_read[i - 1])
+			qlt = append(qlt, aligned_qual[i - 1])
+			for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
+				snp = append(snp, aligned_read[j])
+				qlt = append(qlt, aligned_qual[j])
+			}
+			if j < len(aligned_ref) {
+				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
-			} else {
-				for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
-					i++
-				}
 			}
-		} else if aligned_read[i] == '-' {
+			i = j
+		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' {
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
 			qlt = append(qlt, aligned_qual[i - 1]) //a temporary value, need to be corrected!
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				snp = append(snp, aligned_ref[j])
-				ref_ori_pos++
 			}
 			if j < len(aligned_read) {
 				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 			}
-			i = j - 1
+			ref_ori_pos += j - i
+			i = j
+		} else if aligned_ref[i] == '+' {
+			i++
+		} else {
+			ref_ori_pos++
+			i++
 		}
-		i++
 	}
 	PrintVarInfo("FwEditTraceBack, variant info", snp_pos, snp_base, snp_qual)
 	return snp_pos, snp_base, snp_qual

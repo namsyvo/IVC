@@ -391,6 +391,9 @@ func (S *SNP_Prof) FindSNPsFromReads(read_info *ReadInfo, snp_results chan SNP, 
 				}
 			}
 		}
+		if p_prob < 1 {
+			break
+		}
 		loop_num++
 	}
 	if p_prob <= 2 * PARA_INFO.Prob_thres {
