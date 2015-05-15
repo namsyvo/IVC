@@ -337,7 +337,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := 0
+	ref_ori_pos := pos
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
@@ -359,7 +359,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				qlt = append(qlt, aligned_qual[j])
 			}
 			if j < len(aligned_ref) {
-				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 			}
@@ -371,8 +371,8 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				snp = append(snp, aligned_ref[j])
 			}
-			if j < len(aligned_ref) {
-				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
+			if j < len(aligned_read) {
+				snp_pos = append(snp_pos, ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 			}
@@ -716,7 +716,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := N - n
+	ref_ori_pos := pos + N - n
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
@@ -738,7 +738,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				qlt = append(qlt, aligned_qual[j])
 			}
 			if j < len(aligned_ref) {
-				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 			}
@@ -751,7 +751,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				snp = append(snp, aligned_ref[j])
 			}
 			if j < len(aligned_read) {
-				snp_pos = append(snp_pos, pos + ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_ori_pos - 1)
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 			}
