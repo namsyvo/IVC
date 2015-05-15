@@ -337,12 +337,17 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := -1
-	for i = 0; i < len(aligned_ref); i++ {
-		if aligned_read[i] != '-' {
+	ref_ori_pos := 0
+	i = 0
+	for i < len(aligned_ref) {
+		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
+			ref_ori_pos++
+			i++
+		} else if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+			i++
+		} else {
 			break
 		}
-		ref_ori_pos++
 	}
 	for i < len(aligned_ref) {
 		if aligned_ref[i] != '+' && aligned_ref[i] != '-' {
@@ -712,10 +717,14 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := N - n - 1
-	for i = 0; i < len(aligned_ref); i++ {
+	ref_ori_pos := N - n - 2
+	i = 0
+	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
 			ref_ori_pos++
+			i++
+		} else if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+			i++
 		} else {
 			break
 		}
