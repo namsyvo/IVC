@@ -68,7 +68,7 @@ func ReadInputInfo() isc.InputInfo {
 	var max_snum = flag.Int("n", 1024, "maximum number of seeds")
 	var min_slen = flag.Int("l", 10, "minimum length of seeds")
 	var max_slen = flag.Int("h", 100, "maximum length of seeds")
-	var max_psnum = flag.Int("k", 1, "maximum number of paired-seeds")
+	var max_psnum = flag.Int("k", 1024, "maximum number of paired-seeds")
 	var dist_thres = flag.Int("d", 0, "threshold of alignment distances")
 	var iter_num = flag.Int("r", 0, "maximum number of iterations")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
