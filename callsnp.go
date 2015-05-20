@@ -27,6 +27,7 @@ type SNP struct {
 	Pos 	uint32 //SNP postion on ref
 	Bases 	[]byte //bases of SNP
 	BaseQ 	[]byte //quality of bases of SNP
+	Type    int    //type of SNP (sub, ins, del...)
 	CDis    int    //chromosomal distance
 	CDiff   int    //diff between aligned pos and true pos
 	AProb   float64 //correct alignment prob
@@ -50,6 +51,7 @@ type SNP_Prof struct {
 	*/
 	SNP_Prob 	map[uint32]map[string]float64 	//Probability of SNP calls
 	SNP_BaseQ 	map[uint32]map[string][][]byte 	//Quality sequences (in FASTQ format) of aligned bases at the SNP call position
+	SNP_Type    map[uint32]map[string][]int     //Type of SNPs (currently: 0:sub and known SNPs, 1:ins, 2:del)
 	SNP_RNum 	map[uint32]map[string]int 		//Numer of reads (bases) aligned to the SNP call postion
 	Chr_Dis     map[uint32]map[string][]int 	//Chromosomal distance between two aligned ends
 	Chr_Diff    map[uint32]map[string][]int 	//Difference betwwen aligned postions and true postions (for simulated data)
@@ -80,8 +82,9 @@ func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 
 	S := new(SNP_Prof)
 	S.SNP_Prob = make(map[uint32]map[string]float64)
-	S.SNP_RNum = make(map[uint32]map[string]int)
 	S.SNP_BaseQ = make(map[uint32]map[string][][]byte)
+	S.SNP_Type = make(map[uint32]map[string][]int)
+	S.SNP_RNum = make(map[uint32]map[string]int)
 	S.Chr_Dis = make(map[uint32]map[string][]int)
 	S.Chr_Diff = make(map[uint32]map[string][]int)
 	S.Aln_Prob = make(map[uint32]map[string][]float64)
@@ -120,8 +123,9 @@ func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 				}
 			}
 		}
-		S.SNP_RNum[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
+		S.SNP_Type[pos]  = make(map[string][]int)
+		S.SNP_RNum[pos] = make(map[string]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -366,6 +370,7 @@ func (S *SNP_Prof) FindSNPsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 								snps_get1[s_idx].BaseQ = make([]byte, len(snps1[s_idx].BaseQ))
 								copy(snps_get1[s_idx].Bases, snps1[s_idx].Bases)
 								copy(snps_get1[s_idx].BaseQ, snps1[s_idx].BaseQ)
+								snps_get1[s_idx].Type = snps1[s_idx].Type
 								snps_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 								snps_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
 								snps_get1[s_idx].AProb = align_prob1
@@ -385,6 +390,7 @@ func (S *SNP_Prof) FindSNPsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 								snps_get2[s_idx].BaseQ = make([]byte, len(snps2[s_idx].BaseQ))
 								copy(snps_get2[s_idx].Bases, snps2[s_idx].Bases)
 								copy(snps_get2[s_idx].BaseQ, snps2[s_idx].BaseQ)
+								snps_get2[s_idx].Type = snps2[s_idx].Type
 								snps_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
 								snps_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
 								snps_get2[s_idx].AProb = align_prob2
@@ -570,8 +576,8 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	align_info *AlignInfo) ([]SNP, int, int, float64) {
 
 	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
-	var l_snp_pos, r_snp_pos []int
-	var l_snp_base, l_snp_qual, r_snp_base, r_snp_qual [][]byte
+	//var l_snp_pos, l_snp_type, r_snp_pos, r_snp_type []int
+	//var l_snp_base, l_snp_qual, r_snp_base, r_snp_qual [][]byte
 	var isSNP, isSameLenSNP bool
 
 	PrintMemStats("Before FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
@@ -590,7 +596,7 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		ref_l_flank = INDEX.SEQ[0 : m_pos + PARA_INFO.Back_step]
 	}
 	read_l_flank, qual_l_flank = read[ : e_pos + PARA_INFO.Back_step], qual[ : e_pos + PARA_INFO.Back_step]
-	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual :=
+	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual, l_snp_type :=
 		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
 			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
 
@@ -610,7 +616,7 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		ref_r_flank = INDEX.SEQ[r_most_pos : len(INDEX.SEQ)]
 	}
 	read_r_flank, qual_r_flank = read[s_pos + 1 - PARA_INFO.Back_step : ], qual[s_pos + 1 - PARA_INFO.Back_step : ]
-	right_d, right_D, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual :=
+	right_d, right_D, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual, r_snp_type :=
 		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, r_most_pos, align_info.Fw_Dist_D, 
 			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
 
@@ -618,33 +624,35 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	prob := left_d + right_d + left_D + right_D
 	if prob <= PARA_INFO.Prob_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, 
+			l_pos, l_base, l_qual, l_type := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, 
 				l_bt_mat, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
 			l_snp_pos = append(l_snp_pos, l_pos...)
 			l_snp_base = append(l_snp_base, l_base...)
 			l_snp_qual = append(l_snp_qual, l_qual...)
+			l_snp_type = append(l_snp_type, l_type...)
 		}
 		PrintMatchTraceInfo(m_pos, l_most_pos, prob, l_snp_pos, read)
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, 
+			r_pos, r_base, r_qual, r_type := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, 
 				r_bt_mat, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
 			r_snp_pos = append(r_snp_pos, r_pos...)
 			r_snp_base = append(r_snp_base, r_base...)
 			r_snp_qual = append(r_snp_qual, r_qual...)
+			r_snp_type = append(r_snp_type, r_type...)
 		}
 		PrintMatchTraceInfo(m_pos, r_most_pos, prob, r_snp_pos, read)
 		var k int
 		for k = 0; k < len(l_snp_pos); k++ {
 			PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
 			var snp SNP
-			snp.Pos, snp.Bases, snp.BaseQ = uint32(l_snp_pos[k]), l_snp_base[k], l_snp_qual[k]
+			snp.Pos, snp.Bases, snp.BaseQ, snp.Type = uint32(l_snp_pos[k]), l_snp_base[k], l_snp_qual[k], l_snp_type[k]
 			snps_arr = append(snps_arr, snp)
 			PrintMemStats("After GetSNP left, snp_num " + strconv.Itoa(k))
 		}
 		for k = 0; k < len(r_snp_pos); k++ {
 			PrintMemStats("Before GetSNP right, snp_num " + strconv.Itoa(k))
 			var snp SNP
-			snp.Pos, snp.Bases, snp.BaseQ = uint32(r_snp_pos[k]), r_snp_base[k], r_snp_qual[k]
+			snp.Pos, snp.Bases, snp.BaseQ, snp.Type = uint32(r_snp_pos[k]), r_snp_base[k], r_snp_qual[k], r_snp_type[k]
 			snps_arr = append(snps_arr, snp)
 			PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
 		}
@@ -662,7 +670,7 @@ UpdateSNPProb updates SNP probablilities for all possible SNPs.
 --------------------------------------------------------------------------------------------------*/
 func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 	pos := snp.Pos
-	a := string(snp.Bases)
+	a := string(snp.Bases[0])
 	q := snp.BaseQ[0]
 
 	if _, snp_exist := S.SNP_Prob[pos]; !snp_exist {
@@ -673,8 +681,9 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.SNP_RNum[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
+		S.SNP_Type[pos] = make(map[string][]int)
+		S.SNP_RNum[pos] = make(map[string]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -685,11 +694,9 @@ func (S *SNP_Prof) UpdateSNPProb(snp SNP) {
 		S.Strand1[pos] = make(map[string][]bool)
 		S.Strand2[pos] = make(map[string][]bool)
 	}
-	if _, ok := S.SNP_Prob[pos][a]; !ok {
-		S.SNP_Prob[pos][a] = NEW_SNP_RATE
-	}
-	S.SNP_RNum[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
+	S.SNP_Type[pos][a] = append(S.SNP_Type[pos][a], snp.Type)
+	S.SNP_RNum[pos][a] += 1
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
@@ -737,8 +744,9 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.SNP_RNum[pos] = make(map[string]int)
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
+		S.SNP_Type[pos] = make(map[string][]int)
+		S.SNP_RNum[pos] = make(map[string]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
 		S.Aln_Prob[pos] = make(map[string][]float64)
@@ -749,12 +757,14 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 		S.Strand1[pos] = make(map[string][]bool)
 		S.Strand2[pos] = make(map[string][]bool)
 	}
+	//Notice: Using NEW_SNP_RATE, need to consider NEW_INDEL_RATE instead
 	if _, ok := S.SNP_Prob[pos][a]; !ok {
 		S.SNP_Prob[pos][a] = NEW_SNP_RATE
 		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos)])] -= NEW_SNP_RATE
 	}
-	S.SNP_RNum[pos][a] += 1
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
+	S.SNP_Type[pos][a] = append(S.SNP_Type[pos][a], snp.Type)
+	S.SNP_RNum[pos][a] += 1
 	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], snp.CDis)
 	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], snp.CDiff)
 	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], snp.AProb)
@@ -822,9 +832,21 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
+		if snp_call == string(INDEX.SEQ[pos]) {
+			continue
+		}
 		line_a = make([]string, 0)
 		line_a = append(line_a, strconv.Itoa(pos + 1))
-		line_a = append(line_a, snp_call)
+		if _, ok := S.SNP_Type[snp_pos][snp_call]; ok {
+			if S.SNP_Type[snp_pos][snp_call][0] == 2 {
+				continue
+				//line_a = append(line_a, string(snp_call[0]))
+			} else {
+				line_a = append(line_a, snp_call)
+			}
+		} else {
+			line_a = append(line_a, snp_call)
+		}
 		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
