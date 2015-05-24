@@ -49,16 +49,16 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var snp_pos, snp_type []int
 	var snp_base, snp_qual [][]byte
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[pos + n - 1 - PARA_INFO.Back_step]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1 - PARA_INFO.Back_step]; !is_same_len_snp {
+		if _, is_snp = INDEX.SNP_PROF[pos + n - 1 - PARA_INFO.Indel_backup]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1 - PARA_INFO.Indel_backup]; !is_same_len_snp {
 				break
 			}
 		}
 		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
-				if m + 3 < len(read) && n + 3 < len(ref) {
-					m += 3
-					n += 3
+				if m + PARA_INFO.Ham_backup < len(read) && n + PARA_INFO.Ham_backup < len(ref) {
+					m += PARA_INFO.Ham_backup
+					n += PARA_INFO.Ham_backup
 				}
 				break
 				snp_pos = append(snp_pos, pos + n - 1)
@@ -417,16 +417,16 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[pos + N - n + PARA_INFO.Back_step]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n + PARA_INFO.Back_step]; !is_same_len_snp {
+		if _, is_snp = INDEX.SNP_PROF[pos + N - n + PARA_INFO.Indel_backup]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n + PARA_INFO.Indel_backup]; !is_same_len_snp {
 				break
 			}
 		}
 		if _, is_snp = INDEX.SNP_PROF[pos + N - n]; !is_snp {
 			if read[M - m] != ref[N - n] {
-				if M - (m + 3) > 0 && N - (n + 3) > 0 {
-					m += 3
-					n += 3
+				if M - (m + PARA_INFO.Ham_backup) > 0 && N - (n + PARA_INFO.Ham_backup) > 0 {
+					m += PARA_INFO.Ham_backup
+					n += PARA_INFO.Ham_backup
 				}
 				break
                 snp_pos = append(snp_pos, pos + N - n)

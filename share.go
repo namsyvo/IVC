@@ -72,12 +72,14 @@ type ParaInfo struct {
 	Mut_rate        float32 //average mutation rate, estmated from reference genome
 	Mut_var_factor  int     //factor for standard variation of mutation rate
 	Iter_num_factor int     //factor for number of iterations 
-	Back_step		int 	//number of extra bases to calculate alignment
 	Read_len        int     //read length, calculated from read files
 	Info_len		int 	//maximum size of array to store read headers
 	Sub_cost		float64
 	Gap_open_cost	float64
 	Gap_ext_cost	float64
+	Seed_backup		int 	//number of backup bases from seeds
+	Indel_backup    int     //number of backup bases from known indels
+	Ham_backup      int     //number of backup bases from Hamming alignment
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -85,7 +87,9 @@ type ParaInfo struct {
 //--------------------------------------------------------------------------------------------------
 func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres, iter_num int) *ParaInfo {
 	para_info := new(ParaInfo)
-	para_info.Back_step = 6
+	para_info.Seed_backup = 6
+	para_info.Indel_backup = 6
+	para_info.Ham_backup = 3
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
 	para_info.Iter_num_factor = 2

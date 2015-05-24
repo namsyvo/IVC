@@ -576,8 +576,6 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	align_info *AlignInfo) ([]SNP, int, int, float64) {
 
 	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
-	//var l_snp_pos, l_snp_type, r_snp_pos, r_snp_type []int
-	//var l_snp_base, l_snp_qual, r_snp_base, r_snp_qual [][]byte
 	var isSNP, isSameLenSNP bool
 
 	PrintMemStats("Before FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
@@ -591,18 +589,17 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		}
 	}
 	if l_most_pos >= 0 {
-		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos + PARA_INFO.Back_step]
+		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos + PARA_INFO.Seed_backup]
 	} else {
-		ref_l_flank = INDEX.SEQ[0 : m_pos + PARA_INFO.Back_step]
+		ref_l_flank = INDEX.SEQ[0 : m_pos + PARA_INFO.Seed_backup]
 	}
-	read_l_flank, qual_l_flank = read[ : e_pos + PARA_INFO.Back_step], qual[ : e_pos + PARA_INFO.Back_step]
+	read_l_flank, qual_l_flank = read[ : e_pos + PARA_INFO.Seed_backup], qual[ : e_pos + PARA_INFO.Seed_backup]
 	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual, l_snp_type :=
 		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
 			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
 
-
 	right_ext_add_len := 0
-	r_most_pos := m_pos + s_pos - e_pos + 1 - PARA_INFO.Back_step
+	r_most_pos := m_pos + s_pos - e_pos + 1 - PARA_INFO.Seed_backup
 	for i := r_most_pos; i < r_most_pos + (len(read) - s_pos) - 1; i++ {
 		_, isSNP = INDEX.SNP_PROF[i]
 		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
@@ -610,12 +607,12 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 			right_ext_add_len++
 		}
 	}
-	if r_most_pos + PARA_INFO.Back_step + (len(read) - s_pos) - 1 + right_ext_add_len <= len(INDEX.SEQ) {
-		ref_r_flank = INDEX.SEQ[r_most_pos : r_most_pos + PARA_INFO.Back_step + (len(read) - s_pos) - 1 + right_ext_add_len]
+	if r_most_pos + PARA_INFO.Seed_backup + (len(read) - s_pos) - 1 + right_ext_add_len <= len(INDEX.SEQ) {
+		ref_r_flank = INDEX.SEQ[r_most_pos : r_most_pos + PARA_INFO.Seed_backup + (len(read) - s_pos) - 1 + right_ext_add_len]
 	} else {
 		ref_r_flank = INDEX.SEQ[r_most_pos : len(INDEX.SEQ)]
 	}
-	read_r_flank, qual_r_flank = read[s_pos + 1 - PARA_INFO.Back_step : ], qual[s_pos + 1 - PARA_INFO.Back_step : ]
+	read_r_flank, qual_r_flank = read[s_pos + 1 - PARA_INFO.Seed_backup : ], qual[s_pos + 1 - PARA_INFO.Seed_backup : ]
 	right_d, right_D, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual, r_snp_type :=
 		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, r_most_pos, align_info.Fw_Dist_D, 
 			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
