@@ -829,15 +829,17 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		if snp_call == string(INDEX.SEQ[pos]) {
+		if snp_call == string(INDEX.SEQ[pos]) { //do not call SNPs which are identical with Ref
+			continue
+		}
+		if len(snp_call) == 2 && snp_call[0] == snp_call[1] { //do not call homopolymer indels with length 2
 			continue
 		}
 		line_a = make([]string, 0)
 		line_a = append(line_a, strconv.Itoa(pos + 1))
 		if _, ok := S.SNP_Type[snp_pos][snp_call]; ok {
-			if S.SNP_Type[snp_pos][snp_call][0] == 2 {
+			if S.SNP_Type[snp_pos][snp_call][0] == 2 { //do not call DEL at this stage
 				continue
-				//line_a = append(line_a, string(snp_call[0]))
 			} else {
 				line_a = append(line_a, snp_call)
 			}
