@@ -153,12 +153,12 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	for i = 1; i <= m; i++ {
 		prob_i = -math.Log10(1.0 - math.Pow(10, -(float64(qual[i - 1]) - 33) / 10.0))
 		mis_i = PARA_INFO.Sub_cost + prob_i
-		ins_i_open = PARA_INFO.Gap_open_cost + prob_i
-		ins_i_ext = PARA_INFO.Gap_ext_cost + prob_i
+		ins_i_open = PARA_INFO.Gap_open_cost// + prob_i
+		ins_i_ext = PARA_INFO.Gap_ext_cost// + prob_i
 		for j = 1; j <= n; j++ {
 			if _, is_snp = INDEX.SNP_PROF[pos + j - 1]; !is_snp {
 				if read[i - 1] == ref[j - 1] {
-					sub_i = prob_i
+					sub_i = 0//prob_i
 				} else {
 					sub_i = mis_i
 				}
@@ -521,12 +521,12 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	for i = 1; i <= m; i++ {
 		prob_i = -math.Log10(1.0 - math.Pow(10, -(float64(qual[M - i]) - 33) / 10.0))
 		mis_i = PARA_INFO.Sub_cost + prob_i
-		ins_i_open = PARA_INFO.Gap_open_cost + prob_i
-		ins_i_ext = PARA_INFO.Gap_ext_cost + prob_i
+		ins_i_open = PARA_INFO.Gap_open_cost// + prob_i
+		ins_i_ext = PARA_INFO.Gap_ext_cost// + prob_i
 		for j = 1; j <= n; j++ {
 			if _, is_snp = INDEX.SNP_PROF[pos + N - j]; !is_snp {
 				if read[M - i] == ref[N - j] {
-					sub_i = prob_i
+					sub_i = 0//prob_i
 				} else {
 					sub_i = mis_i
 				}
