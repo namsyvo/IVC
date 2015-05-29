@@ -1,4 +1,6 @@
-(1) Implement affine gap alignment strategy
+(1) Call known deletions:
+    + Adjust code to capture known deletions in alignment.
+    + Report all types of variants.
 
 (2) Finish some back work:
     + Read fully allele frequency from SNP profile (VCF files).
