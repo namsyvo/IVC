@@ -575,69 +575,98 @@ FindSNPsFromExtension determines SNPs based on alignment between reads and multi
 func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte, 
 	align_info *AlignInfo) ([]SNP, int, int, float64) {
 
-	var ref_l_flank, ref_r_flank, read_l_flank, read_r_flank, qual_l_flank, qual_r_flank []byte
-	var isSNP, isSameLenSNP bool
-
 	PrintMemStats("Before FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
-	l_ext_add_len := 0
-	l_most_pos := m_pos - e_pos - l_ext_add_len
-	for i := m_pos - e_pos; i < m_pos; i++ {
-		_, isSNP = INDEX.SNP_PROF[i]
-		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
-		if isSNP && !isSameLenSNP {
-			l_ext_add_len++
-		}
-	}
-	if l_most_pos >= 0 {
-		ref_l_flank = INDEX.SEQ[l_most_pos : m_pos + PARA_INFO.Seed_backup]
-	} else {
-		ref_l_flank = INDEX.SEQ[0 : m_pos + PARA_INFO.Seed_backup]
-	}
-	read_l_flank, qual_l_flank = read[ : e_pos + PARA_INFO.Seed_backup], qual[ : e_pos + PARA_INFO.Seed_backup]
-	left_d, left_D, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual, l_snp_type :=
-		S.BackwardDistance(read_l_flank, qual_l_flank, ref_l_flank, l_most_pos, align_info.Bw_Dist_D, 
-			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
 
-	right_ext_add_len := 0
-	r_most_pos := m_pos + s_pos - e_pos + 1 - PARA_INFO.Seed_backup
-	for i := r_most_pos; i < r_most_pos + (len(read) - s_pos) - 1; i++ {
-		_, isSNP = INDEX.SNP_PROF[i]
-		_, isSameLenSNP = INDEX.SAME_LEN_SNP[i]
-		if isSNP && !isSameLenSNP {
-			right_ext_add_len++
+	var i, j, del_len int
+	var is_snp, is_del bool
+
+	l_read_flank_len := e_pos + PARA_INFO.Seed_backup
+	l_read_flank, l_qual_flank := read[ : l_read_flank_len], qual[ : l_read_flank_len]
+
+	l_ref_flank := make([]byte, 0)
+	l_ref_pos_map := make([]int, 0)
+	l_align_e_pos := m_pos - 1 + PARA_INFO.Seed_backup
+	i = l_align_e_pos
+	j = 0 //to check length of l_ref_flank
+	for j < l_read_flank_len && i >= 0 {
+		if _, is_snp = INDEX.SNP_PROF[i]; is_snp {
+			if del_len, is_del = INDEX.DEL_SNP[i]; is_del {
+				if i + del_len <= l_align_e_pos && del_len < len(l_ref_flank) {
+					l_ref_flank = l_ref_flank[ : len(l_ref_flank) - del_len]
+					l_ref_pos_map = l_ref_pos_map[ : len(l_ref_pos_map) - del_len]
+					j -= del_len
+				}
+			}
 		}
+		l_ref_pos_map = append(l_ref_pos_map, i)
+		l_ref_flank = append(l_ref_flank, INDEX.SEQ[i])
+		j++
+		i--
 	}
-	if r_most_pos + PARA_INFO.Seed_backup + (len(read) - s_pos) - 1 + right_ext_add_len <= len(INDEX.SEQ) {
-		ref_r_flank = INDEX.SEQ[r_most_pos : r_most_pos + PARA_INFO.Seed_backup + (len(read) - s_pos) - 1 + right_ext_add_len]
-	} else {
-		ref_r_flank = INDEX.SEQ[r_most_pos : len(INDEX.SEQ)]
+	l_align_s_pos := i + 1
+
+	//Reverse l_ref_pos_map and l_ref_flank to get them in original direction
+	for i, j = 0, len(l_ref_pos_map) - 1; i < j; i, j = i + 1, j - 1 {
+		l_ref_pos_map[i], l_ref_pos_map[j] = l_ref_pos_map[j], l_ref_pos_map[i]
 	}
-	read_r_flank, qual_r_flank = read[s_pos + 1 - PARA_INFO.Seed_backup : ], qual[s_pos + 1 - PARA_INFO.Seed_backup : ]
-	right_d, right_D, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual, r_snp_type :=
-		S.ForwardDistance(read_r_flank, qual_r_flank, ref_r_flank, r_most_pos, align_info.Fw_Dist_D, 
-			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
+	for i, j = 0, len(l_ref_flank) - 1; i < j; i, j = i + 1, j - 1 {
+		l_ref_flank[i], l_ref_flank[j] = l_ref_flank[j], l_ref_flank[i]
+	}
+
+	seed_len := s_pos - e_pos + 1
+	r_read_flank_len := len(read) - s_pos - 1 + PARA_INFO.Seed_backup
+	r_read_flank, r_qual_flank := read[len(read) - r_read_flank_len : ], qual[len(read) - r_read_flank_len : ]
+
+	r_ref_flank := make([]byte, 0)
+	r_ref_pos_map := make([]int, 0)
+	r_align_s_pos := m_pos + seed_len - PARA_INFO.Seed_backup
+	i = r_align_s_pos
+	j = 0 //to check length of r_ref_flank
+	for j < r_read_flank_len && i < len(INDEX.SEQ) {
+		r_ref_pos_map = append(r_ref_pos_map, i)
+		r_ref_flank = append(r_ref_flank, INDEX.SEQ[i])
+		if _, is_snp = INDEX.SNP_PROF[i]; is_snp {
+			if del_len, is_del = INDEX.DEL_SNP[i]; is_del {
+				if i + del_len < len(INDEX.SEQ) {
+					i += del_len
+				}
+			}
+		}
+		j++
+		i++
+	}
+
+	PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
+	PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
+
+	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual, l_snp_type :=
+		S.BackwardDistance(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, align_info.Bw_Dist_D, 
+			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT, l_ref_pos_map)
+	r_Ham_dist, r_Edit_dist, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual, r_snp_type :=
+		S.ForwardDistance(r_read_flank, r_qual_flank, r_ref_flank, r_align_s_pos, align_info.Fw_Dist_D, 
+			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT, r_ref_pos_map)
 
 	var snps_arr []SNP
-	prob := left_d + right_d + left_D + right_D
+	prob := l_Ham_dist + r_Ham_dist + l_Edit_dist + r_Edit_dist
 	if prob <= PARA_INFO.Prob_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual, l_type := S.BackwardTraceBack(read_l_flank, qual_l_flank, ref_l_flank, l_m, l_n, l_most_pos, 
-				l_bt_mat, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT)
+			l_pos, l_base, l_qual, l_type := S.BackwardTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_align_s_pos, 
+				l_bt_mat, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT, l_ref_pos_map)
 			l_snp_pos = append(l_snp_pos, l_pos...)
 			l_snp_base = append(l_snp_base, l_base...)
 			l_snp_qual = append(l_snp_qual, l_qual...)
 			l_snp_type = append(l_snp_type, l_type...)
 		}
-		PrintMatchTraceInfo(m_pos, l_most_pos, prob, l_snp_pos, read)
+		PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_snp_pos, read)
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual, r_type := S.ForwardTraceBack(read_r_flank, qual_r_flank, ref_r_flank, r_m, r_n, r_most_pos, 
-				r_bt_mat, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT)
+			r_pos, r_base, r_qual, r_type := S.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos, 
+				r_bt_mat, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT, r_ref_pos_map)
 			r_snp_pos = append(r_snp_pos, r_pos...)
 			r_snp_base = append(r_snp_base, r_base...)
 			r_snp_qual = append(r_snp_qual, r_qual...)
 			r_snp_type = append(r_snp_type, r_type...)
 		}
-		PrintMatchTraceInfo(m_pos, r_most_pos, prob, r_snp_pos, read)
+		PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_snp_pos, read)
 		var k int
 		for k = 0; k < len(l_snp_pos); k++ {
 			PrintMemStats("Before GetSNP left, snp_num " + strconv.Itoa(k))
@@ -654,7 +683,7 @@ func (S *SNP_Prof) FindSNPsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 			PrintMemStats("After GetSNP right, snp_num " + strconv.Itoa(k))
 		}
 		PrintMemStats("After FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
-		return snps_arr, l_most_pos, r_most_pos, prob
+		return snps_arr, l_align_s_pos, r_align_s_pos, prob
 	}
 	PrintMemStats("After FindSNPsFromExtension, m_pos " + strconv.Itoa(m_pos))
 	return snps_arr, -1, -1, -1
@@ -808,6 +837,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	}
 	defer file.Close()
 
+	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSNP_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tNUM\t...\n")
 	var snp_pos uint32
 	SNP_Pos := make([]int, 0, len(S.SNP_Prob))
 	for snp_pos, _ = range S.SNP_Prob {
@@ -820,6 +850,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	var line_a, line_b []string
 	var snp_call_prob, snp_prob float64
 	var snp_num, idx int
+	var is_snp bool
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
 		snp_call_prob = 0
@@ -829,32 +860,51 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		if snp_call == string(INDEX.SEQ[pos]) { //do not call SNPs which are identical with Ref
+		if snp_call == string(INDEX.SEQ[pos : pos + len(snp_call)]) { //ignore variants that are identical with ref
 			continue
 		}
-		if len(snp_call) == 2 && snp_call[0] == snp_call[1] { //do not call homopolymer indels with length 2
+		if len(snp_call) == 2 && snp_call[0] == snp_call[1] { //ignore indels of length 2 that are homopolymer
 			continue
 		}
+		//Start getting SNP Call info
 		line_a = make([]string, 0)
+		//#CHROM
+		line_a = append(line_a, ".")
+		//POS
 		line_a = append(line_a, strconv.Itoa(pos + 1))
-		if _, ok := S.SNP_Type[snp_pos][snp_call]; ok {
-			if S.SNP_Type[snp_pos][snp_call][0] == 2 { //do not call DEL at this stage
-				continue
-			} else {
-				line_a = append(line_a, snp_call)
-			}
-		} else {
+		//ID
+		line_a = append(line_a, ".")
+		//REF & ALT
+		if _, is_snp = INDEX.SNP_PROF[pos]; is_snp {
+			line_a = append(line_a, string(INDEX.SNP_PROF[pos][0]))
 			line_a = append(line_a, snp_call)
+		} else {
+			if S.SNP_Type[snp_pos][snp_call][0] == 2 {
+				line_a = append(line_a, snp_call)
+				line_a = append(line_a, string(INDEX.SEQ[pos]))
+			} else {
+				line_a = append(line_a, string(INDEX.SEQ[pos]))
+				line_a = append(line_a, snp_call)
+			}			
 		}
+		//QUAL
 		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
 		} else {
 			line_a = append(line_a, "1000")
 		}
+		//FILTER
+		line_a = append(line_a, ".")
+		//INFO
+		line_a = append(line_a, ".")
+		//FORMAT
+		line_a = append(line_a, ".")
+		//ISC-INFO
 		line_a = append(line_a, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
 		line_a = append(line_a, strconv.Itoa(S.SNP_RNum[snp_pos][snp_call]))
 		str_a = strings.Join(line_a, "\t")
+		
 		line_b = make([]string, 0)
 		for snp, snp_num = range S.SNP_RNum[snp_pos] {
 			line_b = append(line_b, snp)

@@ -34,7 +34,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64, 
-	BT_D, BT_IS, BT_IT [][][]int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
+	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var snp_len int
 	var snp_str string
@@ -49,28 +49,30 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var snp_pos, snp_type []int
 	var snp_base, snp_qual [][]byte
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[pos + n - 1 - PARA_INFO.Indel_backup]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1 - PARA_INFO.Indel_backup]; !is_same_len_snp {
+		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[n - 1] - PARA_INFO.Indel_backup]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[n - 1] - PARA_INFO.Indel_backup]; !is_same_len_snp {
 				break
 			}
 		}
-		if _, is_snp = INDEX.SNP_PROF[pos + n - 1]; !is_snp {
+		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[n - 1]]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				if m + PARA_INFO.Ham_backup < len(read) && n + PARA_INFO.Ham_backup < len(ref) {
 					m += PARA_INFO.Ham_backup
 					n += PARA_INFO.Ham_backup
 				}
 				break
-				snp_pos = append(snp_pos, pos + n - 1)
+				/*
+				snp_pos = append(snp_pos, ref_pos_map[n - 1])
 				snp_base = append(snp_base, []byte{read[m - 1]})
 				snp_qual = append(snp_qual, []byte{qual[m - 1]})
 				snp_type = append(snp_type, 0)
+				*/
 				align_prob += PARA_INFO.Sub_cost - math.Log10(1.0 - math.Pow(10, -(float64(qual[m - 1]) - 33) / 10.0))
 			}
 			m--
 			n--
-		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + n - 1]; is_same_len_snp {
-			snp_prof, _ = S.SNP_Prob[uint32(pos + n - 1)]
+		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[n - 1]]; is_same_len_snp {
+			snp_prof, _ = S.SNP_Prob[uint32(ref_pos_map[n - 1])]
 			min_p = math.MaxFloat64
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
@@ -82,7 +84,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			}
 			if min_p < math.MaxFloat64 {
 				align_prob = align_prob + min_p
-				snp_pos = append(snp_pos, pos + n - 1)
+				snp_pos = append(snp_pos, ref_pos_map[n - 1])
 				snp, qlt := make([]byte, snp_len), make([]byte, snp_len)
 				copy(snp, read[m - snp_len : m])
 				copy(qlt, qual[m - snp_len : m])
@@ -156,7 +158,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 		ins_i_open = PARA_INFO.Gap_open_cost// + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost// + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_snp = INDEX.SNP_PROF[pos + j - 1]; !is_snp {
+			if _, is_snp = INDEX.SNP_PROF[ref_pos_map[j - 1]]; !is_snp {
 				if read[i - 1] == ref[j - 1] {
 					sub_i = 0//prob_i
 				} else {
@@ -191,7 +193,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
-				snp_prof, _ = S.SNP_Prob[uint32(pos + j - 1)]
+				snp_prof, _ = S.SNP_Prob[uint32(ref_pos_map[j - 1])]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
 					//One possible case: i - snp_len < 0 for all k
@@ -254,9 +256,9 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int, 
-	BT_D, BT_IS, BT_IT [][][]int) ([]int, [][]byte, [][]byte, []int) {
+	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	var is_snp bool
+	var is_snp, is_same_len_snp, is_del bool
 	var snp_len int
 	var snp_pos, snp_type []int
 	var snp_base, snp_qual [][]byte
@@ -269,12 +271,12 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	for i > 0 || j > 0 {
 		is_snp = false
 		if j > 0 {
-			_, is_snp = INDEX.SNP_PROF[pos + j - 1]
+			_, is_snp = INDEX.SNP_PROF[ref_pos_map[j - 1]]
 		}
 		if !is_snp { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[i - 1] != ref[j - 1] {
-					snp_pos = append(snp_pos, pos + j - 1)
+					snp_pos = append(snp_pos, ref_pos_map[j - 1])
 					snp_base = append(snp_base, []byte{read[i - 1]})
 					snp_qual = append(snp_qual, []byte{qual[i - 1]})
 					snp_type = append(snp_type, 0)
@@ -303,13 +305,19 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 		} else { //known VARIANT location
 			if  BT_D[i][j][2] > 0 {
 				snp_len = BT_D[i][j][2]
-				snp_pos = append(snp_pos, pos + j - 1)
+				snp_pos = append(snp_pos, ref_pos_map[j - 1])
 				snp, qlt := make([]byte, snp_len), make([]byte, snp_len)
 				copy(snp, read[i - snp_len : i])
 				copy(qlt, qual[i - snp_len : i])
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
-				snp_type = append(snp_type, 0)
+				if _, is_del = INDEX.DEL_SNP[ref_pos_map[j - 1]]; is_del {
+					snp_type = append(snp_type, 2)
+				} else if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[j - 1]]; is_same_len_snp {
+					snp_type = append(snp_type, 0)
+				} else {
+					snp_type = append(snp_type, 1)
+				}
 				for k = 0; k < snp_len - 1; k++ {
 					aligned_read = append(aligned_read, read[i - 1 - k])
 					aligned_qual = append(aligned_qual, qual[i - 1 - k])
@@ -341,7 +349,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := pos
+	ref_ori_pos := 0
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
@@ -354,7 +362,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 		}
 	}
 	for i < len(aligned_ref) {
-		if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+		if aligned_read[i] != '-' && aligned_ref[i] == '-' { //Insertions
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_read[i - 1])
 			qlt = append(qlt, aligned_qual[i - 1])
@@ -363,21 +371,22 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				qlt = append(qlt, aligned_qual[j])
 			}
 			if j < len(aligned_ref) {
-				snp_pos = append(snp_pos, ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_pos_map[ref_ori_pos - 1])
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 				snp_type = append(snp_type, 1)
 			}
 			i = j
-		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Need to get quality in a proper way in this case!!!
+		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Deletions
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
+			//A temporary solution, need to get quality in a proper way in this case!!!
 			qlt = append(qlt, aligned_qual[i - 1])
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				snp = append(snp, aligned_ref[j])
 			}
 			if j < len(aligned_read) {
-				snp_pos = append(snp_pos, ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_pos_map[ref_ori_pos - 1])
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 				snp_type = append(snp_type, 2)
@@ -402,7 +411,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64, 
-	BT_D, BT_IS, BT_IT [][][]int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
+	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var snp_len int
 	var snp_prof map[string]float64
@@ -417,29 +426,31 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[pos + N - n + PARA_INFO.Indel_backup]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n + PARA_INFO.Indel_backup]; !is_same_len_snp {
+		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[N - n] + PARA_INFO.Indel_backup]; is_snp {
+			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[N - n] + PARA_INFO.Indel_backup]; !is_same_len_snp {
 				break
 			}
 		}
-		if _, is_snp = INDEX.SNP_PROF[pos + N - n]; !is_snp {
+		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[N - n]]; !is_snp {
 			if read[M - m] != ref[N - n] {
 				if M - (m + PARA_INFO.Ham_backup) > 0 && N - (n + PARA_INFO.Ham_backup) > 0 {
 					m += PARA_INFO.Ham_backup
 					n += PARA_INFO.Ham_backup
 				}
 				break
-                snp_pos = append(snp_pos, pos + N - n)
+				/*
+                snp_pos = append(snp_pos, ref_pos_map[N - n])
                 snp_base = append(snp_base, []byte{read[M - m]})
                 snp_qual = append(snp_qual, []byte{qual[M - m]})
                 snp_type = append(snp_type, 0)
+                */
 				align_prob += PARA_INFO.Sub_cost - math.Log10(1.0 - math.Pow(10, -(float64(qual[M - m]) - 33) / 10.0))
 			}
 			m--
 			n--
-		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[pos + N - n]; is_same_len_snp {
+		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[N - n]]; is_same_len_snp {
 			min_p = math.MaxFloat64
-			snp_prof, is_snp = S.SNP_Prob[uint32(pos + N - n)]
+			snp_prof, is_snp = S.SNP_Prob[uint32(ref_pos_map[N - n])]
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
 					p = AlignCostKnownLoci(read[M - m : M - m + snp_len], []byte(snp_str), qual[M - m : M - m + snp_len], snp_prob)
@@ -450,7 +461,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			}
 			if min_p < math.MaxFloat64 {
 				align_prob = align_prob + min_p
-				snp_pos = append(snp_pos, pos + N - n)
+				snp_pos = append(snp_pos, ref_pos_map[N - n])
 				snp, qlt := make([]byte, snp_len), make([]byte, snp_len)
 				copy(snp, read[M - m : M - (m - snp_len)])
 				copy(qlt, qual[M - m : M - (m - snp_len)])
@@ -524,7 +535,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		ins_i_open = PARA_INFO.Gap_open_cost// + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost// + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_snp = INDEX.SNP_PROF[pos + N - j]; !is_snp {
+			if _, is_snp = INDEX.SNP_PROF[ref_pos_map[N - j]]; !is_snp {
 				if read[M - i] == ref[N - j] {
 					sub_i = 0//prob_i
 				} else {
@@ -558,7 +569,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
-				snp_prof, _ = S.SNP_Prob[uint32(pos + N - j)]
+				snp_prof, _ = S.SNP_Prob[uint32(ref_pos_map[N - j])]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
 					//One possible case: i - snp_len < 0 for all k
@@ -628,11 +639,11 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int, 
-	BT_D, BT_IS, BT_IT [][][]int) ([]int, [][]byte, [][]byte, []int) {
+	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
 
-	var is_snp bool
+	var is_snp, is_same_len_snp, is_del bool
 	var snp_len int
 	var snp_pos, snp_type []int
 	var snp_base, snp_qual [][]byte
@@ -644,12 +655,12 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	for i > 0 || j > 0 {
 		is_snp = false
 		if j > 0 {
-			_, is_snp = INDEX.SNP_PROF[pos + N - j]
+			_, is_snp = INDEX.SNP_PROF[ref_pos_map[N - j]]
 		}
 		if !is_snp { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[M - i] != ref[N - j] {
-					snp_pos = append(snp_pos, pos + N - j)
+					snp_pos = append(snp_pos, ref_pos_map[N - j])
 					snp_base = append(snp_base, []byte{read[M - i]})
 					snp_qual = append(snp_qual, []byte{qual[M - i]})
 					snp_type = append(snp_type, 0)
@@ -679,13 +690,19 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			if bt_mat == 0 {
 				if BT_D[i][j][2] > 0 {
 					snp_len = BT_D[i][j][2]
-					snp_pos = append(snp_pos, pos + N - j)
+					snp_pos = append(snp_pos, ref_pos_map[N - j])
 					snp, qlt := make([]byte, snp_len), make([]byte, snp_len)
 					copy(snp, read[M - i : M - (i - snp_len)])
 					copy(qlt, qual[M - i : M - (i - snp_len)])
 					snp_base = append(snp_base, snp)
 					snp_qual = append(snp_qual, qlt)
-					snp_type = append(snp_type, 0)
+					if _, is_del = INDEX.DEL_SNP[ref_pos_map[N - j]]; is_del {
+						snp_type = append(snp_type, 2)
+					} else if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[N - j]]; is_same_len_snp {
+						snp_type = append(snp_type, 0)
+					} else {
+						snp_type = append(snp_type, 1)
+					}
 					aligned_read = append(aligned_read, read[M - i])
 					aligned_qual = append(aligned_qual, qual[M - i])
 					aligned_ref = append(aligned_ref, ref[N - j])
@@ -726,7 +743,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get SNPs
-	ref_ori_pos := pos + N - n
+	ref_ori_pos := N - n
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
@@ -739,7 +756,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 		}
 	}
 	for i < len(aligned_ref) {
-		if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+		if aligned_read[i] != '-' && aligned_ref[i] == '-' { //Insertions
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_read[i - 1])
 			qlt = append(qlt, aligned_qual[i - 1])
@@ -748,21 +765,22 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				qlt = append(qlt, aligned_qual[j])
 			}
 			if j < len(aligned_ref) {
-				snp_pos = append(snp_pos, ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_pos_map[ref_ori_pos - 1])
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 				snp_type = append(snp_type, 1)
 			}
 			i = j
-		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' {
+		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Deletions
 			snp, qlt := make([]byte, 0), make([]byte, 0)
 			snp = append(snp, aligned_ref[i - 1])
-			qlt = append(qlt, aligned_qual[i - 1]) //a temporary value, need to be corrected!
+			//A temporary solution, need to get quality in a proper way in this case!!!
+			qlt = append(qlt, aligned_qual[i - 1])
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				snp = append(snp, aligned_ref[j])
 			}
 			if j < len(aligned_read) {
-				snp_pos = append(snp_pos, ref_ori_pos - 1)
+				snp_pos = append(snp_pos, ref_pos_map[ref_ori_pos - 1])
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
 				snp_type = append(snp_type, 2)

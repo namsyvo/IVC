@@ -27,6 +27,7 @@ var (
 	PRINT_EDIT_DIST_INFO = false
 	PRINT_EDIT_DIST_MAT_INFO = false
 
+	PRINT_SNP_CALL_INFO = false
 	PRINT_ALIGN_TRACE_INFO = false
 
 	GET_ALIGN_READ_INFO = false
@@ -66,8 +67,8 @@ func PrintMemStats(mesg string) {
 }
 
 /*------------------------
-//Printing ALignment info
-------------------------*/
+//Printing Alignment info
+-------------------------*/
 
 func PrintLoopTraceInfo(loop_num int, mess string) {
 	if PRINT_ALIGN_TRACE_INFO {
@@ -108,9 +109,43 @@ func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_snp_pos []int
 	}
 }
 
-/*-----------------------
-//Printing Edit dis info
------------------------*/
+/*--------------------------
+//Printing SNP calling info
+---------------------------*/
+
+func PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank []byte) {
+	if PRINT_SNP_CALL_INFO {
+		fmt.Println("l_read_flank", string(l_read_flank))
+		fmt.Println("l_ref_flank", string(l_ref_flank))
+		fmt.Println("r_read_flank", string(r_read_flank))
+		fmt.Println("r_ref_flank", string(r_ref_flank))
+	}
+}
+
+func PrintRefPosMap(l_ref_pos_map, r_ref_pos_map []int) {
+	if PRINT_SNP_CALL_INFO {
+		fmt.Println("l_ref_pos_map", l_ref_pos_map)
+		fmt.Println("r_ref_pos_map", r_ref_pos_map)
+	}
+}
+
+func PrintGetSNP(p_prob, m_prob1, m_prob2 float64, snps1, snps2 []SNP) {
+	if PRINT_SNP_CALL_INFO {
+		fmt.Println("dis to get snps (1st-end, 2nd-end)", p_prob, m_prob1, m_prob2)
+		fmt.Println("1st-end snp")
+		for _, s := range snps1 {
+			fmt.Println(string(s.Bases), string(s.BaseQ))
+		}
+		fmt.Println("2nd-end snp")
+			for _, s := range snps2 {
+			fmt.Println(string(s.Bases), string(s.BaseQ))
+		}
+	}
+}
+
+/*-------------------------------
+//Printing Dist calculation info
+-------------------------------*/
 
 func PrintEditDisInput(mess string, str_val ...[]byte) {
 	if PRINT_EDIT_DIST_INFO {
@@ -209,15 +244,6 @@ func PrintEditAlignInfo(mess string, aligned_read, aligned_qual, aligned_ref []b
 	}
 }
 
-func PrintComparedReadRef(read_l_flank, ref_l_flank, read_r_flank, ref_r_flank []byte) {
-	if PRINT_EDIT_DIST_INFO {
-		fmt.Println("read_l_flank", string(read_l_flank))
-		fmt.Println("ref_l_flank", string(ref_l_flank))
-		fmt.Println("read_r_flank", string(read_r_flank))
-		fmt.Println("ref_r_flank", string(ref_r_flank))
-	}
-}
-
 func PrintVarInfo(mess string, snp_pos []int, snp_val, snp_qlt [][]byte) {
 	if PRINT_EDIT_DIST_INFO {
 		fmt.Println(mess)
@@ -226,21 +252,6 @@ func PrintVarInfo(mess string, snp_pos []int, snp_val, snp_qlt [][]byte) {
 		}
 	}
 }
-
-func PrintGetSNP(p_prob, m_prob1, m_prob2 float64, snps1, snps2 []SNP) {
-	if PRINT_EDIT_DIST_INFO {
-		fmt.Println("dis to get snps (1st-end, 2nd-end)", p_prob, m_prob1, m_prob2)
-		fmt.Println("1st-end snp")
-		for _, s := range snps1 {
-			fmt.Println(string(s.Bases), string(s.BaseQ))
-		}
-		fmt.Println("2nd-end snp")
-			for _, s := range snps2 {
-			fmt.Println(string(s.Bases), string(s.BaseQ))
-		}
-	}
-}
-
 
 /*----------------------------------------
 //Global variable for tp, fp, fn profiling

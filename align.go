@@ -24,6 +24,7 @@ type Index struct {
 	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
 	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
 	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
+	DEL_SNP   	   map[int]int       //hash table to store length of deletions if SNPs are deletion
 	SORTED_SNP_POS []int             //sorted array of SNP positions
 	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
 }
@@ -38,15 +39,35 @@ func New_Index() *Index {
 	I.SEQ = LoadMultigenome(INPUT_INFO.Genome_file)
 	PrintMemStats("memstats after loading multigenome")
 
-	I.SNP_PROF, I.SNP_AF, I.SAME_LEN_SNP = LoadSNPLocation(INPUT_INFO.SNP_file)
+	I.SNP_PROF, I.SNP_AF, _ = LoadSNPLocation(INPUT_INFO.SNP_file)
 	PrintMemStats("memstats after loading SNP profile")
 
+	I.SAME_LEN_SNP = make(map[int]int)
+	I.DEL_SNP = make(map[int]int)
 	I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROF))
-	for k := range I.SNP_PROF {
-		I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, k)
+	var same_len_flag, del_flag bool
+	var snp_len int
+	for snp_pos, snp_prof := range I.SNP_PROF {
+		I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, snp_pos)
+		snp_len = len(snp_prof[0])
+		same_len_flag, del_flag = true, true
+		for _, val := range snp_prof[1: ] {
+			if snp_len != len(val) {
+				same_len_flag = false
+			}
+			if snp_len <= len(val) {
+				del_flag = false
+			}
+		}
+		if same_len_flag {
+			I.SAME_LEN_SNP[snp_pos] = snp_len
+		}
+		if del_flag {
+			I.DEL_SNP[snp_pos] = snp_len - 1
+		}		
 	}
 	sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
-	PrintMemStats("memstats after loading sorted SNP postions")
+	PrintMemStats("Memstats after creating auxiliary data structures for SNP Profile")
 
 	I.REV_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
 	PrintMemStats("memstats after loading index of reverse multigenome")
