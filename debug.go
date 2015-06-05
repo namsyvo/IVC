@@ -99,10 +99,10 @@ func PrintExtendTraceInfo(mess string, match []byte, e_pos, s_pos, match_num int
 	}
 }
 
-func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_snp_pos []int, read []byte) {
+func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_var_pos []int, read []byte) {
 	if PRINT_ALIGN_TRACE_INFO {
 		fmt.Print("Match\t", pos, "\t", dis, "\t", left_most_pos, "\t", string(read), "\t")
-		for _, pos := range left_snp_pos {
+		for _, pos := range left_var_pos {
 			fmt.Print(pos, "\t")
 		}
 		fmt.Println()
@@ -129,15 +129,15 @@ func PrintRefPosMap(l_ref_pos_map, r_ref_pos_map []int) {
 	}
 }
 
-func PrintGetVariants(p_prob, m_prob1, m_prob2 float64, snps1, snps2 []Var) {
+func PrintGetVariants(p_prob, m_prob1, m_prob2 float64, vars1, vars2 []VarInfo) {
 	if PRINT_VAR_CALL_INFO {
-		fmt.Println("dis to get snps (1st-end, 2nd-end)", p_prob, m_prob1, m_prob2)
-		fmt.Println("1st-end snp")
-		for _, s := range snps1 {
+		fmt.Println("dis to get vars (1st-end, 2nd-end)", p_prob, m_prob1, m_prob2)
+		fmt.Println("1st-end variants")
+		for _, s := range vars1 {
 			fmt.Println(string(s.Bases), string(s.BaseQ))
 		}
-		fmt.Println("2nd-end snp")
-		for _, s := range snps2 {
+		fmt.Println("2nd-end variants")
+		for _, s := range vars2 {
 			fmt.Println(string(s.Bases), string(s.BaseQ))
 		}
 	}
@@ -244,11 +244,11 @@ func PrintEditAlignInfo(mess string, aligned_read, aligned_qual, aligned_ref []b
 	}
 }
 
-func PrintVarInfo(mess string, snp_pos []int, snp_val, snp_qlt [][]byte) {
+func PrintVarInfo(mess string, var_pos []int, var_val, var_qlt [][]byte) {
 	if PRINT_EDIT_DIST_INFO {
 		fmt.Println(mess)
-		for i := 0; i < len(snp_pos); i++ {
-			fmt.Println(snp_pos[i], string(snp_val[i]), string(snp_qlt[i]))
+		for i := 0; i < len(var_pos); i++ {
+			fmt.Println(var_pos[i], string(var_val[i]), string(var_qlt[i]))
 		}
 	}
 }
@@ -275,13 +275,13 @@ type Align_trace_info struct {
 	l_align_pos1, l_align_pos2 int
 	r_align_pos1, r_align_pos2 int
 	align_dis1, align_dis2     int
-	snp_pos1, snp_pos2         []uint32
-	snp_base1, snp_base2       [][]byte
-	snp_baseq1, snp_baseq2     [][]byte
+	var_pos1, var_pos2         []uint32
+	var_base1, var_base2       [][]byte
+	var_baseq1, var_baseq2     [][]byte
 }
 
 type Var_trace_info struct {
-	snp_base, snp_baseq    []byte
+	var_base, var_baseq    []byte
 	align_pos1, align_pos2 int
 	align_dis1, align_dis2 int
 	read_info1, read_info2 []byte
@@ -292,33 +292,33 @@ type Var_trace_info struct {
 func GetAlignReadInfo() {
 	if GET_ALIGN_READ_INFO {
 		var i int
-		var snp_pos uint32
+		var var_pos uint32
 		for at := range ALIGN_READ_INFO_CHAN {
 			ALIGN_READ_INFO_ARR = append(ALIGN_READ_INFO_ARR, at)
-			if len(at.snp_pos1) > 0 {
-				for i, snp_pos = range at.snp_pos1 {
-					var snp Var_trace_info
-					if len(at.snp_base1[i]) == 0 {
-						snp = Var_trace_info{[]byte{'.'}, []byte{'I'}, at.l_align_pos1, at.l_align_pos2,
+			if len(at.var_pos1) > 0 {
+				for i, var_pos = range at.var_pos1 {
+					var var_info Var_trace_info
+					if len(at.var_base1[i]) == 0 {
+						var_info = Var_trace_info{[]byte{'.'}, []byte{'I'}, at.l_align_pos1, at.l_align_pos2,
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '1'}
 					} else {
-						snp = Var_trace_info{at.snp_base1[i], at.snp_baseq1[i], at.l_align_pos1, at.l_align_pos2,
+						var_info = Var_trace_info{at.var_base1[i], at.var_baseq1[i], at.l_align_pos1, at.l_align_pos2,
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '1'}
 					}
-					VAR_TRACE_INFO_MAP[snp_pos] = append(VAR_TRACE_INFO_MAP[snp_pos], snp)
+					VAR_TRACE_INFO_MAP[var_pos] = append(VAR_TRACE_INFO_MAP[var_pos], var_info)
 				}
 			}
-			if len(at.snp_pos2) > 0 {
-				for i, snp_pos = range at.snp_pos2 {
-					var snp Var_trace_info
-					if len(at.snp_base2[i]) == 0 {
-						snp = Var_trace_info{[]byte{'.'}, []byte{'I'}, at.l_align_pos1, at.l_align_pos2,
+			if len(at.var_pos2) > 0 {
+				for i, var_pos = range at.var_pos2 {
+					var var_info Var_trace_info
+					if len(at.var_base2[i]) == 0 {
+						var_info = Var_trace_info{[]byte{'.'}, []byte{'I'}, at.l_align_pos1, at.l_align_pos2,
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '2'}
 					} else {
-						snp = Var_trace_info{at.snp_base2[i], at.snp_baseq2[i], at.l_align_pos1, at.l_align_pos2,
+						var_info = Var_trace_info{at.var_base2[i], at.var_baseq2[i], at.l_align_pos1, at.l_align_pos2,
 							at.align_dis1, at.align_dis2, at.read_info1, at.read_info2, '2'}
 					}
-					VAR_TRACE_INFO_MAP[snp_pos] = append(VAR_TRACE_INFO_MAP[snp_pos], snp)
+					VAR_TRACE_INFO_MAP[var_pos] = append(VAR_TRACE_INFO_MAP[var_pos], var_info)
 				}
 			}
 		}
@@ -338,23 +338,23 @@ func GetNoAlignReadInfo() {
 
 /*
  TP-FP info: Log file format:
-  snp_pos  true_snp  snp_base  snp_qual end_from  align_dis1  align_dis2  align_pos_diff  l_align_pos1  l_align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
+  var_pos  true_var  var_base  var_qual end_from  align_dis1  align_dis2  align_pos_diff  l_align_pos1  l_align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
   ...
  where:
   values in one line are corresponding to one variant call
   value is "None" if not exist
-  snp_pos is consecutive in increasing order
+  var_pos is consecutive in increasing order
   end_from is the read end (1 or 2) in which Vars are called
-  snp_qual is probability of base being wrong (converted from encoded ASCII char in FASTQ format)
+  var_qual is probability of base being wrong (converted from encoded ASCII char in FASTQ format)
 
  Log file names:
-  "tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp", "tp_snp_part", "fp_snp_part",
-  "tp_indel_part", "fp_indel_part", "tp_snp_none", "fp_snp_none", "tp_indel_none", "fp_indel_none",
-  "fp_snp_other", "fp_indel_other"
+  "tp_var_comp", "fp_var_comp", "tp_indel_comp", "fp_indel_comp", "tp_var_part", "fp_var_part",
+  "tp_indel_part", "fp_indel_part", "tp_var_none", "fp_var_none", "tp_indel_none", "fp_indel_none",
+  "fp_var_other", "fp_indel_other"
  where:
-  tp: true positives snps
-  fp: false positive snps
-  snp: snp calls
+  tp: true positives vars
+  fp: false positive vars
+  variant: variant calls
   indel: indel calls
   comp: info at complete knowledge locations
   part: info at partial knowledge locations
@@ -364,42 +364,42 @@ func GetNoAlignReadInfo() {
 //--------------------------------------------------------------------------------------------------
 
 //Processing TP, FP variants info
-func ProcessTPFPVarInfo(snp_call map[uint32]map[string]float64) {
+func ProcessTPFPVarInfo(var_call map[uint32]map[string]float64) {
 	if PRINT_TPFP {
 		fmt.Println("Processing TP, FP Var info...")
 		files := make([]*os.File, 14)
-		file_names := []string{"tp_snp_comp", "fp_snp_comp", "tp_indel_comp", "fp_indel_comp",
-			"tp_snp_part", "fp_snp_part", "tp_indel_part", "fp_indel_part",
-			"tp_snp_none", "fp_snp_none", "tp_indel_none", "fp_indel_none",
-			"fp_snp_other", "fp_indel_other"}
+		file_names := []string{"tp_var_comp", "fp_var_comp", "tp_indel_comp", "fp_indel_comp",
+			"tp_var_part", "fp_var_part", "tp_indel_part", "fp_indel_part",
+			"tp_var_none", "fp_var_none", "tp_indel_none", "fp_indel_none",
+			"fp_var_other", "fp_indel_other"}
 		for i, file_name := range file_names {
 			files[i], _ = os.Create(INPUT_INFO.Var_call_file + "." + file_name)
 			defer files[i].Close()
 		}
 
-		var snp_pos uint32
+		var var_pos uint32
 		var pos int
 		var st Var_trace_info
 
 		Var_Pos := make([]int, 0, len(VAR_TRACE_INFO_MAP))
-		for snp_pos, _ = range VAR_TRACE_INFO_MAP {
-			Var_Pos = append(Var_Pos, int(snp_pos))
+		for var_pos, _ = range VAR_TRACE_INFO_MAP {
+			Var_Pos = append(Var_Pos, int(var_pos))
 		}
 		sort.Ints(Var_Pos)
 
 		prob_thres := 1 - math.Pow(10, -QUAL_THRES/10)
-		var max_prob, snp_prob float64
+		var max_prob, var_prob float64
 		for _, pos = range Var_Pos {
-			snp_pos = uint32(pos)
-			for _, st = range VAR_TRACE_INFO_MAP[snp_pos] {
+			var_pos = uint32(pos)
+			for _, st = range VAR_TRACE_INFO_MAP[var_pos] {
 				max_prob = 0.0
-				for _, snp_prob = range snp_call[snp_pos] {
-					if max_prob < snp_prob {
-						max_prob = snp_prob
+				for _, var_prob = range var_call[var_pos] {
+					if max_prob < var_prob {
+						max_prob = var_prob
 					}
 				}
 				if max_prob >= prob_thres {
-					OutputTPFPVarInfo(files, st, snp_pos)
+					OutputTPFPVarInfo(files, st, var_pos)
 				}
 			}
 		}
@@ -408,64 +408,64 @@ func ProcessTPFPVarInfo(snp_call map[uint32]map[string]float64) {
 }
 
 //Outputing TP, FP variants info to proper files
-func OutputTPFPVarInfo(files []*os.File, st Var_trace_info, snp_pos uint32) {
+func OutputTPFPVarInfo(files []*os.File, st Var_trace_info, var_pos uint32) {
 	var ok bool
 	var val []byte
-	if val, ok = TRUE_VAR_COMP[int(snp_pos)]; ok {
-		if len(st.snp_base) == 1 {
-			if st.snp_base[0] == val[0] {
-				WriteTPFPVarInfo(files[0], st, snp_pos, val)
+	if val, ok = TRUE_VAR_COMP[int(var_pos)]; ok {
+		if len(st.var_base) == 1 {
+			if st.var_base[0] == val[0] {
+				WriteTPFPVarInfo(files[0], st, var_pos, val)
 			} else {
-				WriteTPFPVarInfo(files[1], st, snp_pos, val)
+				WriteTPFPVarInfo(files[1], st, var_pos, val)
 			}
 		} else {
-			if bytes.Equal(st.snp_base, val) {
-				WriteTPFPVarInfo(files[2], st, snp_pos, val)
+			if bytes.Equal(st.var_base, val) {
+				WriteTPFPVarInfo(files[2], st, var_pos, val)
 			} else {
-				WriteTPFPVarInfo(files[3], st, snp_pos, val)
+				WriteTPFPVarInfo(files[3], st, var_pos, val)
 			}
 		}
-	} else if val, ok = TRUE_VAR_PART[int(snp_pos)]; ok {
-		if len(st.snp_base) == 1 {
-			if st.snp_base[0] == val[0] {
-				WriteTPFPVarInfo(files[4], st, snp_pos, val)
+	} else if val, ok = TRUE_VAR_PART[int(var_pos)]; ok {
+		if len(st.var_base) == 1 {
+			if st.var_base[0] == val[0] {
+				WriteTPFPVarInfo(files[4], st, var_pos, val)
 			} else {
-				WriteTPFPVarInfo(files[5], st, snp_pos, val)
+				WriteTPFPVarInfo(files[5], st, var_pos, val)
 			}
 		} else {
-			if bytes.Equal(st.snp_base, val) {
-				WriteTPFPVarInfo(files[6], st, snp_pos, val)
+			if bytes.Equal(st.var_base, val) {
+				WriteTPFPVarInfo(files[6], st, var_pos, val)
 			} else {
-				WriteTPFPVarInfo(files[7], st, snp_pos, val)
+				WriteTPFPVarInfo(files[7], st, var_pos, val)
 			}
 		}
-	} else if val, ok = TRUE_VAR_NONE[int(snp_pos)]; ok {
-		if len(st.snp_base) == 1 {
-			if st.snp_base[0] == val[0] {
-				WriteTPFPVarInfo(files[8], st, snp_pos, val)
+	} else if val, ok = TRUE_VAR_NONE[int(var_pos)]; ok {
+		if len(st.var_base) == 1 {
+			if st.var_base[0] == val[0] {
+				WriteTPFPVarInfo(files[8], st, var_pos, val)
 			} else {
-				WriteTPFPVarInfo(files[9], st, snp_pos, val)
+				WriteTPFPVarInfo(files[9], st, var_pos, val)
 			}
 		} else {
-			if bytes.Equal(st.snp_base, val) {
-				WriteTPFPVarInfo(files[10], st, snp_pos, val)
+			if bytes.Equal(st.var_base, val) {
+				WriteTPFPVarInfo(files[10], st, var_pos, val)
 			} else {
-				WriteTPFPVarInfo(files[11], st, snp_pos, val)
+				WriteTPFPVarInfo(files[11], st, var_pos, val)
 			}
 		}
 	} else {
-		if len(st.snp_base) == 1 {
-			WriteTPFPVarInfo(files[12], st, snp_pos, val)
+		if len(st.var_base) == 1 {
+			WriteTPFPVarInfo(files[12], st, var_pos, val)
 		} else {
-			WriteTPFPVarInfo(files[13], st, snp_pos, val)
+			WriteTPFPVarInfo(files[13], st, var_pos, val)
 		}
 	}
 }
 
 //Writing TP, FP variants info to files
-func WriteTPFPVarInfo(file *os.File, st Var_trace_info, snp_pos uint32, true_var []byte) {
-	file.WriteString(strconv.Itoa(int(snp_pos)) + "\t" + string(true_var) + "\t" + string(st.snp_base) + "\t")
-	file.WriteString(strconv.FormatFloat(QualtoProb(st.snp_baseq[0]), 'f', 5, 32) + "\t")
+func WriteTPFPVarInfo(file *os.File, st Var_trace_info, var_pos uint32, true_var []byte) {
+	file.WriteString(strconv.Itoa(int(var_pos)) + "\t" + string(true_var) + "\t" + string(st.var_base) + "\t")
+	file.WriteString(strconv.FormatFloat(QualtoProb(st.var_baseq[0]), 'f', 5, 32) + "\t")
 
 	file.WriteString(string(st.end_from) + "\t" + strconv.Itoa(st.align_dis1) + "\t" + strconv.Itoa(st.align_dis2) + "\t")
 
@@ -495,13 +495,13 @@ func WriteTPFPVarInfo(file *os.File, st Var_trace_info, snp_pos uint32, true_var
 
 /*
  FN info: Log file format:
-  fn_pos  fn_snp  ref_base snp_base  snp_prob  align_pos_diff  true_align_pos_diff  align_pos1  align_pos2  true_pos1  true_pos2  align_dis1  align_dis2  read_id  align_base1  base_prob1  align_base2 base_prob2 ...
+  fn_pos  fn_var  ref_base var_base  var_prob  align_pos_diff  true_align_pos_diff  align_pos1  align_pos2  true_pos1  true_pos2  align_dis1  align_dis2  read_id  align_base1  base_prob1  align_base2 base_prob2 ...
   ...
  where:
   values in one line are corresponding to one variant call
   value is "None" if not exist
   fn_pos is consecutive in increasing order
-  snp_prob, (base_prob) is probability of snp (base) being wrong (converted from encoded ASCII char in FASTQ format in case of base_prob)
+  var_prob, (base_prob) is probability of variant (base) being wrong (converted from encoded ASCII char in FASTQ format in case of base_prob)
 
  Log file names:
 	"fn_snp_align_none", "fn_indel_align_none", "fn_snp_misalign_none", "fn_indel_misalign_none", "fn_snp_noalign_none", "fn_indel_noalign_none",
@@ -509,7 +509,7 @@ func WriteTPFPVarInfo(file *os.File, st Var_trace_info, snp_pos uint32, true_var
 	"fn_snp_align_comp", "fn_indel_align_comp", "fn_snp_misalign_comp", "fn_indel_misalign_comp", "fn_snp_noalign_comp", "fn_indel_noalign_comp"
  where:
   fn: false negatives
-  snp: snp calls
+  var: variant calls
   indel: indel calls
   align: fn pos covered by some reads and there is one base called at the pos
   misalign: fn pos covered by some reads but there is no base called at the pos
@@ -535,7 +535,7 @@ var (
 )
 
 //Processing FN variants and realted info
-func ProcessFNVarInfo(snp_call map[uint32]map[string]float64) {
+func ProcessFNVarInfo(var_call map[uint32]map[string]float64) {
 	if PRINT_FN {
 		fmt.Println("Processing FN Var info...")
 		files := make([]*os.File, 18)
@@ -547,37 +547,37 @@ func ProcessFNVarInfo(snp_call map[uint32]map[string]float64) {
 			defer files[i].Close()
 		}
 
-		var snp_pos int
-		var snp []byte
+		var var_pos int
+		var var_bases []byte
 		var ok bool
 
 		prob_thres := 1 - math.Pow(10, -QUAL_THRES/10)
-		var max_snp_str, snp_str string
-		var max_prob, snp_prob float64
+		var max_var_str, var_str string
+		var max_prob, var_prob float64
 		for pos, _ := range VAR_TRACE_INFO_MAP {
 			max_prob = 0.0
-			for snp_str, snp_prob = range snp_call[pos] {
-				if max_prob < snp_prob {
-					max_prob = snp_prob
-					max_snp_str = snp_str
+			for var_str, var_prob = range var_call[pos] {
+				if max_prob < var_prob {
+					max_prob = var_prob
+					max_var_str = var_str
 				}
 			}
 			if max_prob >= prob_thres {
 				TPFP_VAR_CALL[int(pos)] = true
 			} else {
-				FN_VAR_CALL[int(pos)] = Var_Call{max_snp_str, max_prob}
+				FN_VAR_CALL[int(pos)] = Var_Call{max_var_str, max_prob}
 			}
 		}
 		fmt.Println("# Var calls ", len(TPFP_VAR_CALL))
 
-		for snp_pos, snp = range TRUE_VAR_NONE {
-			if _, ok = TPFP_VAR_CALL[snp_pos]; !ok {
-				FN_VAR_NONE[snp_pos] = snp
+		for var_pos, var_bases = range TRUE_VAR_NONE {
+			if _, ok = TPFP_VAR_CALL[var_pos]; !ok {
+				FN_VAR_NONE[var_pos] = var_bases
 			}
 		}
 		None_Pos := make([]int, 0)
-		for snp_pos, _ = range FN_VAR_NONE {
-			None_Pos = append(None_Pos, snp_pos)
+		for var_pos, _ = range FN_VAR_NONE {
+			None_Pos = append(None_Pos, var_pos)
 		}
 		sort.Ints(None_Pos)
 		fmt.Println("# FN_VAR_NONE:", len(None_Pos))
@@ -585,14 +585,14 @@ func ProcessFNVarInfo(snp_call map[uint32]map[string]float64) {
 
 		OutputFNVarInfo(files[0:6], None_Pos, FN_VAR_NONE)
 
-		for snp_pos, snp = range TRUE_VAR_PART {
-			if _, ok = TPFP_VAR_CALL[snp_pos]; !ok {
-				FN_VAR_PART[snp_pos] = snp
+		for var_pos, var_bases = range TRUE_VAR_PART {
+			if _, ok = TPFP_VAR_CALL[var_pos]; !ok {
+				FN_VAR_PART[var_pos] = var_bases
 			}
 		}
 		Part_Pos := make([]int, 0)
-		for snp_pos, _ = range FN_VAR_PART {
-			Part_Pos = append(Part_Pos, snp_pos)
+		for var_pos, _ = range FN_VAR_PART {
+			Part_Pos = append(Part_Pos, var_pos)
 		}
 		sort.Ints(Part_Pos)
 		fmt.Println("# FN_VAR_PART:", len(Part_Pos))
@@ -600,14 +600,14 @@ func ProcessFNVarInfo(snp_call map[uint32]map[string]float64) {
 
 		OutputFNVarInfo(files[6:12], Part_Pos, FN_VAR_PART)
 
-		for snp_pos, snp = range TRUE_VAR_COMP {
-			if _, ok = TPFP_VAR_CALL[snp_pos]; !ok {
-				FN_VAR_COMP[snp_pos] = snp
+		for var_pos, var_bases = range TRUE_VAR_COMP {
+			if _, ok = TPFP_VAR_CALL[var_pos]; !ok {
+				FN_VAR_COMP[var_pos] = var_bases
 			}
 		}
 		Comp_Pos := make([]int, 0)
-		for snp_pos, _ = range FN_VAR_COMP {
-			Comp_Pos = append(Comp_Pos, snp_pos)
+		for var_pos, _ = range FN_VAR_COMP {
+			Comp_Pos = append(Comp_Pos, var_pos)
 		}
 		sort.Ints(Comp_Pos)
 		fmt.Println("# FN_VAR_COMP:", len(Comp_Pos))
@@ -632,35 +632,35 @@ func OutputFNVarInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 		for _, at = range ALIGN_READ_INFO_ARR {
 			if at.l_align_pos1 <= pos && at.r_align_pos1 >= pos {
 				has_align_read = true
-				snp_call, has_align_base := FN_VAR_CALL[pos]
+				var_call, has_align_base := FN_VAR_CALL[pos]
 				if has_align_base {
 					if len(true_var) == 1 {
-						WriteFNVarInfo(files[0], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[0], at, pos, true_var, var_call)
 					} else {
-						WriteFNVarInfo(files[1], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[1], at, pos, true_var, var_call)
 					}
 				} else {
 					if len(true_var) == 1 {
-						WriteFNVarInfo(files[2], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[2], at, pos, true_var, var_call)
 					} else {
-						WriteFNVarInfo(files[3], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[3], at, pos, true_var, var_call)
 					}
 				}
 			}
 			if at.l_align_pos2 <= pos && at.r_align_pos2 >= pos {
 				has_align_read = true
-				snp_call, has_align_base := FN_VAR_CALL[pos]
+				var_call, has_align_base := FN_VAR_CALL[pos]
 				if has_align_base {
 					if len(true_var) == 1 {
-						WriteFNVarInfo(files[0], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[0], at, pos, true_var, var_call)
 					} else {
-						WriteFNVarInfo(files[1], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[1], at, pos, true_var, var_call)
 					}
 				} else {
 					if len(true_var) == 1 {
-						WriteFNVarInfo(files[2], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[2], at, pos, true_var, var_call)
 					} else {
-						WriteFNVarInfo(files[3], at, pos, true_var, snp_call)
+						WriteFNVarInfo(files[3], at, pos, true_var, var_call)
 					}
 				}
 			}
@@ -678,11 +678,11 @@ func OutputFNVarInfo(files []*os.File, FN_Pos []int, FN_Var map[int][]byte) {
 }
 
 //Writing to file FN variants with all reads aligned to FN locations
-func WriteFNVarInfo(file *os.File, at Align_trace_info, pos int, true_var []byte, snp_call Var_Call) {
+func WriteFNVarInfo(file *os.File, at Align_trace_info, pos int, true_var []byte, var_call Var_Call) {
 
 	file.WriteString(strconv.Itoa(pos) + "\t" + string(true_var) + "\t")
-	if len(snp_call.Bases) != 0 {
-		file.WriteString(snp_call.Bases + "\t" + strconv.FormatFloat(snp_call.Prob, 'f', 5, 32) + "\t")
+	if len(var_call.Bases) != 0 {
+		file.WriteString(var_call.Bases + "\t" + strconv.FormatFloat(var_call.Prob, 'f', 5, 32) + "\t")
 	}
 	if at.l_align_pos1 != 0 && at.l_align_pos2 != 0 {
 		file.WriteString(strconv.Itoa(at.l_align_pos1-at.l_align_pos2) + "\t")
@@ -708,11 +708,11 @@ func WriteFNVarInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 		file.WriteString("None\tNone\tNone\tNone\t")
 	}
 
-	var snp Var_trace_info
-	if snp_arr, ok := VAR_TRACE_INFO_MAP[uint32(pos)]; ok {
-		for _, snp = range snp_arr {
-			file.WriteString(strconv.Itoa(pos) + "\t" + string(snp.snp_base) + "\t" +
-				strconv.FormatFloat(QualtoProb(snp.snp_baseq[0]), 'f', 5, 32) + "\t")
+	var var_info Var_trace_info
+	if var_arr, ok := VAR_TRACE_INFO_MAP[uint32(pos)]; ok {
+		for _, var_info = range var_arr {
+			file.WriteString(strconv.Itoa(pos) + "\t" + string(var_info.var_base) + "\t" +
+				strconv.FormatFloat(QualtoProb(var_info.var_baseq[0]), 'f', 5, 32) + "\t")
 		}
 	}
 	file.WriteString("\n")
@@ -720,7 +720,7 @@ func WriteFNVarInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 }
 
 //Processing noalign reads and related info
-func ProcessNoAlignReadInfo(snp_call map[uint32]map[string]float64) {
+func ProcessNoAlignReadInfo(var_call map[uint32]map[string]float64) {
 	if PRINT_NA {
 		fmt.Println("Processing noaligned read info...")
 		file, _ := os.Create(INPUT_INFO.Var_call_file + ".noalign")

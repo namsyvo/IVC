@@ -38,8 +38,8 @@ var (
 //--------------------------------------------------------------------------------------------------
 type InputInfo struct {
 	//File names for:
-	Genome_file    string //reference multigenome
-	Var_file       string //Var profile
+	Ref_file       string //reference multigenome
+	Var_prof_file  string //variant profile
 	Index_file     string //index of original reference genomes
 	Rev_index_file string //index of reverse reference genomes
 	Read_file_1    string //first end of read

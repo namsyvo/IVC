@@ -52,11 +52,11 @@ func main() {
 //--------------------------------------------------------------------------------------------------
 func ReadInputInfo() isc.InputInfo {
 	var genome_file = flag.String("g", "", "reference genome file")
-	var dbsnp_file = flag.String("s", "", "snp profile file")
+	var var_prof_file = flag.String("s", "", "variant profile file")
 	var idx_dir = flag.String("i", "", "index directory")
 	var read_file_1 = flag.String("1", "", "pairend read file, first end")
 	var read_file_2 = flag.String("2", "", "pairend read file, second end")
-	var snp_call_file = flag.String("o", "", "snp calling file")
+	var var_call_file = flag.String("o", "", "variant calling file")
 	var search_mode = flag.Int("m", 1, "searching mode for finding seeds (1: random, 2: deterministic)")
 	var start_pos = flag.Int("p", 0, "starting position on reads for finding seeds")
 	var search_step = flag.Int("j", 5, "step for searching in deterministic mode")
@@ -72,19 +72,19 @@ func ReadInputInfo() isc.InputInfo {
 	flag.Parse()
 
 	_, genome_file_name := path.Split(*genome_file)
-	multigenome_file := path.Join(*idx_dir, genome_file_name) + ".mgf"
-	rev_multigenome_file := path.Join(*idx_dir, genome_file_name) + "_rev.mgf"
-	_, dbsnp_file_name := path.Split(*dbsnp_file)
-	snp_prof_file := path.Join(*idx_dir, dbsnp_file_name) + ".idx"
+	multigenome_file_name := path.Join(*idx_dir, genome_file_name) + ".mgf"
+	rev_multigenome_file_name := path.Join(*idx_dir, genome_file_name) + "_rev.mgf"
+	_, var_prof_file_name := path.Split(*var_prof_file)
+	var_prof_index_file_name := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 
 	input_info := isc.InputInfo{}
-	input_info.Genome_file = multigenome_file
-	input_info.Var_file = snp_prof_file
-	input_info.Index_file = multigenome_file + ".index/"
-	input_info.Rev_index_file = rev_multigenome_file + ".index/"
+	input_info.Ref_file = multigenome_file_name
+	input_info.Var_prof_file = var_prof_index_file_name
+	input_info.Index_file = multigenome_file_name + ".index/"
+	input_info.Rev_index_file = rev_multigenome_file_name + ".index/"
 	input_info.Read_file_1 = *read_file_1
 	input_info.Read_file_2 = *read_file_2
-	input_info.Var_call_file = *snp_call_file
+	input_info.Var_call_file = *var_call_file
 	input_info.Search_mode = *search_mode
 	input_info.Start_pos = *start_pos
 	input_info.Search_step = *search_step
@@ -103,7 +103,7 @@ func ReadInputInfo() isc.InputInfo {
 
 	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file: %s, Rev_index_file: %s,"+
 		" Read_file_1: %s, Read_file_2: %s, Var_call_file: %s",
-		input_info.Genome_file, input_info.Var_file, input_info.Index_file, input_info.Rev_index_file,
+		input_info.Ref_file, input_info.Var_prof_file, input_info.Index_file, input_info.Rev_index_file,
 		input_info.Read_file_1, input_info.Read_file_2, input_info.Var_call_file)
 
 	log.Printf("Input parameters:\tSearch_mode: %d, Start_pos: %d, Search_step: %d, Proc_num: %d,"+

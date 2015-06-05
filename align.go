@@ -20,8 +20,8 @@ import (
 //--------------------------------------------------------------------------------------------------
 type Index struct {
 	Seq          []byte            //store reference multigenomes
-	Var_Prof     map[int][][]byte  //hash table of SNP Profile (position, snps)
-	Var_AF       map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
+	Var_Prof     map[int][][]byte  //hash table of SNP Profile (position, variants)
+	Var_AF       map[int][]float32 //allele frequency of SNP Profile (position, af of variants)
 	Same_Len_Var map[int]int       //hash table to indicate if SNPs has same length
 	Del_Var      map[int]int       //hash table to store length of deletions if SNPs are deletion
 	Rev_FMI      fmi.Index         //FM-index of reverse multigenomes
@@ -34,35 +34,35 @@ func New_Index() *Index {
 
 	I := new(Index)
 
-	I.Seq = LoadMultigenome(INPUT_INFO.Genome_file)
+	I.Seq = LoadMultigenome(INPUT_INFO.Ref_file)
 	PrintMemStats("memstats after loading multigenome")
 
-	I.Var_Prof, I.Var_AF = LoadVarProf(INPUT_INFO.Var_file)
+	I.Var_Prof, I.Var_AF = LoadVarProf(INPUT_INFO.Var_prof_file)
 	PrintMemStats("memstats after loading SNP profile")
 
 	I.Same_Len_Var = make(map[int]int)
 	I.Del_Var = make(map[int]int)
 	var same_len_flag, del_flag bool
-	var snp_len int
-	for snp_pos, snp_prof := range I.Var_Prof {
-		snp_len = len(snp_prof[0])
+	var var_len int
+	for var_pos, var_prof := range I.Var_Prof {
+		var_len = len(var_prof[0])
 		same_len_flag, del_flag = true, true
-		for _, val := range snp_prof[1:] {
-			if snp_len != len(val) {
+		for _, val := range var_prof[1:] {
+			if var_len != len(val) {
 				same_len_flag = false
 			}
-			if snp_len <= len(val) {
+			if var_len <= len(val) {
 				del_flag = false
 			}
 		}
 		if same_len_flag {
-			I.Same_Len_Var[snp_pos] = snp_len
+			I.Same_Len_Var[var_pos] = var_len
 		}
 		if del_flag {
-			I.Del_Var[snp_pos] = snp_len - 1
+			I.Del_Var[var_pos] = var_len - 1
 		}
 	}
-	PrintMemStats("Memstats after creating auxiliary data structures for SNP Profile")
+	PrintMemStats("Memstats after creating auxiliary data structures for variant profile")
 
 	I.Rev_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
 	PrintMemStats("memstats after loading index of reverse multigenome")

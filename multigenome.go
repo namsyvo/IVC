@@ -15,7 +15,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	//"log"
 )
 
 type VarProf struct {
