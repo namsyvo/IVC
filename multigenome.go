@@ -15,24 +15,22 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	//"sort"
+	"sort"
 	//"log"
 )
 
-type SNPProfile struct {
-	Profile    [][]byte
-	AlleleFreq []float32
+type VarProf struct {
+	Variant    	[][]byte
+	AleFreq 	[]float32
 }
 
-func LoadSNPLocation(file_name string) (map[int][][]byte, map[int][]float32, map[int]int) {
-	//location := make(map[int]SNPProfile)
-	barr := make(map[int][][]byte)
-	af := make(map[int][]float32)
-	is_equal := make(map[int]int)
+func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
+	Variant := make(map[int][][]byte)
+	AleFreq := make(map[int][]float32)
 
 	f, err := os.Open(file_name)
 	if err != nil {
-		fmt.Println("Error LoadSNPprofileIndex", err)
+		fmt.Println("Error Load Variant Profile", err)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -40,7 +38,7 @@ func LoadSNPLocation(file_name string) (map[int][][]byte, map[int][]float32, map
 	for {
 		line, err := br.ReadString('\n')
 		if err != nil {
-			fmt.Println("Finish reading SNP profile index file")
+			fmt.Println("Finish reading Variant Profile Index")
 			break
 		}
 		sline := string(line[:len(line)-1])
@@ -55,37 +53,35 @@ func LoadSNPLocation(file_name string) (map[int][][]byte, map[int][]float32, map
 		}
 
 		// convert to [][]byte & map[int]int
-		flag := len(t[0])
 		b := make([][]byte, len(t))
 
 		for i := range b {
 			b[i] = make([]byte, len(t[i]))
 			copy(b[i], []byte(t[i]))
-			if flag != len(b[i]) || t[i] == "." {
-				flag = 0
-			}
 		}
-		barr[int(k)] = b
-		af[int(k)] = p
-
-		if flag != 0 {
-			is_equal[int(k)] = flag
-		}
+		Variant[int(k)] = b
+		AleFreq[int(k)] = p
 	}
-	return barr, af, is_equal
+	return Variant, AleFreq
 }
 
-func SaveSNPLocation(file_name string, SNP_arr map[int]SNPProfile) {
+func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 	file, err := os.Create(file_name)
 	if err != nil {
 		fmt.Println("Error SaveSNPProfileIndex", err)
 		return
 	}
 	defer file.Close()
-	for i, item := range SNP_arr {
-		_, err = file.WriteString(strconv.Itoa(i) + "\t")
-		for j, v := range item.Profile {
-			_, err = file.WriteString(string(v) + "\t" + strconv.FormatFloat(float64(item.AlleleFreq[j]), 'f', 10, 32) + "\t")
+	var var_pos []int
+	for pos, _ := range var_prof {
+		var_pos = append(var_pos, pos)
+	}
+	sort.Sort(sort.IntSlice(var_pos))
+	for _, pos := range var_pos {
+		_, err = file.WriteString(strconv.Itoa(pos) + "\t")
+		for idx, val := range var_prof[pos].Variant {
+			_, err = file.WriteString(string(val) + "\t" + 
+				strconv.FormatFloat(float64(var_prof[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
 		}
 		_, err = file.WriteString("\n")
 		if err != nil {
@@ -94,33 +90,32 @@ func SaveSNPLocation(file_name string, SNP_arr map[int]SNPProfile) {
 	}
 }
 
-func SaveMultigenome(file_name string, multi []byte) {
+func SaveMultigenome(file_name string, multigenome []byte) {
 	file, err := os.Create(file_name)
 	if err != nil {
-		fmt.Println("Error SaveMultigenome", err)
+		fmt.Println("Error Save Multigenome", err)
 		return
 	}
 	defer file.Close()
-	file.Write(multi)
+	file.Write(multigenome)
 }
 
 func LoadMultigenome(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
 	if err != nil {
-		fmt.Println("Error LoadMultigenome", err)
+		fmt.Println("Error Load Multigenome", err)
 		return nil
 	}
 	return bs
 }
 
-// string * multi-genome
-func BuildMultigenome(SNP_arr map[int]SNPProfile, seq []byte) []byte {
-	multi := make([]byte, len(seq))
-	copy(multi, seq)
-	for key, _ := range SNP_arr {
-		multi[key] = '*'
+func BuildMultigenome(var_prof map[int]VarProf, seq []byte) []byte {
+	multigenome := make([]byte, len(seq))
+	copy(multigenome, seq)
+	for key, _ := range var_prof {
+		multigenome[key] = '*'
 	}
-	return multi
+	return multigenome
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -158,9 +153,9 @@ func ReadFASTA(sequence_file string) []byte {
 //--------------------------------------------------------------------------------------------------
 // Read VCF files
 //--------------------------------------------------------------------------------------------------
-func ReadVCF(sequence_file string) map[int]SNPProfile {
-	array := make(map[int]SNPProfile)
-	f, err := os.Open(sequence_file)
+func ReadVCF(file_name string) map[int]VarProf {
+	var_prof := make(map[int]VarProf)
+	f, err := os.Open(file_name)
 	if err != nil {
 		fmt.Println("Error reading VCF input file", err)
 		os.Exit(1)
@@ -182,12 +177,12 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
 		if bytes.Equal(line[0:1], []byte("#")) {
 			//fmt.Printf("%s \n",line)
 		} else {
-			tmp := SNPProfile{}
+			tmp := VarProf{}
 			sub_line, _ := SplitN(line, []byte("\t"), 9)
 			pos, _ = strconv.Atoi(string(sub_line[1]))
-			tmp.Profile = append(tmp.Profile, sub_line[3])
+			tmp.Variant = append(tmp.Variant, sub_line[3])
 			//Temporal impl for allele freq, need to be changed later
-            tmp.AlleleFreq = append(tmp.AlleleFreq, 0)
+            tmp.AleFreq = append(tmp.AleFreq, 0)
 			alt = bytes.Split(sub_line[4], []byte(","))
 			info = bytes.Split(sub_line[7], []byte(";"))
             for _, sub_info = range info {
@@ -199,19 +194,15 @@ func ReadVCF(sequence_file string) map[int]SNPProfile {
                 }
             }
 			for i := 0; i < len(alt); i++ {
-				if bytes.Equal(alt[i], []byte("<DEL>")) {
-					tmp.Profile = append(tmp.Profile, []byte("."))
-				} else {
-					tmp.Profile = append(tmp.Profile, alt[i])
-				}
-				tmp.AlleleFreq = append(tmp.AlleleFreq, p)
+				tmp.Variant = append(tmp.Variant, alt[i])
+				tmp.AleFreq = append(tmp.AleFreq, p)
 			}
-			tmp.AlleleFreq[0] = 1 - p
-			//sort.Strings(tmp.Profile)
-			array[pos - 1] = tmp
+			tmp.AleFreq[0] = 1 - p
+			//sort.Strings(tmp.Variant)
+			var_prof[pos - 1] = tmp
 		}
 	}
-	return array
+	return var_prof
 }
 
 func SplitN(s, sep []byte, n int) ([][]byte, int) {

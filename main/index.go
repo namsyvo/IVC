@@ -23,7 +23,7 @@ func main() {
 	memstats := new(runtime.MemStats)
 	runtime.ReadMemStats(memstats)
 	log.Printf("ISC-index: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
-	log.Printf("ISC-index: memstats at the beginning:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats at the beginning")
 
 	var genome_file = flag.String("g", "", "reference genome file")
 	var dbsnp_file = flag.String("s", "", "snp profile file")
@@ -37,16 +37,16 @@ func main() {
 
 	sequence := isc.ReadFASTA(*genome_file)
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC-index: memstats after reading genome file:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats after reading genome file")
 
 	SNP_array := isc.ReadVCF(*dbsnp_file)
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC-index: memstats after reading SNP profile file:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats after reading SNP profile file")
 
 	multigenome := isc.BuildMultigenome(SNP_array, sequence)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC-index: memstats after building multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats after building multigenome")
 
 	multigenome_len := len(multigenome)
 	rev_multigenome := make([]byte, multigenome_len)
@@ -68,7 +68,7 @@ func main() {
 	log.Printf("ISC-index: time for creating multigenome and SNP profile index:\t%s", gen_time)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC-index: memstats after creating multigenome and SNP profile index:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats after creating multigenome and SNP profile index")
 
 	fmt.Println("Multigenome length: ", multigenome_len)
 	fmt.Println("SNP profile index size: ", len(SNP_array))
@@ -90,7 +90,7 @@ func main() {
 	log.Printf("ISC-index: time for indexing multigenome:\t%s", index_time)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC-index: memstats after indexing multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats after indexing multigenome")
 
 	start_time = time.Now()
 
@@ -101,7 +101,7 @@ func main() {
 	log.Printf("ISC-index: time for indexing reversed multigenome:\t%s", index_time)
 
 	runtime.ReadMemStats(memstats)
-	log.Printf("ISC-index: memstats after indexing reversed multigenome:\t%d\t%d\t%d\t%d\t%d", memstats.Alloc, memstats.TotalAlloc, memstats.Sys, memstats.HeapAlloc, memstats.HeapSys)
+	isc.PrintProcessMem("ISC-index: memstats after indexing reversed multigenome")
 	
 	fmt.Println("Index directory for multigenome: ", multigenome_file + ".index/")
 	fmt.Println("Index directory for reversed multigenome: ", rev_multigenome_file + ".index/")

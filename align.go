@@ -39,7 +39,7 @@ func New_Index() *Index {
 	I.SEQ = LoadMultigenome(INPUT_INFO.Genome_file)
 	PrintMemStats("memstats after loading multigenome")
 
-	I.SNP_PROF, I.SNP_AF, _ = LoadSNPLocation(INPUT_INFO.SNP_file)
+	I.SNP_PROF, I.SNP_AF = LoadVarProf(INPUT_INFO.SNP_file)
 	PrintMemStats("memstats after loading SNP profile")
 
 	I.SAME_LEN_SNP = make(map[int]int)
