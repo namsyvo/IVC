@@ -18,7 +18,7 @@ import (
 
 func main() {
 	fmt.Println("ISC - Integrated SNP Calling based on Read-Multigenome Alignment")
-	fmt.Println("ISC-index: Indexing reference genomes and SNP profiles.")
+	fmt.Println("ISC-index: Indexing reference genomes and variant profiles.")
 
 	memstats := new(runtime.MemStats)
 	runtime.ReadMemStats(memstats)
@@ -26,22 +26,22 @@ func main() {
 	isc.PrintProcessMem("ISC-index: memstats at the beginning")
 
 	var genome_file = flag.String("g", "", "reference genome file")
-	var dbsnp_file = flag.String("s", "", "snp profile file")
+	var var_prof_file = flag.String("v", "", "variant profile file")
 	var idx_dir = flag.String("i", "", "index directory")
 	//var workers = flag.Int("w", 1, "number of workers")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
 
-	fmt.Println("Creating multigenome and SNP profile index...")
+	fmt.Println("Creating multigenome and variant profile index...")
 	start_time := time.Now()
 
 	sequence := isc.ReadFASTA(*genome_file)
 	runtime.ReadMemStats(memstats)
-	isc.PrintProcessMem("ISC-index: memstats after reading genome file")
+	isc.PrintProcessMem("ISC-index: memstats after reading genome")
 
-	SNP_array := isc.ReadVCF(*dbsnp_file)
+	SNP_array := isc.ReadVCF(*var_prof_file)
 	runtime.ReadMemStats(memstats)
-	isc.PrintProcessMem("ISC-index: memstats after reading SNP profile file")
+	isc.PrintProcessMem("ISC-index: memstats after reading variant profile")
 
 	multigenome := isc.BuildMultigenome(SNP_array, sequence)
 
@@ -57,35 +57,34 @@ func main() {
 	_, genome_file_name := path.Split(*genome_file)
 	multigenome_file := path.Join(*idx_dir, genome_file_name) + ".mgf"
 	rev_multigenome_file := path.Join(*idx_dir, genome_file_name) + "_rev.mgf"
-	_, dbsnp_file_name := path.Split(*dbsnp_file)
-	snp_prof_file := path.Join(*idx_dir, dbsnp_file_name) + ".idx"
+	_, var_prof_file_name := path.Split(*var_prof_file)
+	var_prof_file := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 
 	isc.SaveMultigenome(multigenome_file, multigenome)
-	isc.SaveMultigenome(rev_multigenome_file, rev_multigenome)
-	isc.SaveSNPLocation(snp_prof_file, SNP_array)
+	//isc.SaveMultigenome(rev_multigenome_file, rev_multigenome)
+	isc.SaveVarProf(var_prof_file, SNP_array)
 
 	gen_time := time.Since(start_time)
-	log.Printf("ISC-index: time for creating multigenome and SNP profile index:\t%s", gen_time)
+	log.Printf("ISC-index: time for creating multigenome and variant profile index:\t%s", gen_time)
 
 	runtime.ReadMemStats(memstats)
-	isc.PrintProcessMem("ISC-index: memstats after creating multigenome and SNP profile index")
+	isc.PrintProcessMem("ISC-index: memstats after creating multigenome and variant profile index")
 
 	fmt.Println("Multigenome length: ", multigenome_len)
-	fmt.Println("SNP profile index size: ", len(SNP_array))
+	fmt.Println("Variant profile index size: ", len(SNP_array))
 	fmt.Println("Multigenome file: ", multigenome_file)
-	fmt.Println("Reversed multigenome file: ", rev_multigenome_file)
-	fmt.Println("SNP profile index: ", snp_prof_file)
-	fmt.Println("Finish creating multigenome and SNP profile index.")
+	//fmt.Println("Reverse multigenome file: ", rev_multigenome_file)
+	fmt.Println("Variant profile index: ", var_prof_file)
+	fmt.Println("Finish creating multigenome and variant profile index.")
 
 	fmt.Println("Indexing multigenome...")
 
 	var idx fmi.Index
-/*
-	start_time = time.Now()
 
-	idx = *fmi.New(multigenome_file)
-	idx.Save(multigenome_file)
-*/
+	//start_time = time.Now()
+	//idx = *fmi.New(multigenome_file)
+	//idx.Save(multigenome_file)
+
 	index_time := time.Since(start_time)
 	log.Printf("ISC-index: time for indexing multigenome:\t%s", index_time)
 
@@ -98,13 +97,13 @@ func main() {
 	idx.Save(rev_multigenome_file)
 
 	index_time = time.Since(start_time)
-	log.Printf("ISC-index: time for indexing reversed multigenome:\t%s", index_time)
+	log.Printf("ISC-index: time for indexing reverse multigenome:\t%s", index_time)
 
 	runtime.ReadMemStats(memstats)
-	isc.PrintProcessMem("ISC-index: memstats after indexing reversed multigenome")
+	isc.PrintProcessMem("ISC-index: memstats after indexing reverse multigenome")
 	
-	fmt.Println("Index directory for multigenome: ", multigenome_file + ".index/")
-	fmt.Println("Index directory for reversed multigenome: ", rev_multigenome_file + ".index/")
+	//fmt.Println("Index directory for multigenome: ", multigenome_file + ".index/")
+	fmt.Println("Index directory for reverse multigenome: ", rev_multigenome_file + ".index/")
 	fmt.Println("Finish indexing multigenome.")
 
 }

@@ -1,8 +1,7 @@
 //-------------------------------------------------------------------------------------------------
 // Multigenome package: multigenome module.
 // Combine SNPs and INDELs from dbSNPs (vcf file) with a reference genome (fasta file).
-// Copyright 2014 Quang Minh Tran.
-// Modified by Nam Sy Vo.
+// Copyright 2015 by Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
 package isc
@@ -30,7 +29,7 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 
 	f, err := os.Open(file_name)
 	if err != nil {
-		fmt.Println("Error Load Variant Profile", err)
+		fmt.Println("Error: Load Variant Profile", err)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -38,7 +37,7 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 	for {
 		line, err := br.ReadString('\n')
 		if err != nil {
-			fmt.Println("Finish reading Variant Profile Index")
+			fmt.Println("Finish reading variant profile index")
 			break
 		}
 		sline := string(line[:len(line)-1])
@@ -68,7 +67,7 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 	file, err := os.Create(file_name)
 	if err != nil {
-		fmt.Println("Error SaveSNPProfileIndex", err)
+		fmt.Println("Error: Save Variant Profile Index", err)
 		return
 	}
 	defer file.Close()
@@ -93,7 +92,7 @@ func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 func SaveMultigenome(file_name string, multigenome []byte) {
 	file, err := os.Create(file_name)
 	if err != nil {
-		fmt.Println("Error Save Multigenome", err)
+		fmt.Println("Error: Save Multigenome", err)
 		return
 	}
 	defer file.Close()
@@ -103,7 +102,7 @@ func SaveMultigenome(file_name string, multigenome []byte) {
 func LoadMultigenome(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
 	if err != nil {
-		fmt.Println("Error Load Multigenome", err)
+		fmt.Println("Error: Load Multigenome", err)
 		return nil
 	}
 	return bs
@@ -124,7 +123,7 @@ func BuildMultigenome(var_prof map[int]VarProf, seq []byte) []byte {
 func ReadFASTA(sequence_file string) []byte {
 	f, err := os.Open(sequence_file)
 	if err != nil {
-		fmt.Println("Error reading FASTA input file", err)
+		fmt.Println("Error: Read FASTA file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -157,7 +156,7 @@ func ReadVCF(file_name string) map[int]VarProf {
 	var_prof := make(map[int]VarProf)
 	f, err := os.Open(file_name)
 	if err != nil {
-		fmt.Println("Error reading VCF input file", err)
+		fmt.Println("Error: Read VCF file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
