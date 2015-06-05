@@ -20,13 +20,12 @@ import (
 //Index for SNP caller
 //--------------------------------------------------------------------------------------------------
 type Index struct {
-	SEQ            []byte            //store reference multigenomes
-	SNP_PROF       map[int][][]byte  //hash table of SNP Profile (position, snps)
-	SNP_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
-	SAME_LEN_SNP   map[int]int       //hash table to indicate if SNPs has same length
-	DEL_SNP   	   map[int]int       //hash table to store length of deletions if SNPs are deletion
-	SORTED_SNP_POS []int             //sorted array of SNP positions
-	REV_FMI        fmi.Index         //FM-index of reverse multigenomes
+	Seq            []byte            //store reference multigenomes
+	Var_Prof       map[int][][]byte  //hash table of SNP Profile (position, snps)
+	Var_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
+	Same_Len_Var   map[int]int       //hash table to indicate if SNPs has same length
+	Del_Var   	   map[int]int       //hash table to store length of deletions if SNPs are deletion
+	Rev_FMI        fmi.Index         //FM-index of reverse multigenomes
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -36,19 +35,17 @@ func New_Index() *Index {
 
 	I := new(Index)
 
-	I.SEQ = LoadMultigenome(INPUT_INFO.Genome_file)
+	I.Seq = LoadMultigenome(INPUT_INFO.Genome_file)
 	PrintMemStats("memstats after loading multigenome")
 
-	I.SNP_PROF, I.SNP_AF = LoadVarProf(INPUT_INFO.SNP_file)
+	I.Var_Prof, I.Var_AF = LoadVarProf(INPUT_INFO.Var_file)
 	PrintMemStats("memstats after loading SNP profile")
 
-	I.SAME_LEN_SNP = make(map[int]int)
-	I.DEL_SNP = make(map[int]int)
-	I.SORTED_SNP_POS = make([]int, 0, len(I.SNP_PROF))
+	I.Same_Len_Var = make(map[int]int)
+	I.Del_Var = make(map[int]int)
 	var same_len_flag, del_flag bool
 	var snp_len int
-	for snp_pos, snp_prof := range I.SNP_PROF {
-		I.SORTED_SNP_POS = append(I.SORTED_SNP_POS, snp_pos)
+	for snp_pos, snp_prof := range I.Var_Prof {
 		snp_len = len(snp_prof[0])
 		same_len_flag, del_flag = true, true
 		for _, val := range snp_prof[1: ] {
@@ -60,16 +57,15 @@ func New_Index() *Index {
 			}
 		}
 		if same_len_flag {
-			I.SAME_LEN_SNP[snp_pos] = snp_len
+			I.Same_Len_Var[snp_pos] = snp_len
 		}
 		if del_flag {
-			I.DEL_SNP[snp_pos] = snp_len - 1
+			I.Del_Var[snp_pos] = snp_len - 1
 		}		
 	}
-	sort.Sort(sort.IntSlice(I.SORTED_SNP_POS))
 	PrintMemStats("Memstats after creating auxiliary data structures for SNP Profile")
 
-	I.REV_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
+	I.Rev_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
 	PrintMemStats("memstats after loading index of reverse multigenome")
 
 	return I
@@ -120,7 +116,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
 
 	rev_s_pos = len(read) - 1 - p
-	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.REV_FMI, rev_read, rev_s_pos)
+	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.Rev_FMI, rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
 		//convert rev_e_pos in forward search to s_pos in backward search
@@ -128,7 +124,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 		e_pos = p
 		if rev_ep - rev_sp + 1 <= INPUT_INFO.Max_snum && s_pos - e_pos >= INPUT_INFO.Min_slen {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				m_pos[idx - rev_sp] = len(I.SEQ) - 1 - int(I.REV_FMI.SA[idx]) - (s_pos - e_pos)
+				m_pos[idx - rev_sp] = len(I.Seq) - 1 - int(I.Rev_FMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}

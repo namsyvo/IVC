@@ -17,7 +17,6 @@ import (
 //--------------------------------------------------------------------------------------------------
 var (
 	STD_BASES		= []byte{'A', 'C', 'G', 'T'} 	//Standard bases of DNA sequences
-	INF             = math.MaxInt16 				//Value for Infinity
 	NEW_SNP_RATE    = 0.00001						//Value for prior probability of new alleles
 	NEW_INDEL_RATE  = 0.000001						//Value for prior probability of new indels
 	NEW_SNP_RATE_LOG = -math.Log10(NEW_SNP_RATE)
@@ -25,7 +24,7 @@ var (
 )
 
 //--------------------------------------------------------------------------------------------------
-// Global variables for read alignment and SNP calling processes.
+// Global variables for read alignment and Var calling processes.
 //--------------------------------------------------------------------------------------------------
 var (
 	INPUT_INFO	InputInfo	//Input information
@@ -40,12 +39,12 @@ var (
 type InputInfo struct {
 	//File names for:
 	Genome_file    string //reference multigenome
-	SNP_file       string //SNP profile
-	Index_file     string //Index of original reference genomes
-	Rev_index_file string //Index of reverse reference genomes
-	Read_file_1    string //first end read
-	Read_file_2    string //second end read
-	SNP_call_file  string //store SNP call
+	Var_file       string //Var profile
+	Index_file     string //index of original reference genomes
+	Rev_index_file string //index of reverse reference genomes
+	Read_file_1    string //first end of read
+	Read_file_2    string //second end of read
+	Var_call_file  string //store Var call
 	Search_mode    int    //searching mode for finding seeds
 	Start_pos      int    //starting postion on reads for finding seeds
 	Search_step    int    //step for searching in deterministic mode
@@ -74,9 +73,9 @@ type ParaInfo struct {
 	Iter_num_factor int     //factor for number of iterations 
 	Read_len        int     //read length, calculated from read files
 	Info_len		int 	//maximum size of array to store read headers
-	Sub_cost		float64
-	Gap_open_cost	float64
-	Gap_ext_cost	float64
+	Sub_cost		float64 //cost of substitution for Hamming and Edit distance
+	Gap_open_cost	float64 //cost of gap open for Edit distance
+	Gap_ext_cost	float64 //cost of gap extension for Edit distance
 	Seed_backup		int 	//number of backup bases from seeds
 	Indel_backup    int     //number of backup bases from known indels
 	Ham_backup      int     //number of backup bases from Hamming alignment
@@ -248,10 +247,10 @@ func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
-// IntervalHasSNP determines whether [i, j] contains SNP positions which are stores in array A.
+// IntervalHasVar determines whether [i, j] contains Var positions which are stores in array A.
 // This function impelements interpolation search. The array A must be sorted in increasing order.
 //--------------------------------------------------------------------------------------------------
-func IntervalHasSNP(A []int, i, j int) bool {
+func IntervalHasVar(A []int, i, j int) bool {
 	L := 0
 	R := len(A) - 1
 	var m int

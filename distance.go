@@ -33,7 +33,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64, 
+func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64, 
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var snp_len int
@@ -49,12 +49,12 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var snp_pos, snp_type []int
 	var snp_base, snp_qual [][]byte
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[n - 1] - PARA_INFO.Indel_backup]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[n - 1] - PARA_INFO.Indel_backup]; !is_same_len_snp {
+		if _, is_snp = INDEX.Var_Prof[ref_pos_map[n - 1] - PARA_INFO.Indel_backup]; is_snp {
+			if _, is_same_len_snp = INDEX.Same_Len_Var[ref_pos_map[n - 1] - PARA_INFO.Indel_backup]; !is_same_len_snp {
 				break
 			}
 		}
-		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[n - 1]]; !is_snp {
+		if _, is_snp = INDEX.Var_Prof[ref_pos_map[n - 1]]; !is_snp {
 			if read[m - 1] != ref[n - 1] {
 				if m + PARA_INFO.Ham_backup < len(read) && n + PARA_INFO.Ham_backup < len(ref) {
 					m += PARA_INFO.Ham_backup
@@ -71,8 +71,8 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			}
 			m--
 			n--
-		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[n - 1]]; is_same_len_snp {
-			snp_prof, _ = S.SNP_Prob[uint32(ref_pos_map[n - 1])]
+		} else if snp_len, is_same_len_snp = INDEX.Same_Len_Var[ref_pos_map[n - 1]]; is_same_len_snp {
+			snp_prof, _ = S.Var_Prob[uint32(ref_pos_map[n - 1])]
 			min_p = math.MaxFloat64
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
@@ -158,7 +158,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 		ins_i_open = PARA_INFO.Gap_open_cost// + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost// + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_snp = INDEX.SNP_PROF[ref_pos_map[j - 1]]; !is_snp {
+			if _, is_snp = INDEX.Var_Prof[ref_pos_map[j - 1]]; !is_snp {
 				if read[i - 1] == ref[j - 1] {
 					sub_i = 0//prob_i
 				} else {
@@ -193,7 +193,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
-				snp_prof, _ = S.SNP_Prob[uint32(ref_pos_map[j - 1])]
+				snp_prof, _ = S.Var_Prob[uint32(ref_pos_map[j - 1])]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
 					//One possible case: i - snp_len < 0 for all k
@@ -255,7 +255,7 @@ func (S *SNP_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int, 
+func (S *Var_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int, 
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	var is_snp, is_same_len_snp, is_del bool
@@ -271,7 +271,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	for i > 0 || j > 0 {
 		is_snp = false
 		if j > 0 {
-			_, is_snp = INDEX.SNP_PROF[ref_pos_map[j - 1]]
+			_, is_snp = INDEX.Var_Prof[ref_pos_map[j - 1]]
 		}
 		if !is_snp { //unknown VARIANT location
 			if bt_mat == 0 {
@@ -311,9 +311,9 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				copy(qlt, qual[i - snp_len : i])
 				snp_base = append(snp_base, snp)
 				snp_qual = append(snp_qual, qlt)
-				if _, is_del = INDEX.DEL_SNP[ref_pos_map[j - 1]]; is_del {
+				if _, is_del = INDEX.Del_Var[ref_pos_map[j - 1]]; is_del {
 					snp_type = append(snp_type, 2)
-				} else if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[j - 1]]; is_same_len_snp {
+				} else if _, is_same_len_snp = INDEX.Same_Len_Var[ref_pos_map[j - 1]]; is_same_len_snp {
 					snp_type = append(snp_type, 0)
 				} else {
 					snp_type = append(snp_type, 1)
@@ -348,7 +348,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	}
 	PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
-	//Get SNPs
+	//Get Vars
 	ref_ori_pos := 0
 	i = 0
 	for i < len(aligned_ref) {
@@ -410,7 +410,7 @@ func (S *SNP_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64, 
+func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64, 
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var snp_len int
@@ -426,12 +426,12 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[N - n] + PARA_INFO.Indel_backup]; is_snp {
-			if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[N - n] + PARA_INFO.Indel_backup]; !is_same_len_snp {
+		if _, is_snp = INDEX.Var_Prof[ref_pos_map[N - n] + PARA_INFO.Indel_backup]; is_snp {
+			if _, is_same_len_snp = INDEX.Same_Len_Var[ref_pos_map[N - n] + PARA_INFO.Indel_backup]; !is_same_len_snp {
 				break
 			}
 		}
-		if _, is_snp = INDEX.SNP_PROF[ref_pos_map[N - n]]; !is_snp {
+		if _, is_snp = INDEX.Var_Prof[ref_pos_map[N - n]]; !is_snp {
 			if read[M - m] != ref[N - n] {
 				if M - (m + PARA_INFO.Ham_backup) > 0 && N - (n + PARA_INFO.Ham_backup) > 0 {
 					m += PARA_INFO.Ham_backup
@@ -448,9 +448,9 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			}
 			m--
 			n--
-		} else if snp_len, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[N - n]]; is_same_len_snp {
+		} else if snp_len, is_same_len_snp = INDEX.Same_Len_Var[ref_pos_map[N - n]]; is_same_len_snp {
 			min_p = math.MaxFloat64
-			snp_prof, is_snp = S.SNP_Prob[uint32(ref_pos_map[N - n])]
+			snp_prof, is_snp = S.Var_Prob[uint32(ref_pos_map[N - n])]
 			for snp_str, snp_prob = range snp_prof {
 				if m >= snp_len {
 					p = AlignCostKnownLoci(read[M - m : M - m + snp_len], []byte(snp_str), qual[M - m : M - m + snp_len], snp_prob)
@@ -535,7 +535,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		ins_i_open = PARA_INFO.Gap_open_cost// + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost// + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_snp = INDEX.SNP_PROF[ref_pos_map[N - j]]; !is_snp {
+			if _, is_snp = INDEX.Var_Prof[ref_pos_map[N - j]]; !is_snp {
 				if read[M - i] == ref[N - j] {
 					sub_i = 0//prob_i
 				} else {
@@ -569,7 +569,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_snp_len = 0
-				snp_prof, _ = S.SNP_Prob[uint32(ref_pos_map[N - j])]
+				snp_prof, _ = S.Var_Prob[uint32(ref_pos_map[N - j])]
 				for snp_str, snp_prob = range snp_prof {
 					snp_len = len(snp_str)
 					//One possible case: i - snp_len < 0 for all k
@@ -638,7 +638,7 @@ func (S *SNP_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int, 
+func (S *Var_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int, 
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
@@ -655,7 +655,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	for i > 0 || j > 0 {
 		is_snp = false
 		if j > 0 {
-			_, is_snp = INDEX.SNP_PROF[ref_pos_map[N - j]]
+			_, is_snp = INDEX.Var_Prof[ref_pos_map[N - j]]
 		}
 		if !is_snp { //unknown VARIANT location
 			if bt_mat == 0 {
@@ -696,9 +696,9 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					copy(qlt, qual[M - i : M - (i - snp_len)])
 					snp_base = append(snp_base, snp)
 					snp_qual = append(snp_qual, qlt)
-					if _, is_del = INDEX.DEL_SNP[ref_pos_map[N - j]]; is_del {
+					if _, is_del = INDEX.Del_Var[ref_pos_map[N - j]]; is_del {
 						snp_type = append(snp_type, 2)
-					} else if _, is_same_len_snp = INDEX.SAME_LEN_SNP[ref_pos_map[N - j]]; is_same_len_snp {
+					} else if _, is_same_len_snp = INDEX.Same_Len_Var[ref_pos_map[N - j]]; is_same_len_snp {
 						snp_type = append(snp_type, 0)
 					} else {
 						snp_type = append(snp_type, 1)
@@ -742,7 +742,7 @@ func (S *SNP_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 
 	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
-	//Get SNPs
+	//Get Vars
 	ref_ori_pos := N - n
 	i = 0
 	for i < len(aligned_ref) {

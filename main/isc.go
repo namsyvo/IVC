@@ -18,7 +18,7 @@ import (
 func main() {
 
 	//Starting Program-----------------------------------------------------------//
-	fmt.Println("ISC - Integrated SNP Caller using Next-generation sequencing data.")
+	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
 	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	//--------------------------------------------------------------------------//
 
@@ -27,21 +27,21 @@ func main() {
 	start_time := time.Now()
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
-	snp_caller := isc.New_SNP_Caller(input_info)
+	snp_caller := isc.New_Variant_Caller(input_info)
 	index_time := time.Since(start_time)
-	log.Printf("time for initializing SNP caller\t%s", index_time)
-	isc.PrintProcessMem("memstats after initializing SNP caller")
+	log.Printf("time for initializing variant caller\t%s", index_time)
+	isc.PrintProcessMem("memstats after initializing the variant caller")
 	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
 
-	//Call SNPs from read-multigenome alignment--------------------------------//
-	fmt.Println("Calling SNPs based on aligning reads to the mutigenome...")
+	//Call Variants from read-multigenome alignment--------------------------------//
+	fmt.Println("Calling Variants based on aligning reads to the mutigenome...")
 	start_time = time.Now()
-	snp_caller.CallSNPs()
+	snp_caller.CallVariants()
 	callsnp_time := time.Since(start_time)
-	log.Printf("time for calling SNPs:\t%s", callsnp_time)
-	isc.PrintProcessMem("memstats after calling SNPs")
-	fmt.Println("Finish calling SNPs.")
+	log.Printf("time for calling Variants:\t%s", callsnp_time)
+	isc.PrintProcessMem("memstats after calling Variants")
+	fmt.Println("Finish calling Variants.")
 	//-------------------------------------------------------------------------//
 
 	//Finishing Program--------------------------------------------------------//
@@ -82,12 +82,12 @@ func ReadInputInfo() isc.InputInfo {
 
 	input_info := isc.InputInfo{}
 	input_info.Genome_file = multigenome_file
-	input_info.SNP_file = snp_prof_file
+	input_info.Var_file = snp_prof_file
 	input_info.Index_file = multigenome_file + ".index/"
 	input_info.Rev_index_file = rev_multigenome_file + ".index/"
 	input_info.Read_file_1 = *read_file_1
 	input_info.Read_file_2 = *read_file_2
-	input_info.SNP_call_file = *snp_call_file
+	input_info.Var_call_file = *snp_call_file
 	input_info.Search_mode = *search_mode
 	input_info.Start_pos = *start_pos
 	input_info.Search_step = *search_step
@@ -104,10 +104,10 @@ func ReadInputInfo() isc.InputInfo {
 	input_info.Dist_thres = *dist_thres
 	input_info.Iter_num = *iter_num
 
-	log.Printf("Input files:\tGenome_file: %s, SNP_file: %s, Index_file: %s, Rev_index_file: %s," + 
-		" Read_file_1: %s, Read_file_2: %s, SNP_call_file: %s", 
-		input_info.Genome_file, input_info.SNP_file, input_info.Index_file, input_info.Rev_index_file, 
-		input_info.Read_file_1, input_info.Read_file_2, input_info.SNP_call_file)
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file: %s, Rev_index_file: %s," + 
+		" Read_file_1: %s, Read_file_2: %s, Var_call_file: %s", 
+		input_info.Genome_file, input_info.Var_file, input_info.Index_file, input_info.Rev_index_file, 
+		input_info.Read_file_1, input_info.Read_file_2, input_info.Var_call_file)
 
 	log.Printf("Input parameters:\tSearch_mode: %d, Start_pos: %d, Search_step: %d, Proc_num: %d," + 
 		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_slen: %d, Max_psnum: %d, Dist_thres: %d, Iter_num: %d", 
@@ -121,5 +121,5 @@ func ReadInputInfo() isc.InputInfo {
 //Write output information and parameters
 //--------------------------------------------------------------------------------------------------
 func WriteOutputInfo(input_info isc.InputInfo) {
-	fmt.Println("Check SNPs in the file", input_info.SNP_call_file)
+	fmt.Println("Check Variants in the file", input_info.Var_call_file)
 }
