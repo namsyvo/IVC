@@ -8,12 +8,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"time"
-	"runtime"
-	"log"
-	"path"
 	"github.com/namsyvo/ISC"
 	"github.com/vtphan/fmi"
+	"log"
+	"path"
+	"runtime"
+	"time"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func main() {
 	multigenome_len := len(multigenome)
 	rev_multigenome := make([]byte, multigenome_len)
 	for i := range multigenome {
-		rev_multigenome[i] = multigenome[multigenome_len - 1 - i]
+		rev_multigenome[i] = multigenome[multigenome_len-1-i]
 	}
 
 	_, genome_file_name := path.Split(*genome_file)
@@ -101,9 +101,9 @@ func main() {
 
 	runtime.ReadMemStats(memstats)
 	isc.PrintProcessMem("ISC-index: memstats after indexing reverse multigenome")
-	
+
 	//fmt.Println("Index directory for multigenome: ", multigenome_file + ".index/")
-	fmt.Println("Index directory for reverse multigenome: ", rev_multigenome_file + ".index/")
+	fmt.Println("Index directory for reverse multigenome: ", rev_multigenome_file+".index/")
 	fmt.Println("Finish indexing multigenome.")
 
 }

@@ -12,7 +12,6 @@ package isc
 
 import (
 	//"fmt"
-	"sort"
 	"github.com/vtphan/fmi" //to use FM index
 )
 
@@ -20,12 +19,12 @@ import (
 //Index for SNP caller
 //--------------------------------------------------------------------------------------------------
 type Index struct {
-	Seq            []byte            //store reference multigenomes
-	Var_Prof       map[int][][]byte  //hash table of SNP Profile (position, snps)
-	Var_AF         map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
-	Same_Len_Var   map[int]int       //hash table to indicate if SNPs has same length
-	Del_Var   	   map[int]int       //hash table to store length of deletions if SNPs are deletion
-	Rev_FMI        fmi.Index         //FM-index of reverse multigenomes
+	Seq          []byte            //store reference multigenomes
+	Var_Prof     map[int][][]byte  //hash table of SNP Profile (position, snps)
+	Var_AF       map[int][]float32 //allele frequency of SNP Profile (position, af of snps)
+	Same_Len_Var map[int]int       //hash table to indicate if SNPs has same length
+	Del_Var      map[int]int       //hash table to store length of deletions if SNPs are deletion
+	Rev_FMI      fmi.Index         //FM-index of reverse multigenomes
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -48,7 +47,7 @@ func New_Index() *Index {
 	for snp_pos, snp_prof := range I.Var_Prof {
 		snp_len = len(snp_prof[0])
 		same_len_flag, del_flag = true, true
-		for _, val := range snp_prof[1: ] {
+		for _, val := range snp_prof[1:] {
 			if snp_len != len(val) {
 				same_len_flag = false
 			}
@@ -61,7 +60,7 @@ func New_Index() *Index {
 		}
 		if del_flag {
 			I.Del_Var[snp_pos] = snp_len - 1
-		}		
+		}
 	}
 	PrintMemStats("Memstats after creating auxiliary data structures for SNP Profile")
 
@@ -86,7 +85,7 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 	ep = index.EP[c]
 	var sp0, ep0 uint32
 	var i int
-	for i = start_pos - 1; i >= 0 && i >= start_pos - INPUT_INFO.Max_slen; i-- {
+	for i = start_pos - 1; i >= 0 && i >= start_pos-INPUT_INFO.Max_slen; i-- {
 		c = pattern[i]
 		offset, ok = index.C[c]
 		if ok {
@@ -122,9 +121,9 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep - rev_sp + 1 <= INPUT_INFO.Max_snum && s_pos - e_pos >= INPUT_INFO.Min_slen {
+		if rev_ep-rev_sp+1 <= INPUT_INFO.Max_snum && s_pos-e_pos >= INPUT_INFO.Min_slen {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				m_pos[idx - rev_sp] = len(I.Seq) - 1 - int(I.Rev_FMI.SA[idx]) - (s_pos - e_pos)
+				m_pos[idx-rev_sp] = len(I.Seq) - 1 - int(I.Rev_FMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}

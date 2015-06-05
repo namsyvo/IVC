@@ -6,17 +6,17 @@
 package isc
 
 import (
-	"fmt"
 	"bufio"
+	"bytes"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
-	"strconv"
-	"time"
 	"sort"
-	"sync"
+	"strconv"
 	"strings"
-	"bytes"
+	"sync"
+	"time"
 )
 
 /*--------------------------------------------------------------------------------------------------
@@ -24,19 +24,19 @@ Var represents Var obtained during alignment phase.
 It serves as temporary variable during Var calling phase.
 --------------------------------------------------------------------------------------------------*/
 type Var struct {
-	Pos 	uint32 //postion of variants on ref
-	Bases 	[]byte //bases of variants
-	BaseQ 	[]byte //quality of bases of variants
-	Type    int    //type of variants (sub, ins, del...)
-	CDis    int    //chromosomal distance of alignment of two read-ends
-	CDiff   int    //difference between aligned pos and true pos
-	AProb   float64 //prob of correct alignment
-	CProb  float64 //prob correct paired-mapping
-	RInfo 	[]byte //info of reads
-	SPos1 	int 	//starting pos on read1 of exact match (i.e. ending position from backward search with FM-index)
-	SPos2 	int 	//starting pos on read2 of exact match
-	Stra1 	bool 	//strand (backward/forward) of read1 of exact match
-	Stra2 	bool 	//strand (backward/forward) of read2 of exact match
+	Pos   uint32  //postion of variants on ref
+	Bases []byte  //bases of variants
+	BaseQ []byte  //quality of bases of variants
+	Type  int     //type of variants (sub, ins, del...)
+	CDis  int     //chromosomal distance of alignment of two read-ends
+	CDiff int     //difference between aligned pos and true pos
+	AProb float64 //prob of correct alignment
+	CProb float64 //prob correct paired-mapping
+	RInfo []byte  //info of reads
+	SPos1 int     //starting pos on read1 of exact match (i.e. ending position from backward search with FM-index)
+	SPos2 int     //starting pos on read2 of exact match
+	Stra1 bool    //strand (backward/forward) of read1 of exact match
+	Stra2 bool    //strand (backward/forward) of read2 of exact match
 }
 
 /*--------------------------------------------------------------------------------------------------
@@ -45,36 +45,36 @@ This struct also has functions defined on it for calling Vars.
 --------------------------------------------------------------------------------------------------*/
 type Var_Prof struct {
 	/*
-	Var_Prob stores all possible variants at each position and their confident probablilities.
-		Their prior probablities will be obtained from reference genomes and variant profiles.
-		Their posterior probabilities will be updated during alignment phase based on incomming aligned bases
+		Var_Prob stores all possible variants at each position and their confident probablilities.
+			Their prior probablities will be obtained from reference genomes and variant profiles.
+			Their posterior probabilities will be updated during alignment phase based on incomming aligned bases
 	*/
-	Var_Prob 	map[uint32]map[string]float64 	//Probability of variant calls
-	Var_BaseQ 	map[uint32]map[string][][]byte 	//Quality sequences (in FASTQ format) of aligned bases at the variant call position
-	Var_Type    map[uint32]map[string][]int     //Type of variants (currently: 0:sub, 1:ins, 2:del)
-	Var_RNum 	map[uint32]map[string]int 		//Numer of reads (bases) aligned to the variant call postion
-	Chr_Dis     map[uint32]map[string][]int 	//Chromosomal distance between two aligned ends
-	Chr_Diff    map[uint32]map[string][]int 	//Difference betwwen aligned postions and true postions (for simulated data)
-	Aln_Prob    map[uint32]map[string][]float64 //Alignment probability of aligned read at the variant call position
-	Chr_Prob    map[uint32]map[string][]float64 //Paired-end mapping probability
-	Start_Pos1  map[uint32]map[string][]int 	//Start position of alignment of the first end
-	Start_Pos2  map[uint32]map[string][]int 	//Start position of alignment of the second end
-	Strand1     map[uint32]map[string][]bool 	//Strand indicator of the first end ("true" if identicaly with ref)
-	Strand2     map[uint32]map[string][]bool 	//Strand indicator of the second end
-	Read_Info 	map[uint32]map[string][][]byte 	//Info of aligned reads at the variant call position
+	Var_Prob   map[uint32]map[string]float64   //Probability of variant calls
+	Var_BaseQ  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
+	Var_Type   map[uint32]map[string][]int     //Type of variants (currently: 0:sub, 1:ins, 2:del)
+	Var_RNum   map[uint32]map[string]int       //Numer of reads (bases) aligned to the variant call postion
+	Chr_Dis    map[uint32]map[string][]int     //Chromosomal distance between two aligned ends
+	Chr_Diff   map[uint32]map[string][]int     //Difference betwwen aligned postions and true postions (for simulated data)
+	Aln_Prob   map[uint32]map[string][]float64 //Alignment probability of aligned read at the variant call position
+	Chr_Prob   map[uint32]map[string][]float64 //Paired-end mapping probability
+	Start_Pos1 map[uint32]map[string][]int     //Start position of alignment of the first end
+	Start_Pos2 map[uint32]map[string][]int     //Start position of alignment of the second end
+	Strand1    map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if identicaly with ref)
+	Strand2    map[uint32]map[string][]bool    //Strand indicator of the second end
+	Read_Info  map[uint32]map[string][][]byte  //Info of aligned reads at the variant call position
 }
 
 /*--------------------------------------------------------------------------------------------------
 InitIndex initializes indexes and parameters.
 This function will be called from main program.
 --------------------------------------------------------------------------------------------------*/
-func New_Variant_Caller(input_info InputInfo) *Var_Prof {
+func NewVariantCaller(input_info InputInfo) *Var_Prof {
 
 	INPUT_INFO = input_info
 	/*
-	SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
-			700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
-			0.01 is mutation rate (currently is estimated from dbSNP of human genome)
+		SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
+				700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
+				0.01 is mutation rate (currently is estimated from dbSNP of human genome)
 	*/
 	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Iter_num)
 	INDEX = *New_Index()
@@ -111,7 +111,7 @@ func New_Variant_Caller(input_info InputInfo) *Var_Prof {
 			}
 		} else {
 			for i, snp = range snp_value {
-				S.Var_Prob[pos][string(snp)] = float64(INDEX.Var_AF[snp_pos][i]) - 1.5 * NEW_SNP_RATE
+				S.Var_Prob[pos][string(snp)] = float64(INDEX.Var_AF[snp_pos][i]) - 1.5*NEW_SNP_RATE
 				if S.Var_Prob[pos][string(snp)] < NEW_SNP_RATE {
 					S.Var_Prob[pos][string(snp)] = NEW_SNP_RATE
 				}
@@ -123,7 +123,7 @@ func New_Variant_Caller(input_info InputInfo) *Var_Prof {
 			}
 		}
 		S.Var_BaseQ[pos] = make(map[string][][]byte)
-		S.Var_Type[pos]  = make(map[string][]int)
+		S.Var_Type[pos] = make(map[string][]int)
 		S.Var_RNum[pos] = make(map[string]int)
 		S.Chr_Dis[pos] = make(map[string][]int)
 		S.Chr_Diff[pos] = make(map[string][]int)
@@ -145,7 +145,7 @@ This function will be called from main program.
 --------------------------------------------------------------------------------------------------*/
 func (S *Var_Prof) CallVariants() {
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindVariants,
-	//when a FindSNPs goroutine finish copying a read to its own memory, 
+	//when a FindSNPs goroutine finish copying a read to its own memory,
 	//it signals ReadReads goroutine to scan next reads.
 	read_signal := make(chan bool)
 
@@ -157,7 +157,7 @@ func (S *Var_Prof) CallVariants() {
 	snp_results := make(chan Var)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
-		go S.FindVars(read_data, read_signal, snp_results, &wg)
+		go S.FindVariants(read_data, read_signal, snp_results, &wg)
 	}
 	//------------------------
 	//For debugging
@@ -173,7 +173,7 @@ func (S *Var_Prof) CallVariants() {
 		close(NO_ALIGN_READ_INFO_CHAN)
 		//------------------------
 	}()
-	
+
 	//Collect Vars from results channel and update Vars and their probabilities
 	var snp Var
 	for snp = range snp_results {
@@ -183,8 +183,6 @@ func (S *Var_Prof) CallVariants() {
 			S.UpdateIndelProb(snp)
 		}
 	}
-	fmt.Println("Outputing Var calls...")
-	S.OutputVarCalls()
 	//------------------------
 	//For debugging
 	ProcessNoAlignReadInfo(S.Var_Prob)
@@ -207,24 +205,24 @@ func (S *Var_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 		panic("Error opening input read file " + fn2)
 	}
 	defer f2.Close()
-	
+
 	read_num := 0
 	scanner1 := bufio.NewScanner(f1)
 	scanner2 := bufio.NewScanner(f2)
 	read_info := InitReadInfo(PARA_INFO.Read_len, PARA_INFO.Info_len)
 	for scanner1.Scan() && scanner2.Scan() {
-		read_info.Info1 = read_info.Info1[ : PARA_INFO.Info_len]
-		read_info.Info2 = read_info.Info2[ : PARA_INFO.Info_len]
+		read_info.Info1 = read_info.Info1[:PARA_INFO.Info_len]
+		read_info.Info2 = read_info.Info2[:PARA_INFO.Info_len]
 		copy(read_info.Info1, scanner1.Bytes()) //use 1st line in input FASTQ file 1
 		copy(read_info.Info2, scanner2.Bytes()) //use 1st line in input FASTQ file 2
-		read_info.Info1 = read_info.Info1[ : len(scanner1.Bytes())]
-		read_info.Info2 = read_info.Info2[ : len(scanner2.Bytes())]
+		read_info.Info1 = read_info.Info1[:len(scanner1.Bytes())]
+		read_info.Info2 = read_info.Info2[:len(scanner2.Bytes())]
 		scanner1.Scan()
 		scanner2.Scan()
 		copy(read_info.Read1, scanner1.Bytes()) //use 2nd line in input FASTQ file 1
 		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in input FASTQ file 2
-		scanner1.Scan() //ignore 3rd line in 1st input FASTQ file 1
-		scanner2.Scan() //ignore 3rd line in 2nd input FASTQ file 2
+		scanner1.Scan()                         //ignore 3rd line in 1st input FASTQ file 1
+		scanner2.Scan()                         //ignore 3rd line in 2nd input FASTQ file 2
 		scanner1.Scan()
 		scanner2.Scan()
 		copy(read_info.Qual1, scanner1.Bytes()) //use 4th line in input FASTQ file 1
@@ -242,9 +240,9 @@ func (S *Var_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 }
 
 /*--------------------------------------------------------------------------------------------------
-FindVars takes data from data channel, find all possible Vars and put them into results channel.
+FindVariants takes data from data channel, find all possible Vars and put them into results channel.
 --------------------------------------------------------------------------------------------------*/
-func (S *Var_Prof) FindVars(read_data chan *ReadInfo, read_signal chan bool, snp_results chan Var, 
+func (S *Var_Prof) FindVariants(read_data chan *ReadInfo, read_signal chan bool, snp_results chan Var,
 	wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
@@ -256,36 +254,36 @@ func (S *Var_Prof) FindVars(read_data chan *ReadInfo, read_signal chan bool, snp
 
 	for read := range read_data {
 		PrintMemStats("Before copying all info from data chan")
-		read_info.Info1 = read_info.Info1[ : PARA_INFO.Info_len]
-		read_info.Info2 = read_info.Info2[ : PARA_INFO.Info_len]
+		read_info.Info1 = read_info.Info1[:PARA_INFO.Info_len]
+		read_info.Info2 = read_info.Info2[:PARA_INFO.Info_len]
 		copy(read_info.Info1, read.Info1)
 		copy(read_info.Info2, read.Info2)
-		read_info.Info1 = read_info.Info1[ : len(read.Info1)]
-		read_info.Info2 = read_info.Info2[ : len(read.Info2)]
+		read_info.Info1 = read_info.Info1[:len(read.Info1)]
+		read_info.Info2 = read_info.Info2[:len(read.Info2)]
 		copy(read_info.Read1, read.Read1)
 		copy(read_info.Read2, read.Read2)
 		copy(read_info.Qual1, read.Qual1)
 		copy(read_info.Qual2, read.Qual2)
-		<- read_signal
-		
+		<-read_signal
+
 		PrintMemStats("After copying all info from data chan")
-		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1, 
+		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1,
 			read_info.Comp_read1, read_info.Rev_qual1)
 		PrintMemStats("After calculating RevComp for Read1")
-		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2, 
+		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2,
 			read_info.Comp_read2, read_info.Rev_qual2)
 		PrintMemStats("After calculating RevComp for Read2")
 
-		S.FindVarsFromPairedEnds(read_info, snp_results, align_info, m_pos)
+		S.FindVariantsFromPairedEnds(read_info, snp_results, align_info, m_pos)
 		PrintMemStats("After finding all Vars from reads")
 	}
 }
 
 /*--------------------------------------------------------------------------------------------------
-FindVarsFromPairedEndReads returns Vars found from alignment between pair-end reads and the multigenome.
+FindVariantsFromPairedEndReads returns Vars found from alignment between pair-end reads and the multigenome.
 This version treats each end of the reads independently.
 --------------------------------------------------------------------------------------------------*/
-func (S *Var_Prof) FindVarsFromPairedEnds(read_info *ReadInfo, snp_results chan Var, align_info *AlignInfo, m_pos []int) {
+func (S *Var_Prof) FindVariantsFromPairedEnds(read_info *ReadInfo, snp_results chan Var, align_info *AlignInfo, m_pos []int) {
 
 	var snp Var
 	var snps1, snps2 []Var
@@ -298,17 +296,17 @@ func (S *Var_Prof) FindVarsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 	//---------------------------------------------------------------------
 	//get info for simulated reads, with specific format of testing dataset
 	//need to be re-implemented for general data
-    read_info1_tokens := bytes.Split(read_info.Info1, []byte{'_'})
+	read_info1_tokens := bytes.Split(read_info.Info1, []byte{'_'})
 	var true_pos1, true_pos2 int64
 	var read_info1, read_info2 []byte
-    if read_info1_tokens[0][1] != 'r' {
-        true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
+	if read_info1_tokens[0][1] != 'r' {
+		true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
 		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64)
 		read_info1, read_info2 = make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
 		copy(read_info1, read_info.Info1)
 		copy(read_info2, read_info.Info2)
 	} else {
-        true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64)
+		true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64)
 		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
 		read_info1, read_info2 = make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
 		copy(read_info1, read_info.Info1)
@@ -324,7 +322,7 @@ func (S *Var_Prof) FindVarsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 	paired_prob = math.MaxFloat64
 	var has_seeds bool
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
-		PrintLoopTraceInfo(loop_num, "FindVarsFromReads")
+		PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, has_seeds = S.FindSeedsFromPairedEnds(read_info)
 		if has_seeds {
 			for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
@@ -335,30 +333,30 @@ func (S *Var_Prof) FindVarsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 					continue
 				}
 				//Find Vars for the first end
-				PrintMemStats("Before FindVarsFromEnd1")
+				PrintMemStats("Before FindVariantsFromEnd1")
 				if strand_r1[p_idx] == true {
-					snps1, l_align_pos1, _, align_prob1 = S.FindVarsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+					snps1, l_align_pos1, _, align_prob1 = S.FindVariantsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx],
 						m_pos_r1[p_idx], read_info.Read1, read_info.Qual1, align_info)
 				} else {
-					snps1, l_align_pos1, _, align_prob1 = S.FindVarsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx], 
+					snps1, l_align_pos1, _, align_prob1 = S.FindVariantsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx],
 						m_pos_r1[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, align_info)
 				}
-				PrintMemStats("After FindVarsFromEnd1")
-				
+				PrintMemStats("After FindVariantsFromEnd1")
+
 				//Find Vars for the second end
-				PrintMemStats("Before FindVarsFromEnd2")
+				PrintMemStats("Before FindVariantsFromEnd2")
 				if strand_r2[p_idx] == true {
-					snps2, l_align_pos2, _, align_prob2 = S.FindVarsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+					snps2, l_align_pos2, _, align_prob2 = S.FindVariantsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx],
 						m_pos_r2[p_idx], read_info.Read2, read_info.Qual2, align_info)
 				} else {
-					snps2, l_align_pos2, _, align_prob2 = S.FindVarsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx], 
+					snps2, l_align_pos2, _, align_prob2 = S.FindVariantsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx],
 						m_pos_r2[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, align_info)
 				}
-				PrintMemStats("After FindVarsFromEnd2")
-				
+				PrintMemStats("After FindVariantsFromEnd2")
+
 				if align_prob1 != -1 && align_prob2 != -1 {
-					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1 - l_align_pos2)) - 400.0, 2.0) / (2*50*50)))
-					if paired_prob > align_prob1 + align_prob2 {
+					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
+					if paired_prob > align_prob1+align_prob2 {
 						paired_prob = align_prob1 + align_prob2
 						snps_get1 = make([]Var, len(snps1))
 						PrintGetVariants(paired_prob, align_prob1, align_prob2, snps1, snps2)
@@ -410,7 +408,7 @@ func (S *Var_Prof) FindVarsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 		}
 		loop_num++
 	}
-	if paired_prob <= 2 * PARA_INFO.Prob_thres {
+	if paired_prob <= 2*PARA_INFO.Prob_thres {
 		if len(snps_get1) > 0 {
 			for _, snp = range snps_get1 {
 				snp_results <- snp
@@ -434,7 +432,7 @@ func (S *Var_Prof) FindVarsFromPairedEnds(read_info *ReadInfo, snp_results chan 
 /*--------------------------------------------------------------------------------------------------
 FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
 --------------------------------------------------------------------------------------------------*/
-func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, []int, []int, []int, 
+func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, []int, []int, []int,
 	[]int, []bool, []bool, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
@@ -463,50 +461,50 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
-		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t" + string(read_info.Read1))
-		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t" + string(read_info.Read2))
+		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
+		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
 
 		PrintMemStats("Before FindSeeds, loop_num " + strconv.Itoa(loop_num))
-		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or = 
+		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or =
 			INDEX.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, m_pos_r1_or)
 		PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
 		if has_seeds_r1_or {
-			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], 
+			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
 				e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
 		}
-		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc = 
+		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc =
 			INDEX.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, m_pos_r1_rc)
 		PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
 		if has_seeds_r1_rc {
-			PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc : s_pos_r1_rc + 1], 
+			PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc:s_pos_r1_rc+1],
 				e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
 		}
-		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or = 
+		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or =
 			INDEX.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, m_pos_r2_or)
 		PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
 		if has_seeds_r2_or {
-			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or : s_pos_r2_or + 1], 
+			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or:s_pos_r2_or+1],
 				e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
 		}
-		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc = 
+		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc =
 			INDEX.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, m_pos_r2_rc)
 		PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
 		if has_seeds_r2_rc {
-			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc : s_pos_r2_rc + 1], 
+			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
 				e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
 		}
 		PrintMemStats("After FindSeeds, loop_num " + strconv.Itoa(loop_num))
 
 		if has_seeds_r1_or && has_seeds_r2_rc {
-			PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or : s_pos_r1_or + 1], 
+			PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
 				e_pos_r1_or, s_pos_r1_or, m_num_r1_or, m_pos_r1_or)
-			PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc : s_pos_r2_rc + 1], 
+			PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc:s_pos_r2_rc+1],
 				e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, m_pos_r2_rc)
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
 					//Check if alignments are likely pair-end alignments
-					if (m_pos_r2_rc[j] - m_pos_r1_or[i]) >= PARA_INFO.Read_len && 
-						(m_pos_r2_rc[j] - m_pos_r1_or[i]) <= PARA_INFO.Read_len + PARA_INFO.Max_ins {
+					if (m_pos_r2_rc[j]-m_pos_r1_or[i]) >= PARA_INFO.Read_len &&
+						(m_pos_r2_rc[j]-m_pos_r1_or[i]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
 
 						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", m_pos_r1_or[i], m_pos_r2_rc[j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
@@ -522,15 +520,15 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 			}
 		}
 		if has_seeds_r1_rc && has_seeds_r2_or {
-			PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc : s_pos_r1_rc + 1], 
+			PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc:s_pos_r1_rc+1],
 				e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, m_pos_r1_rc)
-			PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or : s_pos_r2_or + 1], 
+			PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or:s_pos_r2_or+1],
 				e_pos_r2_or, s_pos_r2_or, m_num_r2_or, m_pos_r2_or)
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_or; j++ {
 					//Check if alignments are likely pair-end alignments
-					if (m_pos_r1_rc[i] - m_pos_r2_or[j]) >= PARA_INFO.Read_len && 
-						(m_pos_r1_rc[i] - m_pos_r2_or[j]) <= PARA_INFO.Read_len + PARA_INFO.Max_ins {
+					if (m_pos_r1_rc[i]-m_pos_r2_or[j]) >= PARA_INFO.Read_len &&
+						(m_pos_r1_rc[i]-m_pos_r2_or[j]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
 
 						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", m_pos_r1_rc[i], m_pos_r2_or[j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
@@ -566,21 +564,21 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 }
 
 /*--------------------------------------------------------------------------------------------------
-FindVarsFromExtension determines Vars based on alignment between reads and multi-genomes.
+FindVariantsFromExtension determines Vars based on alignment between reads and multi-genomes.
 	Extend read and ref from exact matches found from bachward search with FM-index
 	Perform backward (for left extension of read and ref) and forward alignment (for right extension)
 	between read and multigenome to determine aligned bases as candidates for Var calls
 --------------------------------------------------------------------------------------------------*/
-func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte, 
+func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte,
 	align_info *AlignInfo) ([]Var, int, int, float64) {
 
-	PrintMemStats("Before FindVarsFromExtension, m_pos " + strconv.Itoa(m_pos))
+	PrintMemStats("Before FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 
 	var i, j, del_len int
 	var is_snp, is_del bool
 
 	l_read_flank_len := e_pos + PARA_INFO.Seed_backup
-	l_read_flank, l_qual_flank := read[ : l_read_flank_len], qual[ : l_read_flank_len]
+	l_read_flank, l_qual_flank := read[:l_read_flank_len], qual[:l_read_flank_len]
 
 	l_ref_flank := make([]byte, 0)
 	l_ref_pos_map := make([]int, 0)
@@ -590,9 +588,9 @@ func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	for j < l_read_flank_len && i >= 0 {
 		if _, is_snp = INDEX.Var_Prof[i]; is_snp {
 			if del_len, is_del = INDEX.Del_Var[i]; is_del {
-				if i + del_len <= l_align_e_pos && del_len < len(l_ref_flank) {
-					l_ref_flank = l_ref_flank[ : len(l_ref_flank) - del_len]
-					l_ref_pos_map = l_ref_pos_map[ : len(l_ref_pos_map) - del_len]
+				if i+del_len <= l_align_e_pos && del_len < len(l_ref_flank) {
+					l_ref_flank = l_ref_flank[:len(l_ref_flank)-del_len]
+					l_ref_pos_map = l_ref_pos_map[:len(l_ref_pos_map)-del_len]
 					j -= del_len
 				}
 			}
@@ -605,16 +603,16 @@ func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	l_align_s_pos := i + 1
 
 	//Reverse l_ref_pos_map and l_ref_flank to get them in original direction
-	for i, j = 0, len(l_ref_pos_map) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j = 0, len(l_ref_pos_map)-1; i < j; i, j = i+1, j-1 {
 		l_ref_pos_map[i], l_ref_pos_map[j] = l_ref_pos_map[j], l_ref_pos_map[i]
 	}
-	for i, j = 0, len(l_ref_flank) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j = 0, len(l_ref_flank)-1; i < j; i, j = i+1, j-1 {
 		l_ref_flank[i], l_ref_flank[j] = l_ref_flank[j], l_ref_flank[i]
 	}
 
 	seed_len := s_pos - e_pos + 1
 	r_read_flank_len := len(read) - s_pos - 1 + PARA_INFO.Seed_backup
-	r_read_flank, r_qual_flank := read[len(read) - r_read_flank_len : ], qual[len(read) - r_read_flank_len : ]
+	r_read_flank, r_qual_flank := read[len(read)-r_read_flank_len:], qual[len(read)-r_read_flank_len:]
 
 	r_ref_flank := make([]byte, 0)
 	r_ref_pos_map := make([]int, 0)
@@ -626,7 +624,7 @@ func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		r_ref_flank = append(r_ref_flank, INDEX.Seq[i])
 		if _, is_snp = INDEX.Var_Prof[i]; is_snp {
 			if del_len, is_del = INDEX.Del_Var[i]; is_del {
-				if i + del_len < len(INDEX.Seq) {
+				if i+del_len < len(INDEX.Seq) {
 					i += del_len
 				}
 			}
@@ -639,17 +637,17 @@ func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 	PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
 
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_snp_pos, l_snp_base, l_snp_qual, l_snp_type :=
-		S.BackwardDistance(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, align_info.Bw_Dist_D, 
+		S.BackwardDistance(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, align_info.Bw_Dist_D,
 			align_info.Bw_Dist_IS, align_info.Bw_Dist_IT, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT, l_ref_pos_map)
 	r_Ham_dist, r_Edit_dist, r_bt_mat, r_m, r_n, r_snp_pos, r_snp_base, r_snp_qual, r_snp_type :=
-		S.ForwardDistance(r_read_flank, r_qual_flank, r_ref_flank, r_align_s_pos, align_info.Fw_Dist_D, 
+		S.ForwardDistance(r_read_flank, r_qual_flank, r_ref_flank, r_align_s_pos, align_info.Fw_Dist_D,
 			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT, r_ref_pos_map)
 
 	var snps_arr []Var
 	prob := l_Ham_dist + r_Ham_dist + l_Edit_dist + r_Edit_dist
 	if prob <= PARA_INFO.Prob_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual, l_type := S.BackwardTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_align_s_pos, 
+			l_pos, l_base, l_qual, l_type := S.BackwardTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_align_s_pos,
 				l_bt_mat, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT, l_ref_pos_map)
 			l_snp_pos = append(l_snp_pos, l_pos...)
 			l_snp_base = append(l_snp_base, l_base...)
@@ -658,7 +656,7 @@ func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 		}
 		PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_snp_pos, read)
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual, r_type := S.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos, 
+			r_pos, r_base, r_qual, r_type := S.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos,
 				r_bt_mat, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT, r_ref_pos_map)
 			r_snp_pos = append(r_snp_pos, r_pos...)
 			r_snp_base = append(r_snp_base, r_base...)
@@ -681,10 +679,10 @@ func (S *Var_Prof) FindVarsFromExtension(s_pos, e_pos, m_pos int, read, qual []b
 			snps_arr = append(snps_arr, snp)
 			PrintMemStats("After GetVar right, snp_num " + strconv.Itoa(k))
 		}
-		PrintMemStats("After FindVarsFromExtension, m_pos " + strconv.Itoa(m_pos))
+		PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 		return snps_arr, l_align_s_pos, r_align_s_pos, prob
 	}
-	PrintMemStats("After FindVarsFromExtension, m_pos " + strconv.Itoa(m_pos))
+	PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 	return snps_arr, -1, -1, -1
 }
 
@@ -700,7 +698,7 @@ func (S *Var_Prof) UpdateVarProb(snp Var) {
 
 	if _, snp_exist := S.Var_Prob[pos]; !snp_exist {
 		S.Var_Prob[pos] = make(map[string]float64)
-		S.Var_Prob[pos][string(INDEX.Seq[int(pos)])] = 1 - 3 * NEW_SNP_RATE
+		S.Var_Prob[pos][string(INDEX.Seq[int(pos)])] = 1 - 3*NEW_SNP_RATE
 		for _, b := range STD_BASES {
 			if _, ok := S.Var_Prob[pos][string(b)]; !ok {
 				S.Var_Prob[pos][string(b)] = NEW_SNP_RATE
@@ -736,16 +734,16 @@ func (S *Var_Prof) UpdateVarProb(snp Var) {
 	p_ab := make(map[string]float64)
 	p_a := 0.0
 
-	for b, p_b := range(S.Var_Prob[pos]) {
+	for b, p_b := range S.Var_Prob[pos] {
 		if a == b {
-			p = 1.0 - math.Pow(10, -(float64(q) - 33) / 10.0) //Phred-encoding factor (33) need to be estimated from input data
+			p = 1.0 - math.Pow(10, -(float64(q)-33)/10.0) //Phred-encoding factor (33) need to be estimated from input data
 		} else {
-			p = math.Pow(10, -(float64(q) - 33) / 10.0) / 3 //need to be refined, e.g., checked with diff cases (snp vs. indel)
+			p = math.Pow(10, -(float64(q)-33)/10.0) / 3 //need to be refined, e.g., checked with diff cases (snp vs. indel)
 		}
 		p_ab[b] = p
 		p_a += p_b * p_ab[b]
 	}
-	for b, p_b := range(S.Var_Prob[pos]) {
+	for b, p_b := range S.Var_Prob[pos] {
 		S.Var_Prob[pos][b] = p_b * (p_ab[b] / p_a)
 	}
 }
@@ -763,7 +761,7 @@ func (S *Var_Prof) UpdateIndelProb(snp Var) {
 	//Notice: Need to be corrected!
 	if _, snp_exist := S.Var_Prob[pos]; !snp_exist {
 		S.Var_Prob[pos] = make(map[string]float64)
-		S.Var_Prob[pos][string(INDEX.Seq[int(pos)])] = 1 - 4 * NEW_SNP_RATE
+		S.Var_Prob[pos][string(INDEX.Seq[int(pos)])] = 1 - 4*NEW_SNP_RATE
 		for _, b := range STD_BASES {
 			if _, ok := S.Var_Prob[pos][string(b)]; !ok {
 				S.Var_Prob[pos][string(b)] = NEW_SNP_RATE
@@ -804,21 +802,21 @@ func (S *Var_Prof) UpdateIndelProb(snp Var) {
 	p_ab := make(map[string]float64)
 	p_a := 0.0
 
-	for b, p_b := range(S.Var_Prob[pos]) {
+	for b, p_b := range S.Var_Prob[pos] {
 		p = 1
 		if a == b {
 			for _, qi = range q[0:1] { //temporary change
-				p *= (1.0 - math.Pow(10, -(float64(qi) - 33) / 10.0)) //Phred-encoding factor (33) need to be estimated from input data
+				p *= (1.0 - math.Pow(10, -(float64(qi)-33)/10.0)) //Phred-encoding factor (33) need to be estimated from input data
 			}
 		} else {
 			for _, qi = range q[0:1] { //temporary change
-				p *= (math.Pow(10, -(float64(qi) - 33) / 10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
+				p *= (math.Pow(10, -(float64(qi)-33)/10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
 			}
 		}
 		p_ab[b] = p
 		p_a += p_b * p_ab[b]
 	}
-	for b, p_b := range(S.Var_Prob[pos]) {
+	for b, p_b := range S.Var_Prob[pos] {
 		S.Var_Prob[pos][b] = p_b * (p_ab[b] / p_a)
 	}
 }
@@ -835,6 +833,7 @@ func (S *Var_Prof) OutputVarCalls() {
 	}
 	defer file.Close()
 
+	fmt.Println("Outputing Variant Calls...")
 	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tNUM\t...\n")
 	var snp_pos uint32
 	Var_Pos := make([]int, 0, len(S.Var_Prob))
@@ -880,7 +879,7 @@ func (S *Var_Prof) OutputVarCalls() {
 		//#CHROM
 		line_a = append(line_a, ".")
 		//POS
-		line_a = append(line_a, strconv.Itoa(pos + 1))
+		line_a = append(line_a, strconv.Itoa(pos+1))
 		//ID
 		line_a = append(line_a, ".")
 		//REF & ALT
@@ -894,10 +893,10 @@ func (S *Var_Prof) OutputVarCalls() {
 			} else {
 				line_a = append(line_a, string(INDEX.Seq[pos]))
 				line_a = append(line_a, snp_call)
-			}			
+			}
 		}
 		//QUAL
-		str_qual = strconv.FormatFloat(-10 * math.Log10(1 - snp_call_prob), 'f', 5, 32)
+		str_qual = strconv.FormatFloat(-10*math.Log10(1-snp_call_prob), 'f', 5, 32)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
 		} else {
@@ -934,7 +933,7 @@ func (S *Var_Prof) OutputVarCalls() {
 			_, err = file.WriteString(string(S.Read_Info[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(str_b + "\n")
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("Error: write variant calls to file", err)
 				break
 			}
 		}

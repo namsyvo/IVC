@@ -16,10 +16,10 @@ import (
 // Global constants and variables
 //--------------------------------------------------------------------------------------------------
 var (
-	STD_BASES		= []byte{'A', 'C', 'G', 'T'} 	//Standard bases of DNA sequences
-	NEW_SNP_RATE    = 0.00001						//Value for prior probability of new alleles
-	NEW_INDEL_RATE  = 0.000001						//Value for prior probability of new indels
-	NEW_SNP_RATE_LOG = -math.Log10(NEW_SNP_RATE)
+	STD_BASES          = []byte{'A', 'C', 'G', 'T'} //Standard bases of DNA sequences
+	NEW_SNP_RATE       = 0.00001                    //Value for prior probability of new alleles
+	NEW_INDEL_RATE     = 0.000001                   //Value for prior probability of new indels
+	NEW_SNP_RATE_LOG   = -math.Log10(NEW_SNP_RATE)
 	NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
 )
 
@@ -27,10 +27,10 @@ var (
 // Global variables for read alignment and Var calling processes.
 //--------------------------------------------------------------------------------------------------
 var (
-	INPUT_INFO	InputInfo	//Input information
-	PARA_INFO	ParaInfo	//Parameters information
-	RAND_GEN	*rand.Rand 	//Pseudo-random number generator
-	INDEX		Index      	//Index for alignment
+	INPUT_INFO InputInfo  //Input information
+	PARA_INFO  ParaInfo   //Parameters information
+	RAND_GEN   *rand.Rand //Pseudo-random number generator
+	INDEX      Index      //Index for alignment
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ type InputInfo struct {
 	Max_snum       int    //maximum number of seeds
 	Min_slen       int    //minimum length of seeds
 	Max_slen       int    //maximum length of seeds
-	Max_psnum	   int 	  //maximum number of paired-seeds
+	Max_psnum      int    //maximum number of paired-seeds
 	Dist_thres     int    //threshold for distances between reads and multigenomes
 	Iter_num       int    //number of random iterations to find proper alignments
 }
@@ -65,18 +65,18 @@ type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
 	Prob_thres      float64 //threshold for probabilities of correct alignment
 	Iter_num        int     //number of random iterations to find proper alignments
-	Max_ins 		int 	//maximum insert size of two aligned ends
+	Max_ins         int     //maximum insert size of two aligned ends
 	Err_rate        float32 //average sequencing error rate, estmated from reads with real reads
 	Err_var_factor  int     //factor for standard variation of sequencing error rate
 	Mut_rate        float32 //average mutation rate, estmated from reference genome
 	Mut_var_factor  int     //factor for standard variation of mutation rate
-	Iter_num_factor int     //factor for number of iterations 
+	Iter_num_factor int     //factor for number of iterations
 	Read_len        int     //read length, calculated from read files
-	Info_len		int 	//maximum size of array to store read headers
-	Sub_cost		float64 //cost of substitution for Hamming and Edit distance
-	Gap_open_cost	float64 //cost of gap open for Edit distance
-	Gap_ext_cost	float64 //cost of gap extension for Edit distance
-	Seed_backup		int 	//number of backup bases from seeds
+	Info_len        int     //maximum size of array to store read headers
+	Sub_cost        float64 //cost of substitution for Hamming and Edit distance
+	Gap_open_cost   float64 //cost of gap open for Edit distance
+	Gap_ext_cost    float64 //cost of gap extension for Edit distance
+	Seed_backup     int     //number of backup bases from seeds
 	Indel_backup    int     //number of backup bases from known indels
 	Ham_backup      int     //number of backup bases from Hamming alignment
 }
@@ -92,7 +92,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
 	para_info.Iter_num_factor = 2
-	para_info.Max_ins = max_ins	//based on simulated data, will be estimated from reads with real data
+	para_info.Max_ins = max_ins   //based on simulated data, will be estimated from reads with real data
 	para_info.Err_rate = err_rate //will be replaced by error rate estimated from input reads
 	para_info.Mut_rate = mut_rate //will be replaced by error rate estimated from input reads
 	para_info.Read_len = read_len //will be replaced by read length taken from input reads
@@ -106,10 +106,10 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 		mut := float64(para_info.Mut_rate)
 		k1 := float64(para_info.Err_var_factor)
 		k2 := float64(para_info.Mut_var_factor)
-		para_info.Dist_thres = int(math.Ceil(err * rlen + k1 * math.Sqrt(rlen * err * (1 - err)))) + 
-			int(math.Ceil(mut * rlen + k2 * math.Sqrt(rlen * mut * (1 - mut))))
+		para_info.Dist_thres = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) +
+			int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
 	}
-	para_info.Prob_thres = -float64(para_info.Dist_thres) * math.Log10(1 - err) - float64(para_info.Dist_thres) * math.Log10(NEW_INDEL_RATE)
+	para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
 
 	if iter_num != 0 {
 		para_info.Iter_num = iter_num
@@ -121,11 +121,11 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 	para_info.Gap_open_cost = NEW_INDEL_RATE_LOG
 	para_info.Gap_ext_cost = NEW_SNP_RATE_LOG
 
-	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d," + 
-		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d", 
-		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor, 
+	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d,"+
+		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d",
+		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len)
-	
+
 	return para_info
 }
 
@@ -133,13 +133,13 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 //Read information
 //--------------------------------------------------------------------------------------------------
 type ReadInfo struct {
-	Read1, Read2        			[]byte 		//first and second ends
-	Qual1, Qual2					[]byte 		//quality info of the first read and second ends
-	Rev_read1, Rev_read2           	[]byte		//reverse of the first and second ends
-	Rev_comp_read1, Rev_comp_read2 	[]byte		//reverse complement of the first and second ends
-	Comp_read1, Comp_read2 			[]byte		//complement of the first and second ends
-	Rev_qual1, Rev_qual2   			[]byte		//quality of reverse of the first and second ends
-	Info1, Info2		   			[]byte 		//info of the first and second ends
+	Read1, Read2                   []byte //first and second ends
+	Qual1, Qual2                   []byte //quality info of the first read and second ends
+	Rev_read1, Rev_read2           []byte //reverse of the first and second ends
+	Rev_comp_read1, Rev_comp_read2 []byte //reverse complement of the first and second ends
+	Comp_read1, Comp_read2         []byte //complement of the first and second ends
+	Rev_qual1, Rev_qual2           []byte //quality of reverse of the first and second ends
+	Info1, Info2                   []byte //info of the first and second ends
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -204,10 +204,10 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 //Alignment information, served as shared variables between functions for alignment process
 //--------------------------------------------------------------------------------------------------
 type AlignInfo struct {
-	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT   [][]float64    // Distance matrix for backward alignment
-	Bw_Trace_D, Bw_Trace_IS, Bw_Trace_IT [][][]int 	   // Backtrace matrix for backward alignment
-	Fw_Dist_D, Fw_Dist_IS, Fw_Dist_IT   [][]float64    // Distance matrix for forward alignment
-	Fw_Trace_D, Fw_Trace_IS, Fw_Trace_IT [][][]int 	   // Backtrace matrix for forward alignment
+	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT    [][]float64 // Distance matrix for backward alignment
+	Bw_Trace_D, Bw_Trace_IS, Bw_Trace_IT [][][]int   // Backtrace matrix for backward alignment
+	Fw_Dist_D, Fw_Dist_IS, Fw_Dist_IT    [][]float64 // Distance matrix for forward alignment
+	Fw_Trace_D, Fw_Trace_IS, Fw_Trace_IT [][][]int   // Backtrace matrix for forward alignment
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -228,15 +228,15 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 //InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
 //--------------------------------------------------------------------------------------------------
 func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
-	dis_mat := make([][]float64, arr_len + 1)
+	dis_mat := make([][]float64, arr_len+1)
 	for i := 0; i <= arr_len; i++ {
-		dis_mat[i] = make([]float64, arr_len + 1)
+		dis_mat[i] = make([]float64, arr_len+1)
 	}
-	trace_mat := make([][][]int, arr_len + 1)
+	trace_mat := make([][][]int, arr_len+1)
 	for i := 0; i <= arr_len; i++ {
-		trace_mat[i] = make([][]int, arr_len + 1)
-        for j := 0; j <= arr_len; j++ {
-            trace_mat[i][j] = make([]int, 3)
+		trace_mat[i] = make([][]int, arr_len+1)
+		for j := 0; j <= arr_len; j++ {
+			trace_mat[i][j] = make([]int, 3)
 		}
 	}
 	return dis_mat, trace_mat

@@ -12,15 +12,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
-	"sort"
 	//"log"
 )
 
 type VarProf struct {
-	Variant    	[][]byte
-	AleFreq 	[]float32
+	Variant [][]byte
+	AleFreq []float32
 }
 
 func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
@@ -37,7 +37,6 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 	for {
 		line, err := br.ReadString('\n')
 		if err != nil {
-			fmt.Println("Finish reading variant profile index")
 			break
 		}
 		sline := string(line[:len(line)-1])
@@ -79,7 +78,7 @@ func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 	for _, pos := range var_pos {
 		_, err = file.WriteString(strconv.Itoa(pos) + "\t")
 		for idx, val := range var_prof[pos].Variant {
-			_, err = file.WriteString(string(val) + "\t" + 
+			_, err = file.WriteString(string(val) + "\t" +
 				strconv.FormatFloat(float64(var_prof[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
 		}
 		_, err = file.WriteString("\n")
@@ -181,24 +180,24 @@ func ReadVCF(file_name string) map[int]VarProf {
 			pos, _ = strconv.Atoi(string(sub_line[1]))
 			tmp.Variant = append(tmp.Variant, sub_line[3])
 			//Temporal impl for allele freq, need to be changed later
-            tmp.AleFreq = append(tmp.AleFreq, 0)
+			tmp.AleFreq = append(tmp.AleFreq, 0)
 			alt = bytes.Split(sub_line[4], []byte(","))
 			info = bytes.Split(sub_line[7], []byte(";"))
-            for _, sub_info = range info {
-                sub_info_part = bytes.Split(sub_info, []byte("="))
-                if bytes.Equal(sub_info_part[0], []byte("AF")) {
-                    tmp_p, _ := strconv.ParseFloat(string(sub_info_part[1]), 32)
-                    p = float32(tmp_p)
-                    break
-                }
-            }
+			for _, sub_info = range info {
+				sub_info_part = bytes.Split(sub_info, []byte("="))
+				if bytes.Equal(sub_info_part[0], []byte("AF")) {
+					tmp_p, _ := strconv.ParseFloat(string(sub_info_part[1]), 32)
+					p = float32(tmp_p)
+					break
+				}
+			}
 			for i := 0; i < len(alt); i++ {
 				tmp.Variant = append(tmp.Variant, alt[i])
 				tmp.AleFreq = append(tmp.AleFreq, p)
 			}
 			tmp.AleFreq[0] = 1 - p
 			//sort.Strings(tmp.Variant)
-			var_prof[pos - 1] = tmp
+			var_prof[pos-1] = tmp
 		}
 	}
 	return var_prof
@@ -212,8 +211,8 @@ func SplitN(s, sep []byte, n int) ([][]byte, int) {
 		sep_idx = bytes.Index(s[first_idx:], sep)
 		if sep_idx != -1 {
 			sep_num++
-			tmp := make([]byte, first_idx + sep_idx - first_idx)
-			copy(tmp, s[first_idx : first_idx + sep_idx])
+			tmp := make([]byte, first_idx+sep_idx-first_idx)
+			copy(tmp, s[first_idx:first_idx+sep_idx])
 			t = append(t, tmp)
 			if sep_num == n {
 				return t, sep_num

@@ -8,16 +8,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/namsyvo/ISC"
 	"log"
+	"path"
 	"runtime"
 	"time"
-	"path"
-	"github.com/namsyvo/ISC"
 )
 
 func main() {
 
-	//Starting Program-----------------------------------------------------------//
+	//Starting Program----------------------------------------------------------//
 	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
 	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	//--------------------------------------------------------------------------//
@@ -27,26 +27,23 @@ func main() {
 	start_time := time.Now()
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
-	snp_caller := isc.New_Variant_Caller(input_info)
+	variant_caller := isc.NewVariantCaller(input_info)
 	index_time := time.Since(start_time)
 	log.Printf("time for initializing variant caller\t%s", index_time)
 	isc.PrintProcessMem("memstats after initializing the variant caller")
 	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
 
-	//Call Variants from read-multigenome alignment--------------------------------//
-	fmt.Println("Calling Variants based on aligning reads to the mutigenome...")
+	//Call Variants from read-multigenome alignment----------------------------//
+	fmt.Println("Calling variants...")
 	start_time = time.Now()
-	snp_caller.CallVariants()
-	callsnp_time := time.Since(start_time)
-	log.Printf("time for calling Variants:\t%s", callsnp_time)
-	isc.PrintProcessMem("memstats after calling Variants")
-	fmt.Println("Finish calling Variants.")
-	//-------------------------------------------------------------------------//
-
-	//Finishing Program--------------------------------------------------------//
-	WriteOutputInfo(input_info)
-	fmt.Println("Done!")
+	variant_caller.CallVariants()
+	call_var_time := time.Since(start_time)
+	log.Printf("time for calling variants:\t%s", call_var_time)
+	isc.PrintProcessMem("memstats after calling variants")
+	variant_caller.OutputVarCalls()
+	fmt.Println("Check results in the file", input_info.Var_call_file)
+	fmt.Println("Finish calling variants.")
 	//-------------------------------------------------------------------------//
 }
 
@@ -104,22 +101,15 @@ func ReadInputInfo() isc.InputInfo {
 	input_info.Dist_thres = *dist_thres
 	input_info.Iter_num = *iter_num
 
-	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file: %s, Rev_index_file: %s," + 
-		" Read_file_1: %s, Read_file_2: %s, Var_call_file: %s", 
-		input_info.Genome_file, input_info.Var_file, input_info.Index_file, input_info.Rev_index_file, 
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file: %s, Rev_index_file: %s,"+
+		" Read_file_1: %s, Read_file_2: %s, Var_call_file: %s",
+		input_info.Genome_file, input_info.Var_file, input_info.Index_file, input_info.Rev_index_file,
 		input_info.Read_file_1, input_info.Read_file_2, input_info.Var_call_file)
 
-	log.Printf("Input parameters:\tSearch_mode: %d, Start_pos: %d, Search_step: %d, Proc_num: %d," + 
-		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_slen: %d, Max_psnum: %d, Dist_thres: %d, Iter_num: %d", 
-		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Routine_num, 
+	log.Printf("Input parameters:\tSearch_mode: %d, Start_pos: %d, Search_step: %d, Proc_num: %d,"+
+		" Routine_num: %d, Max_snum: %d, Min_slen: %d, Max_slen: %d, Max_psnum: %d, Dist_thres: %d, Iter_num: %d",
+		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Routine_num,
 		input_info.Max_snum, input_info.Min_slen, input_info.Max_slen, input_info.Max_psnum, input_info.Dist_thres, input_info.Iter_num)
 
 	return input_info
-}
-
-//--------------------------------------------------------------------------------------------------
-//Write output information and parameters
-//--------------------------------------------------------------------------------------------------
-func WriteOutputInfo(input_info isc.InputInfo) {
-	fmt.Println("Check Variants in the file", input_info.Var_call_file)
 }
