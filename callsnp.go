@@ -97,30 +97,29 @@ func New_SNP_Caller(input_info InputInfo) *SNP_Prof {
 
 	var pos uint32
 	var snp []byte
-	var i, snp_prof_num int
-	std_base_num := len(STD_BASES)
+	var i int
 	for snp_pos, snp_value := range INDEX.SNP_PROF {
-		snp_prof_num = len(snp_value)
 		pos = uint32(snp_pos)
 		S.SNP_Prob[pos] = make(map[string]float64)
-		for i, snp = range snp_value {
-			if len(snp) == 1 {
-				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - 
-					NEW_SNP_RATE * float64(std_base_num - snp_prof_num)/float64(snp_prof_num)
-				if S.SNP_Prob[pos][string(snp)] < NEW_SNP_RATE {
-					S.SNP_Prob[pos][string(snp)] = NEW_SNP_RATE
-				}
-			} else {
-				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - 
-					NEW_SNP_RATE * float64(snp_prof_num)
+		//At this point, assume that all variants are biallelic
+		if len(snp_value[0]) == 1 && len(snp_value[1]) == 1 {
+			for i, snp = range snp_value {
+				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - NEW_SNP_RATE
 				if S.SNP_Prob[pos][string(snp)] < NEW_SNP_RATE {
 					S.SNP_Prob[pos][string(snp)] = NEW_SNP_RATE
 				}
 			}
-			for _, b := range STD_BASES {
-				if _, ok := S.SNP_Prob[pos][string(b)]; !ok {
-					S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
+		} else {
+			for i, snp = range snp_value {
+				S.SNP_Prob[pos][string(snp)] = float64(INDEX.SNP_AF[snp_pos][i]) - 1.5 * NEW_SNP_RATE
+				if S.SNP_Prob[pos][string(snp)] < NEW_SNP_RATE {
+					S.SNP_Prob[pos][string(snp)] = NEW_SNP_RATE
 				}
+			}
+		}
+		for _, b := range STD_BASES {
+			if _, ok := S.SNP_Prob[pos][string(b)]; !ok {
+				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
 		S.SNP_BaseQ[pos] = make(map[string][][]byte)
@@ -178,7 +177,7 @@ func (S *SNP_Prof) CallSNPs() {
 	//Collect SNPs from results channel and update SNPs and their probabilities
 	var snp SNP
 	for snp = range snp_results {
-		if len(snp.Bases) == 1 {
+		if snp.Type == 0 {
 			S.UpdateSNPProb(snp)
 		} else {
 			S.UpdateIndelProb(snp)
@@ -756,15 +755,15 @@ UpdateIndelProb updates Indel probablilities for all possible Indels.
 	Input: a snp of type SNP.
 	Output: updated S.SNP_Prob[snp.Pos] based on snp.Bases and snp.BaseQ using Bayesian method.
 --------------------------------------------------------------------------------------------------*/
-// Notice: Need to be corrected!
 func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	pos := snp.Pos
 	a := string(snp.Bases)
 	q := snp.BaseQ
 
+	//Notice: Need to be corrected!
 	if _, snp_exist := S.SNP_Prob[pos]; !snp_exist {
 		S.SNP_Prob[pos] = make(map[string]float64)
-		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos)])] = 1 - 3 * NEW_SNP_RATE
+		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos)])] = 1 - 4 * NEW_SNP_RATE
 		for _, b := range STD_BASES {
 			if _, ok := S.SNP_Prob[pos][string(b)]; !ok {
 				S.SNP_Prob[pos][string(b)] = NEW_SNP_RATE
@@ -786,7 +785,6 @@ func (S *SNP_Prof) UpdateIndelProb(snp SNP) {
 	//Notice: Using NEW_SNP_RATE, need to consider NEW_INDEL_RATE instead
 	if _, ok := S.SNP_Prob[pos][a]; !ok {
 		S.SNP_Prob[pos][a] = NEW_SNP_RATE
-		S.SNP_Prob[pos][string(INDEX.SEQ[int(pos)])] -= NEW_SNP_RATE
 	}
 	S.SNP_BaseQ[pos][a] = append(S.SNP_BaseQ[pos][a], snp.BaseQ)
 	S.SNP_Type[pos][a] = append(S.SNP_Type[pos][a], snp.Type)
@@ -853,6 +851,7 @@ func (S *SNP_Prof) OutputSNPCalls() {
 	var is_snp bool
 	for _, pos := range SNP_Pos {
 		snp_pos = uint32(pos)
+		//Get variant call by considering maximum prob
 		snp_call_prob = 0
 		for snp, snp_prob = range S.SNP_Prob[snp_pos] {
 			if snp_call_prob < snp_prob {
@@ -860,13 +859,19 @@ func (S *SNP_Prof) OutputSNPCalls() {
 				snp_call = snp
 			}
 		}
-		if snp_call == string(INDEX.SEQ[pos : pos + len(snp_call)]) { //ignore variants that are identical with ref
-			continue
+		//Ignore variants that are identical with ref
+		if S.SNP_Type[snp_pos][snp_call][0] != 0 { //INDEL
+			if len(snp_call) == 1 { //Ignore non-indel calls
+				continue
+			} else if snp_call[0] == snp_call[1] { //Ignore indel calls of length 2 that are homopolymer
+				continue
+			}
+		} else {
+			if snp_call == string(INDEX.SEQ[pos]) {
+				continue
+			}
 		}
-		if len(snp_call) == 2 && snp_call[0] == snp_call[1] { //ignore indels of length 2 that are homopolymer
-			continue
-		}
-		//Start getting SNP Call info
+		//Start getting variant call info
 		line_a = make([]string, 0)
 		//#CHROM
 		line_a = append(line_a, ".")
@@ -904,14 +909,14 @@ func (S *SNP_Prof) OutputSNPCalls() {
 		line_a = append(line_a, strconv.FormatFloat(snp_call_prob, 'f', 5, 32))
 		line_a = append(line_a, strconv.Itoa(S.SNP_RNum[snp_pos][snp_call]))
 		str_a = strings.Join(line_a, "\t")
-		
 		line_b = make([]string, 0)
 		for snp, snp_num = range S.SNP_RNum[snp_pos] {
 			line_b = append(line_b, snp)
 			line_b = append(line_b, strconv.Itoa(snp_num))
 		}
 		str_b = strings.Join(line_b, "\t")
-		for idx, _ = range S.Chr_Dis[snp_pos][snp_call] {
+		//Write variant calls to file
+		for idx, _ = range S.SNP_BaseQ[snp_pos][snp_call] {
 			_, err = file.WriteString(str_a + "\t")
 			_, err = file.WriteString(string(S.SNP_BaseQ[snp_pos][snp_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(S.Chr_Dis[snp_pos][snp_call][idx]) + "\t")
