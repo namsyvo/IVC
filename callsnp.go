@@ -71,14 +71,22 @@ This function will be called from main program.
 func NewVariantCaller(input_info InputInfo) *Var_Prof {
 
 	INPUT_INFO = input_info
-	/*
-		SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
+	if _, err := os.Stat(INPUT_INFO.Read_file_1); err != nil {
+	    fmt.Println("Error: Read_file_1 does not exists!", err)
+	    os.Exit(1)
+	}
+	if _, err := os.Stat(INPUT_INFO.Read_file_2); err != nil {
+	    fmt.Println("Error: Read_file_2 does not exists!", err)
+	    os.Exit(1)
+	}
+	/* SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
 				700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
 				0.01 is mutation rate (currently is estimated from dbSNP of human genome)
 	*/
 	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Iter_num)
-	INDEX = *New_Index()
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	INDEX = *NewIndex()
 
 	S := new(Var_Prof)
 	S.Var_Prob = make(map[uint32]map[string]float64)
@@ -197,12 +205,14 @@ func (S *Var_Prof) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
 	f1, err_f1 := os.Open(fn1)
 	if err_f1 != nil {
-		panic("Error opening input read file " + fn1)
+	    fmt.Println("Error: Open read_file_1 " + fn1, err_f1)
+	    os.Exit(1)
 	}
 	defer f1.Close()
 	f2, err_f2 := os.Open(fn2)
 	if err_f2 != nil {
-		panic("Error opening input read file " + fn2)
+	    fmt.Println("Error: Open read_file_2 " + fn1, err_f2)
+	    os.Exit(1)
 	}
 	defer f2.Close()
 
@@ -829,7 +839,8 @@ func (S *Var_Prof) OutputVarCalls() {
 
 	file, err := os.Create(INPUT_INFO.Var_call_file)
 	if err != nil {
-		return
+		fmt.Println("Error: Create output file", err)
+		os.Exit(1)
 	}
 	defer file.Close()
 

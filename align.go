@@ -30,15 +30,15 @@ type Index struct {
 //--------------------------------------------------------------------------------------------------
 // Init function sets initial values for global variables and parameters for Index object
 //--------------------------------------------------------------------------------------------------
-func New_Index() *Index {
+func NewIndex() *Index {
 
 	I := new(Index)
 
 	I.Seq = LoadMultigenome(INPUT_INFO.Ref_file)
-	PrintMemStats("memstats after loading multigenome")
+	PrintMemStats("Memstats after loading multigenome")
 
 	I.Var_Prof, I.Var_AF = LoadVarProf(INPUT_INFO.Var_prof_file)
-	PrintMemStats("memstats after loading SNP profile")
+	PrintMemStats("Memstats after loading variant profile")
 
 	I.Same_Len_Var = make(map[int]int)
 	I.Del_Var = make(map[int]int)
@@ -65,7 +65,7 @@ func New_Index() *Index {
 	PrintMemStats("Memstats after creating auxiliary data structures for variant profile")
 
 	I.Rev_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
-	PrintMemStats("memstats after loading index of reverse multigenome")
+	PrintMemStats("Memstats after loading index of reverse multigenome")
 
 	return I
 }

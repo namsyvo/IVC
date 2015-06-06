@@ -29,8 +29,8 @@ func main() {
 	runtime.GOMAXPROCS(input_info.Proc_num)
 	variant_caller := isc.NewVariantCaller(input_info)
 	index_time := time.Since(start_time)
-	log.Printf("time for initializing variant caller\t%s", index_time)
-	isc.PrintProcessMem("memstats after initializing the variant caller")
+	log.Printf("Time for initializing the variant caller\t%s", index_time)
+	isc.PrintProcessMem("Memstats after initializing the variant caller")
 	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
 
@@ -39,8 +39,8 @@ func main() {
 	start_time = time.Now()
 	variant_caller.CallVariants()
 	call_var_time := time.Since(start_time)
-	log.Printf("time for calling variants:\t%s", call_var_time)
-	isc.PrintProcessMem("memstats after calling variants")
+	log.Printf("Time for calling variants:\t%s", call_var_time)
+	isc.PrintProcessMem("Memstats after calling variants")
 	variant_caller.OutputVarCalls()
 	fmt.Println("Check results in the file", input_info.Var_call_file)
 	fmt.Println("Finish calling variants.")

@@ -28,7 +28,7 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 
 	f, err := os.Open(file_name)
 	if err != nil {
-		fmt.Println("Error: Load Variant Profile", err)
+		fmt.Println("Error: Open variant profile file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -65,8 +65,8 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 	file, err := os.Create(file_name)
 	if err != nil {
-		fmt.Println("Error: Save Variant Profile Index", err)
-		return
+		fmt.Println("Error: Create variant profile index file", err)
+		os.Exit(1)
 	}
 	defer file.Close()
 	var var_pos []int
@@ -90,8 +90,8 @@ func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 func SaveMultigenome(file_name string, multigenome []byte) {
 	file, err := os.Create(file_name)
 	if err != nil {
-		fmt.Println("Error: Save Multigenome", err)
-		return
+		fmt.Println("Error: Create multigenome file", err)
+		os.Exit(1)
 	}
 	defer file.Close()
 	file.Write(multigenome)
@@ -100,8 +100,8 @@ func SaveMultigenome(file_name string, multigenome []byte) {
 func LoadMultigenome(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
 	if err != nil {
-		fmt.Println("Error: Load Multigenome", err)
-		return nil
+		fmt.Println("Error: Read multigenome file", err)
+		os.Exit(1)
 	}
 	return bs
 }
@@ -121,7 +121,7 @@ func BuildMultigenome(var_prof map[int]VarProf, seq []byte) []byte {
 func ReadFASTA(sequence_file string) []byte {
 	f, err := os.Open(sequence_file)
 	if err != nil {
-		fmt.Println("Error: Read FASTA file", err)
+		fmt.Println("Error: Open FASTA file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -154,7 +154,7 @@ func ReadVCF(file_name string) map[int]VarProf {
 	var_prof := make(map[int]VarProf)
 	f, err := os.Open(file_name)
 	if err != nil {
-		fmt.Println("Error: Read VCF file", err)
+		fmt.Println("Error: Open VCF file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
