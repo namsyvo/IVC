@@ -1,6 +1,6 @@
 //---------------------------------------------------------------------------------------------------
-// Calling Vars based on read-multigenome alignment.
-// Copyright 2014 Nam Sy Vo
+// IVC - Debug variables and functions.
+// Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
 package isc
@@ -21,21 +21,21 @@ import (
 
 //Global variable for turnning on/off info profiling
 var (
-	PRINT_PROCESS_MEM = true
-	PRINT_MEM_STATS   = false
+	PRINT_PROCESS_MEM        = true
+	PRINT_MEM_STATS          = false
 
 	PRINT_EDIT_DIST_INFO     = false
 	PRINT_EDIT_DIST_MAT_INFO = false
 
-	PRINT_VAR_CALL_INFO    = false
-	PRINT_ALIGN_TRACE_INFO = false
+	PRINT_VAR_CALL_INFO      = false
+	PRINT_ALIGN_TRACE_INFO   = false
 
-	GET_ALIGN_READ_INFO = false
-	PRINT_FN            = false
-	PRINT_TPFP          = false
+	GET_ALIGN_READ_INFO      = false
+	PRINT_FN                 = false
+	PRINT_TPFP               = false
 
-	GET_NO_ALIGN_READ_INFO = true
-	PRINT_NA               = false
+	GET_NO_ALIGN_READ_INFO   = true
+	PRINT_NA                 = false
 )
 
 //Global variable for memory profiling

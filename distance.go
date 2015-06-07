@@ -1,7 +1,7 @@
 //-------------------------------------------------------------------------------------------------
-// Multigenome package: distance module.
-// Calculating distance and determining alignment between reads and "starred" multigenomes.
-// Copyright 2014 Nam Sy Vo
+// IVC - Calculating distance and determining alignment between reads and multigenomes.
+// Alignment is performed in both backward and forward directions.
+// Copyright 2014 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
 package isc

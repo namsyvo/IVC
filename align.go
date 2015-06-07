@@ -1,11 +1,7 @@
 //--------------------------------------------------------------------------------------------------
-// Aligning reads to multigenomes by extending exact matches based on read-multigenome edit distance.
-// Finding exact matches betwwen reads and multigenomes using exact search with FM index.
-// Exact search is perfomed with regard to a random position on reads.
-// Finding inexact matches betwwen reads and multigenomes by extending FM-index based exact matches
-// using edit distance between reads and multigenomes.
-// Determining whether an interval on multigenomes contains a SNP position using interpolation search.
-// Copyright 2014 Nam Sy Vo
+// IVC - Finding seeds of matches betwwen reads and multigenomes using exact search with FM index.
+// Searching is perfomed from a random position on reads.
+// Copyright 2015 Nam Sy Vo.
 //--------------------------------------------------------------------------------------------------
 
 package isc

@@ -1,6 +1,6 @@
 //---------------------------------------------------------------------------------------------------
-// Sharing variables and functions for modules in ISC package.
-// Copyright 2014 Nam Sy Vo
+// IVC - Sharing variables and functions.
+// Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
 package isc

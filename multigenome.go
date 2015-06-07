@@ -1,6 +1,6 @@
 //-------------------------------------------------------------------------------------------------
-// Multigenome package: multigenome module.
-// Combine SNPs and INDELs from dbSNPs (vcf file) with a reference genome (fasta file).
+// IVC - Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
+// Multigenome includes a "star" sequence and a variant profile for variant locations.
 // Copyright 2015 by Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 

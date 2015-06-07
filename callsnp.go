@@ -1,6 +1,7 @@
 //---------------------------------------------------------------------------------------------------
-// Calling genomic variants
-// Copyright 2015 Nam Sy Vo
+// IVC - Calling genomic variants based on alignment between reads and the reference multigenome.
+// Variants and probability of correct variant calls is determined using Bayesian update.
+// Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
 package isc
@@ -89,19 +90,19 @@ func NewVariantCaller(input_info InputInfo) *Var_Prof {
 	INDEX = *NewIndex()
 
 	S := new(Var_Prof)
-	S.Var_Prob = make(map[uint32]map[string]float64)
-	S.Var_BaseQ = make(map[uint32]map[string][][]byte)
-	S.Var_Type = make(map[uint32]map[string][]int)
-	S.Var_RNum = make(map[uint32]map[string]int)
-	S.Chr_Dis = make(map[uint32]map[string][]int)
-	S.Chr_Diff = make(map[uint32]map[string][]int)
-	S.Aln_Prob = make(map[uint32]map[string][]float64)
-	S.Chr_Prob = make(map[uint32]map[string][]float64)
-	S.Read_Info = make(map[uint32]map[string][][]byte)
+	S.Var_Prob   = make(map[uint32]map[string]float64)
+	S.Var_BaseQ  = make(map[uint32]map[string][][]byte)
+	S.Var_Type   = make(map[uint32]map[string][]int)
+	S.Var_RNum   = make(map[uint32]map[string]int)
+	S.Chr_Dis    = make(map[uint32]map[string][]int)
+	S.Chr_Diff   = make(map[uint32]map[string][]int)
+	S.Aln_Prob   = make(map[uint32]map[string][]float64)
+	S.Chr_Prob   = make(map[uint32]map[string][]float64)
+	S.Read_Info  = make(map[uint32]map[string][][]byte)
 	S.Start_Pos1 = make(map[uint32]map[string][]int)
 	S.Start_Pos2 = make(map[uint32]map[string][]int)
-	S.Strand1 = make(map[uint32]map[string][]bool)
-	S.Strand2 = make(map[uint32]map[string][]bool)
+	S.Strand1    = make(map[uint32]map[string][]bool)
+	S.Strand2    = make(map[uint32]map[string][]bool)
 
 	var pos uint32
 	var var_bases []byte
@@ -714,31 +715,31 @@ func (S *Var_Prof) UpdateVarProb(var_info VarInfo) {
 				S.Var_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.Var_BaseQ[pos] = make(map[string][][]byte)
-		S.Var_Type[pos] = make(map[string][]int)
-		S.Var_RNum[pos] = make(map[string]int)
-		S.Chr_Dis[pos] = make(map[string][]int)
-		S.Chr_Diff[pos] = make(map[string][]int)
-		S.Aln_Prob[pos] = make(map[string][]float64)
-		S.Chr_Prob[pos] = make(map[string][]float64)
-		S.Read_Info[pos] = make(map[string][][]byte)
+		S.Var_BaseQ[pos]  = make(map[string][][]byte)
+		S.Var_Type[pos]   = make(map[string][]int)
+		S.Var_RNum[pos]   = make(map[string]int)
+		S.Chr_Dis[pos]    = make(map[string][]int)
+		S.Chr_Diff[pos]   = make(map[string][]int)
+		S.Aln_Prob[pos]   = make(map[string][]float64)
+		S.Chr_Prob[pos]   = make(map[string][]float64)
+		S.Read_Info[pos]  = make(map[string][][]byte)
 		S.Start_Pos1[pos] = make(map[string][]int)
 		S.Start_Pos2[pos] = make(map[string][]int)
-		S.Strand1[pos] = make(map[string][]bool)
-		S.Strand2[pos] = make(map[string][]bool)
+		S.Strand1[pos]    = make(map[string][]bool)
+		S.Strand2[pos]    = make(map[string][]bool)
 	}
-	S.Var_BaseQ[pos][a] = append(S.Var_BaseQ[pos][a], var_info.BaseQ)
-	S.Var_Type[pos][a] = append(S.Var_Type[pos][a], var_info.Type)
-	S.Var_RNum[pos][a] += 1
-	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], var_info.CDis)
-	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], var_info.CDiff)
-	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], var_info.AProb)
-	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], var_info.CProb)
-	S.Read_Info[pos][a] = append(S.Read_Info[pos][a], var_info.RInfo)
+	S.Var_BaseQ[pos][a]  = append(S.Var_BaseQ[pos][a], var_info.BaseQ)
+	S.Var_Type[pos][a]   = append(S.Var_Type[pos][a], var_info.Type)
+	S.Var_RNum[pos][a]   += 1
+	S.Chr_Dis[pos][a]    = append(S.Chr_Dis[pos][a], var_info.CDis)
+	S.Chr_Diff[pos][a]   = append(S.Chr_Diff[pos][a], var_info.CDiff)
+	S.Aln_Prob[pos][a]   = append(S.Aln_Prob[pos][a], var_info.AProb)
+	S.Chr_Prob[pos][a]   = append(S.Chr_Prob[pos][a], var_info.CProb)
+	S.Read_Info[pos][a]  = append(S.Read_Info[pos][a], var_info.RInfo)
 	S.Start_Pos1[pos][a] = append(S.Start_Pos1[pos][a], var_info.SPos1)
 	S.Start_Pos2[pos][a] = append(S.Start_Pos2[pos][a], var_info.SPos2)
-	S.Strand1[pos][a] = append(S.Strand1[pos][a], var_info.Stra1)
-	S.Strand2[pos][a] = append(S.Strand2[pos][a], var_info.Stra2)
+	S.Strand1[pos][a]    = append(S.Strand1[pos][a], var_info.Stra1)
+	S.Strand2[pos][a]    = append(S.Strand2[pos][a], var_info.Stra2)
 
 	var p float64
 	p_ab := make(map[string]float64)
@@ -777,35 +778,35 @@ func (S *Var_Prof) UpdateIndelProb(var_info VarInfo) {
 				S.Var_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.Var_BaseQ[pos] = make(map[string][][]byte)
-		S.Var_Type[pos] = make(map[string][]int)
-		S.Var_RNum[pos] = make(map[string]int)
-		S.Chr_Dis[pos] = make(map[string][]int)
-		S.Chr_Diff[pos] = make(map[string][]int)
-		S.Aln_Prob[pos] = make(map[string][]float64)
-		S.Chr_Prob[pos] = make(map[string][]float64)
-		S.Read_Info[pos] = make(map[string][][]byte)
+		S.Var_BaseQ[pos]  = make(map[string][][]byte)
+		S.Var_Type[pos]   = make(map[string][]int)
+		S.Var_RNum[pos]   = make(map[string]int)
+		S.Chr_Dis[pos]    = make(map[string][]int)
+		S.Chr_Diff[pos]   = make(map[string][]int)
+		S.Aln_Prob[pos]   = make(map[string][]float64)
+		S.Chr_Prob[pos]   = make(map[string][]float64)
+		S.Read_Info[pos]  = make(map[string][][]byte)
 		S.Start_Pos1[pos] = make(map[string][]int)
 		S.Start_Pos2[pos] = make(map[string][]int)
-		S.Strand1[pos] = make(map[string][]bool)
-		S.Strand2[pos] = make(map[string][]bool)
+		S.Strand1[pos]    = make(map[string][]bool)
+		S.Strand2[pos]    = make(map[string][]bool)
 	}
 	//Notice: Using NEW_SNP_RATE, need to consider NEW_INDEL_RATE instead
 	if _, ok := S.Var_Prob[pos][a]; !ok {
 		S.Var_Prob[pos][a] = NEW_SNP_RATE
 	}
-	S.Var_BaseQ[pos][a] = append(S.Var_BaseQ[pos][a], var_info.BaseQ)
-	S.Var_Type[pos][a] = append(S.Var_Type[pos][a], var_info.Type)
-	S.Var_RNum[pos][a] += 1
-	S.Chr_Dis[pos][a] = append(S.Chr_Dis[pos][a], var_info.CDis)
-	S.Chr_Diff[pos][a] = append(S.Chr_Diff[pos][a], var_info.CDiff)
-	S.Aln_Prob[pos][a] = append(S.Aln_Prob[pos][a], var_info.AProb)
-	S.Chr_Prob[pos][a] = append(S.Chr_Prob[pos][a], var_info.CProb)
-	S.Read_Info[pos][a] = append(S.Read_Info[pos][a], var_info.RInfo)
+	S.Var_BaseQ[pos][a]  = append(S.Var_BaseQ[pos][a], var_info.BaseQ)
+	S.Var_Type[pos][a]   = append(S.Var_Type[pos][a], var_info.Type)
+	S.Var_RNum[pos][a]   += 1
+	S.Chr_Dis[pos][a]    = append(S.Chr_Dis[pos][a], var_info.CDis)
+	S.Chr_Diff[pos][a]   = append(S.Chr_Diff[pos][a], var_info.CDiff)
+	S.Aln_Prob[pos][a]   = append(S.Aln_Prob[pos][a], var_info.AProb)
+	S.Chr_Prob[pos][a]   = append(S.Chr_Prob[pos][a], var_info.CProb)
+	S.Read_Info[pos][a]  = append(S.Read_Info[pos][a], var_info.RInfo)
 	S.Start_Pos1[pos][a] = append(S.Start_Pos1[pos][a], var_info.SPos1)
 	S.Start_Pos2[pos][a] = append(S.Start_Pos2[pos][a], var_info.SPos2)
-	S.Strand1[pos][a] = append(S.Strand1[pos][a], var_info.Stra1)
-	S.Strand2[pos][a] = append(S.Strand2[pos][a], var_info.Stra2)
+	S.Strand1[pos][a]    = append(S.Strand1[pos][a], var_info.Stra1)
+	S.Strand2[pos][a]    = append(S.Strand2[pos][a], var_info.Stra2)
 
 	var p float64
 	var qi byte
@@ -845,7 +846,7 @@ func (S *Var_Prof) OutputVarCalls() {
 	defer file.Close()
 
 	fmt.Println("Outputing Variant Calls...")
-	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tNUM\t...\n")
+	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(S.Var_Prob))
 	for var_pos, _ = range S.Var_Prob {
