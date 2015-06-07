@@ -854,7 +854,7 @@ func (S *Var_Prof) OutputVarCalls() {
 	}
 	sort.Ints(Var_Pos)
 
-	var variant, var_call, str_qual string
+	var var_base, var_call, str_qual string
 	var str_a, str_b string
 	var line_a, line_b []string
 	var var_call_prob, var_prob float64
@@ -864,26 +864,10 @@ func (S *Var_Prof) OutputVarCalls() {
 		var_pos = uint32(pos)
 		//Get variant call by considering maximum prob
 		var_call_prob = 0
-		for variant, var_prob = range S.Var_Prob[var_pos] {
+		for var_base, var_prob = range S.Var_Prob[var_pos] {
 			if var_call_prob < var_prob {
 				var_call_prob = var_prob
-				var_call = variant
-			}
-		}
-		//Ignore variants which are actually updated from alignment process
-		if len(S.Var_Type[var_pos][var_call]) == 0 {
-			continue
-		}
-		//Ignore variants that are identical with ref
-		if S.Var_Type[var_pos][var_call][0] != 0 { //INDEL
-			if len(var_call) == 1 { //Ignore non-indel calls
-				continue
-			} else if var_call[0] == var_call[1] { //Ignore indel calls of length 2 that are homopolymer
-				continue
-			}
-		} else {
-			if var_call == string(INDEX.Seq[pos]) {
-				continue
+				var_call = var_base
 			}
 		}
 		//Start getting variant call info
@@ -899,12 +883,32 @@ func (S *Var_Prof) OutputVarCalls() {
 			line_a = append(line_a, string(INDEX.Var_Prof[pos][0]))
 			line_a = append(line_a, var_call)
 		} else {
-			if S.Var_Type[var_pos][var_call][0] == 2 {
-				line_a = append(line_a, var_call)
-				line_a = append(line_a, string(INDEX.Seq[pos]))
+			if len(S.Var_Type[var_pos][var_call]) != 0 {
+				if S.Var_Type[var_pos][var_call][0] == 2 { //DEL
+					//Ignore indel calls of length 2 that are homopolymer
+					if len(var_call) == 2 && var_call[0] == var_call[1] {
+						continue
+					}
+					line_a = append(line_a, var_call)
+					line_a = append(line_a, string(INDEX.Seq[pos]))
+				} else if S.Var_Type[var_pos][var_call][0] == 1 { //INS
+					//Ignore indel calls of length 2 that are homopolymer
+					if len(var_call) == 2 && var_call[0] == var_call[1] {
+						continue
+					}
+					line_a = append(line_a, string(INDEX.Seq[pos]))
+					line_a = append(line_a, var_call)
+				} else { //SUB
+					//Ignore variants that are identical with ref
+					if var_call == string(INDEX.Seq[pos]) {
+						continue
+					}
+					line_a = append(line_a, string(INDEX.Seq[pos]))
+					line_a = append(line_a, var_call)
+				}
 			} else {
-				line_a = append(line_a, string(INDEX.Seq[pos]))
-				line_a = append(line_a, var_call)
+				fmt.Println("Var calls not from alignment", pos, var_call, string(INDEX.Seq[pos]))
+				continue
 			}
 		}
 		//QUAL
@@ -925,8 +929,8 @@ func (S *Var_Prof) OutputVarCalls() {
 		line_a = append(line_a, strconv.Itoa(S.Var_RNum[var_pos][var_call]))
 		str_a = strings.Join(line_a, "\t")
 		line_b = make([]string, 0)
-		for variant, var_num = range S.Var_RNum[var_pos] {
-			line_b = append(line_b, variant)
+		for var_base, var_num = range S.Var_RNum[var_pos] {
+			line_b = append(line_b, var_base)
 			line_b = append(line_b, strconv.Itoa(var_num))
 		}
 		str_b = strings.Join(line_b, "\t")
@@ -945,7 +949,7 @@ func (S *Var_Prof) OutputVarCalls() {
 			_, err = file.WriteString(string(S.Read_Info[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(str_b + "\n")
 			if err != nil {
-				fmt.Println("Error: write variant calls to file", err)
+				fmt.Println("Error: Write variant calls to file", err)
 				break
 			}
 		}
