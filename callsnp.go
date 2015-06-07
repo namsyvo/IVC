@@ -131,18 +131,18 @@ func NewVariantCaller(input_info InputInfo) *Var_Prof {
 				S.Var_Prob[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		S.Var_BaseQ[pos] = make(map[string][][]byte)
-		S.Var_Type[pos] = make(map[string][]int)
-		S.Var_RNum[pos] = make(map[string]int)
-		S.Chr_Dis[pos] = make(map[string][]int)
-		S.Chr_Diff[pos] = make(map[string][]int)
-		S.Aln_Prob[pos] = make(map[string][]float64)
-		S.Chr_Prob[pos] = make(map[string][]float64)
-		S.Read_Info[pos] = make(map[string][][]byte)
+		S.Var_BaseQ[pos]  = make(map[string][][]byte)
+		S.Var_Type[pos]   = make(map[string][]int)
+		S.Var_RNum[pos]   = make(map[string]int)
+		S.Chr_Dis[pos]    = make(map[string][]int)
+		S.Chr_Diff[pos]   = make(map[string][]int)
+		S.Aln_Prob[pos]   = make(map[string][]float64)
+		S.Chr_Prob[pos]   = make(map[string][]float64)
+		S.Read_Info[pos]  = make(map[string][][]byte)
 		S.Start_Pos1[pos] = make(map[string][]int)
 		S.Start_Pos2[pos] = make(map[string][]int)
-		S.Strand1[pos] = make(map[string][]bool)
-		S.Strand2[pos] = make(map[string][]bool)
+		S.Strand1[pos]    = make(map[string][]bool)
+		S.Strand2[pos]    = make(map[string][]bool)
 	}
 	return S
 }
@@ -373,13 +373,13 @@ func (S *Var_Prof) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 						PrintGetVariants(paired_prob, align_prob1, align_prob2, vars1, vars2)
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
-								vars_get1[s_idx].Pos = vars1[s_idx].Pos
+								vars_get1[s_idx].Pos   = vars1[s_idx].Pos
 								vars_get1[s_idx].Bases = make([]byte, len(vars1[s_idx].Bases))
 								vars_get1[s_idx].BaseQ = make([]byte, len(vars1[s_idx].BaseQ))
 								copy(vars_get1[s_idx].Bases, vars1[s_idx].Bases)
 								copy(vars_get1[s_idx].BaseQ, vars1[s_idx].BaseQ)
-								vars_get1[s_idx].Type = vars1[s_idx].Type
-								vars_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
+								vars_get1[s_idx].Type  = vars1[s_idx].Type
+								vars_get1[s_idx].CDis  = l_align_pos1 - l_align_pos2
 								vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
 								vars_get1[s_idx].AProb = align_prob1
 								vars_get1[s_idx].CProb = a_prob
@@ -393,13 +393,13 @@ func (S *Var_Prof) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 						vars_get2 = make([]VarInfo, len(vars2))
 						if len(vars2) > 0 {
 							for s_idx = 0; s_idx < len(vars2); s_idx++ {
-								vars_get2[s_idx].Pos = vars2[s_idx].Pos
+								vars_get2[s_idx].Pos   = vars2[s_idx].Pos
 								vars_get2[s_idx].Bases = make([]byte, len(vars2[s_idx].Bases))
 								vars_get2[s_idx].BaseQ = make([]byte, len(vars2[s_idx].BaseQ))
 								copy(vars_get2[s_idx].Bases, vars2[s_idx].Bases)
 								copy(vars_get2[s_idx].BaseQ, vars2[s_idx].BaseQ)
-								vars_get2[s_idx].Type = vars2[s_idx].Type
-								vars_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
+								vars_get2[s_idx].Type  = vars2[s_idx].Type
+								vars_get2[s_idx].CDis  = l_align_pos1 - l_align_pos2
 								vars_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
 								vars_get2[s_idx].AProb = align_prob2
 								vars_get2[s_idx].CProb = a_prob
@@ -459,7 +459,7 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 	r_pos_r2_or := INPUT_INFO.Start_pos
 	r_pos_r2_rc := INPUT_INFO.Start_pos
 	if INPUT_INFO.Search_mode == 1 {
-		RAND_GEN := rand.New(rand.NewSource(time.Now().UnixNano()))
+		RAND_GEN   := rand.New(rand.NewSource(time.Now().UnixNano()))
 		r_pos_r1_or = RAND_GEN.Intn(len(read_info.Read1) - 5)
 		r_pos_r1_rc = RAND_GEN.Intn(len(read_info.Read1) - 5)
 		r_pos_r2_or = RAND_GEN.Intn(len(read_info.Read2) - 5)
@@ -518,12 +518,12 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 						(m_pos_r2_rc[j]-m_pos_r1_or[i]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
 
 						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", m_pos_r1_or[i], m_pos_r2_rc[j])
-						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
-						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
-						s_pos_r2 = append(s_pos_r2, s_pos_r2_rc)
-						e_pos_r2 = append(e_pos_r2, e_pos_r2_rc)
-						m_pos_r1 = append(m_pos_r1, m_pos_r1_or[i])
-						m_pos_r2 = append(m_pos_r2, m_pos_r2_rc[j])
+						s_pos_r1  = append(s_pos_r1, s_pos_r1_or)
+						e_pos_r1  = append(e_pos_r1, e_pos_r1_or)
+						s_pos_r2  = append(s_pos_r2, s_pos_r2_rc)
+						e_pos_r2  = append(e_pos_r2, e_pos_r2_rc)
+						m_pos_r1  = append(m_pos_r1, m_pos_r1_or[i])
+						m_pos_r2  = append(m_pos_r2, m_pos_r2_rc[j])
 						strand_r1 = append(strand_r1, true)
 						strand_r2 = append(strand_r2, false)
 					}
@@ -542,12 +542,12 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 						(m_pos_r1_rc[i]-m_pos_r2_or[j]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
 
 						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", m_pos_r1_rc[i], m_pos_r2_or[j])
-						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
-						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
-						s_pos_r2 = append(s_pos_r2, s_pos_r2_or)
-						e_pos_r2 = append(e_pos_r2, e_pos_r2_or)
-						m_pos_r1 = append(m_pos_r1, m_pos_r1_rc[i])
-						m_pos_r2 = append(m_pos_r2, m_pos_r2_or[j])
+						s_pos_r1  = append(s_pos_r1, s_pos_r1_rc)
+						e_pos_r1  = append(e_pos_r1, e_pos_r1_rc)
+						s_pos_r2  = append(s_pos_r2, s_pos_r2_or)
+						e_pos_r2  = append(e_pos_r2, e_pos_r2_or)
+						m_pos_r1  = append(m_pos_r1, m_pos_r1_rc[i])
+						m_pos_r2  = append(m_pos_r2, m_pos_r2_or[j])
 						strand_r1 = append(strand_r1, false)
 						strand_r2 = append(strand_r2, true)
 					}
@@ -563,7 +563,7 @@ func (S *Var_Prof) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 		r_pos_r2_or = r_pos_r2_or + INPUT_INFO.Search_step
 		r_pos_r2_rc = r_pos_r2_rc + INPUT_INFO.Search_step
 		if INPUT_INFO.Search_mode == 1 {
-			RAND_GEN := rand.New(rand.NewSource(time.Now().UnixNano()))
+			RAND_GEN   := rand.New(rand.NewSource(time.Now().UnixNano()))
 			r_pos_r1_or = RAND_GEN.Intn(len(read_info.Read1) - 5)
 			r_pos_r1_rc = RAND_GEN.Intn(len(read_info.Read1) - 5)
 			r_pos_r2_or = RAND_GEN.Intn(len(read_info.Read2) - 5)
@@ -660,7 +660,7 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 		if l_m > 0 && l_n > 0 {
 			l_pos, l_base, l_qual, l_type := S.BackwardTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_align_s_pos,
 				l_bt_mat, align_info.Bw_Trace_D, align_info.Bw_Trace_IS, align_info.Bw_Trace_IT, l_ref_pos_map)
-			l_var_pos = append(l_var_pos, l_pos...)
+			l_var_pos  = append(l_var_pos, l_pos...)
 			l_var_base = append(l_var_base, l_base...)
 			l_var_qual = append(l_var_qual, l_qual...)
 			l_var_type = append(l_var_type, l_type...)
@@ -669,7 +669,7 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 		if r_m > 0 && r_n > 0 {
 			r_pos, r_base, r_qual, r_type := S.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos,
 				r_bt_mat, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT, r_ref_pos_map)
-			r_var_pos = append(r_var_pos, r_pos...)
+			r_var_pos  = append(r_var_pos, r_pos...)
 			r_var_base = append(r_var_base, r_base...)
 			r_var_qual = append(r_var_qual, r_qual...)
 			r_var_type = append(r_var_type, r_type...)
