@@ -187,7 +187,7 @@ func (S *Var_Prof) CallVariants() {
 	var var_info VarInfo
 	for var_info = range var_results {
 		if var_info.Type == 0 {
-			S.UpdateVarProb(var_info)
+			S.UpdateSNPProb(var_info)
 		} else {
 			S.UpdateIndelProb(var_info)
 		}
@@ -698,11 +698,11 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 }
 
 /*--------------------------------------------------------------------------------------------------
-UpdateVarProb updates variant probablilities for all possible variants.
-	Input: a variant of type VarInfo.
-	Output: updated S.Var_Prob[var_info.Pos] based on var_info.Bases and var_info.BaseQ using Bayesian method.
+UpdateSNPProb updates variant probablilities for all possible variants.
+	Input: a variant of type VarInfo which is a SNP.
+	Output: update of all SNPs in S.Var_Prob[var_info.Pos].
 --------------------------------------------------------------------------------------------------*/
-func (S *Var_Prof) UpdateVarProb(var_info VarInfo) {
+func (S *Var_Prof) UpdateSNPProb(var_info VarInfo) {
 	pos := var_info.Pos
 	a := string(var_info.Bases[0])
 	q := var_info.BaseQ[0]
@@ -761,8 +761,8 @@ func (S *Var_Prof) UpdateVarProb(var_info VarInfo) {
 
 /*--------------------------------------------------------------------------------------------------
 UpdateIndelProb updates Indel probablilities for all possible Indels.
-	Input: variants of type VarInfo.
-	Output: updated S.Var_Prob[var_info.Pos] based on var_info.Bases and var_info.BaseQ using Bayesian method.
+	Input: a variant of type VarInfo which is an Indel.
+	Output: update of all Indels in S.Var_Prob[var_info.Pos].
 --------------------------------------------------------------------------------------------------*/
 func (S *Var_Prof) UpdateIndelProb(var_info VarInfo) {
 	pos := var_info.Pos
