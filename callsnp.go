@@ -585,6 +585,7 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 
 	PrintMemStats("Before FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 
+	var vars_arr []VarInfo
 	var i, j, del_len int
 	var is_var, is_del bool
 
@@ -599,10 +600,12 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 	for j < l_read_flank_len && i >= 0 {
 		if _, is_var = INDEX.Var_Prof[i]; is_var {
 			if del_len, is_del = INDEX.Del_Var[i]; is_del {
-				if i+del_len <= l_align_e_pos && del_len < len(l_ref_flank) {
+				if del_len < j && del_len < len(l_ref_flank) {
 					l_ref_flank = l_ref_flank[:len(l_ref_flank)-del_len]
 					l_ref_pos_map = l_ref_pos_map[:len(l_ref_pos_map)-del_len]
 					j -= del_len
+				} else {
+					return vars_arr, -1, -1, -1
 				}
 			}
 		}
@@ -635,8 +638,10 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 		r_ref_flank = append(r_ref_flank, INDEX.Seq[i])
 		if _, is_var = INDEX.Var_Prof[i]; is_var {
 			if del_len, is_del = INDEX.Del_Var[i]; is_del {
-				if i+del_len < len(INDEX.Seq) {
+				if del_len < r_read_flank_len - j && i+del_len < len(INDEX.Seq) {
 					i += del_len
+				} else {
+					return vars_arr, -1, -1 ,1
 				}
 			}
 		}
@@ -654,7 +659,6 @@ func (S *Var_Prof) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 		S.ForwardDistance(r_read_flank, r_qual_flank, r_ref_flank, r_align_s_pos, align_info.Fw_Dist_D,
 			align_info.Fw_Dist_IS, align_info.Fw_Dist_IT, align_info.Fw_Trace_D, align_info.Fw_Trace_IS, align_info.Fw_Trace_IT, r_ref_pos_map)
 
-	var vars_arr []VarInfo
 	prob := l_Ham_dist + r_Ham_dist + l_Edit_dist + r_Edit_dist
 	if prob <= PARA_INFO.Prob_thres {
 		if l_m > 0 && l_n > 0 {
