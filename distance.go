@@ -33,7 +33,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genome includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
+func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len int
@@ -49,12 +49,12 @@ func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 	for m > 0 && n > 0 {
-		if _, is_var = INDEX.Var_Prof[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; is_var {
-			if _, is_same_len_var = INDEX.Same_Len_Var[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
+		if _, is_var = INDEX.VarProf[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; is_var {
+			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
 				break
 			}
 		}
-		if _, is_var = INDEX.Var_Prof[ref_pos_map[n-1]]; !is_var {
+		if _, is_var = INDEX.VarProf[ref_pos_map[n-1]]; !is_var {
 			if read[m-1] != ref[n-1] {
 				if m+PARA_INFO.Ham_backup < len(read) && n+PARA_INFO.Ham_backup < len(ref) {
 					m += PARA_INFO.Ham_backup
@@ -71,8 +71,8 @@ func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			}
 			m--
 			n--
-		} else if var_len, is_same_len_var = INDEX.Same_Len_Var[ref_pos_map[n-1]]; is_same_len_var {
-			var_prof, _ = S.Var_Prob[uint32(ref_pos_map[n-1])]
+		} else if var_len, is_same_len_var = INDEX.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
+			var_prof, _ = VC.VarProb[uint32(ref_pos_map[n-1])]
 			min_p = math.MaxFloat64
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
@@ -158,7 +158,7 @@ func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_var = INDEX.Var_Prof[ref_pos_map[j-1]]; !is_var {
+			if _, is_var = INDEX.VarProf[ref_pos_map[j-1]]; !is_var {
 				if read[i-1] == ref[j-1] {
 					sub_i = 0 //prob_i
 				} else {
@@ -193,7 +193,7 @@ func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
-				var_prof, _ = S.Var_Prob[uint32(ref_pos_map[j-1])]
+				var_prof, _ = VC.VarProb[uint32(ref_pos_map[j-1])]
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
@@ -255,7 +255,7 @@ func (S *Var_Prof) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *Var_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
+func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	var is_var, is_same_len_var, is_del bool
@@ -271,7 +271,7 @@ func (S *Var_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	for i > 0 || j > 0 {
 		is_var = false
 		if j > 0 {
-			_, is_var = INDEX.Var_Prof[ref_pos_map[j-1]]
+			_, is_var = INDEX.VarProf[ref_pos_map[j-1]]
 		}
 		if !is_var { //unknown VARIANT location
 			if bt_mat == 0 {
@@ -311,10 +311,9 @@ func (S *Var_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				copy(q, qual[i-var_len:i])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
-				if _, is_del = INDEX.Del_Var[ref_pos_map[j-1]]; is_del {
+				if _, is_del = INDEX.DelVar[ref_pos_map[j-1]]; is_del {
 					var_type = append(var_type, 2)
-				} else if _, is_same_len_var = INDEX.Same_Len_Var[ref_pos_map[j-1]]; is_same_len_var {
-					var_type = append(var_type, 0)
+				} else if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[j-1]]; is_same_len_var {var_type = append(var_type, 0)
 				} else {
 					var_type = append(var_type, 1)
 				}
@@ -409,7 +408,7 @@ func (S *Var_Prof) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
+func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len int
@@ -425,12 +424,12 @@ func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if _, is_var = INDEX.Var_Prof[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; is_var {
-			if _, is_same_len_var = INDEX.Same_Len_Var[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
+		if _, is_var = INDEX.VarProf[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; is_var {
+			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
 				break
 			}
 		}
-		if _, is_var = INDEX.Var_Prof[ref_pos_map[N-n]]; !is_var {
+		if _, is_var = INDEX.VarProf[ref_pos_map[N-n]]; !is_var {
 			if read[M-m] != ref[N-n] {
 				if M-(m+PARA_INFO.Ham_backup) > 0 && N-(n+PARA_INFO.Ham_backup) > 0 {
 					m += PARA_INFO.Ham_backup
@@ -447,9 +446,9 @@ func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			}
 			m--
 			n--
-		} else if var_len, is_same_len_var = INDEX.Same_Len_Var[ref_pos_map[N-n]]; is_same_len_var {
+		} else if var_len, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
 			min_p = math.MaxFloat64
-			var_prof, is_var = S.Var_Prob[uint32(ref_pos_map[N-n])]
+			var_prof, is_var = VC.VarProb[uint32(ref_pos_map[N-n])]
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
 					p = AlignCostKnownLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
@@ -534,7 +533,7 @@ func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_var = INDEX.Var_Prof[ref_pos_map[N-j]]; !is_var {
+			if _, is_var = INDEX.VarProf[ref_pos_map[N-j]]; !is_var {
 				if read[M-i] == ref[N-j] {
 					sub_i = 0 //prob_i
 				} else {
@@ -568,7 +567,7 @@ func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
-				var_prof, _ = S.Var_Prob[uint32(ref_pos_map[N-j])]
+				var_prof, _ = VC.VarProb[uint32(ref_pos_map[N-j])]
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
@@ -637,7 +636,7 @@ func (S *Var_Prof) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 // 	ref is part of a multi-genome.
 // The reads include standard bases, the multi-genomes include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (S *Var_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
+func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
@@ -654,7 +653,7 @@ func (S *Var_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	for i > 0 || j > 0 {
 		is_var = false
 		if j > 0 {
-			_, is_var = INDEX.Var_Prof[ref_pos_map[N-j]]
+			_, is_var = INDEX.VarProf[ref_pos_map[N-j]]
 		}
 		if !is_var { //unknown VARIANT location
 			if bt_mat == 0 {
@@ -695,9 +694,9 @@ func (S *Var_Prof) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					copy(q, qual[M-i:M-(i-var_len)])
 					var_base = append(var_base, v)
 					var_qual = append(var_qual, q)
-					if _, is_del = INDEX.Del_Var[ref_pos_map[N-j]]; is_del {
+					if _, is_del = INDEX.DelVar[ref_pos_map[N-j]]; is_del {
 						var_type = append(var_type, 2)
-					} else if _, is_same_len_var = INDEX.Same_Len_Var[ref_pos_map[N-j]]; is_same_len_var {
+					} else if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-j]]; is_same_len_var {
 						var_type = append(var_type, 0)
 					} else {
 						var_type = append(var_type, 1)

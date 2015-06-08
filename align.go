@@ -15,12 +15,12 @@ import (
 //Index for SNP caller
 //--------------------------------------------------------------------------------------------------
 type Index struct {
-	Seq          []byte            //store reference multigenomes
-	Var_Prof     map[int][][]byte  //hash table of SNP Profile (position, variants)
-	Var_AF       map[int][]float32 //allele frequency of SNP Profile (position, af of variants)
-	Same_Len_Var map[int]int       //hash table to indicate if SNPs has same length
-	Del_Var      map[int]int       //hash table to store length of deletions if SNPs are deletion
-	Rev_FMI      fmi.Index         //FM-index of reverse multigenomes
+	Seq        []byte            //store reference multigenomes
+	VarProf    map[int][][]byte  //hash table of SNP Profile (position, variants)
+	VarAF      map[int][]float32 //allele frequency of SNP Profile (position, af of variants)
+	SameLenVar map[int]int       //hash table to indicate if SNPs has same length
+	DelVar     map[int]int       //hash table to store length of deletions if SNPs are deletion
+	RevFMI     fmi.Index         //FM-index of reverse multigenomes
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -33,14 +33,14 @@ func NewIndex() *Index {
 	I.Seq = LoadMultigenome(INPUT_INFO.Ref_file)
 	PrintMemStats("Memstats after loading multigenome")
 
-	I.Var_Prof, I.Var_AF = LoadVarProf(INPUT_INFO.Var_prof_file)
+	I.VarProf, I.VarAF = LoadVarProf(INPUT_INFO.Var_prof_file)
 	PrintMemStats("Memstats after loading variant profile")
 
-	I.Same_Len_Var = make(map[int]int)
-	I.Del_Var = make(map[int]int)
+	I.SameLenVar = make(map[int]int)
+	I.DelVar = make(map[int]int)
 	var same_len_flag, del_flag bool
 	var var_len int
-	for var_pos, var_prof := range I.Var_Prof {
+	for var_pos, var_prof := range I.VarProf {
 		var_len = len(var_prof[0])
 		same_len_flag, del_flag = true, true
 		for _, val := range var_prof[1:] {
@@ -52,15 +52,15 @@ func NewIndex() *Index {
 			}
 		}
 		if same_len_flag {
-			I.Same_Len_Var[var_pos] = var_len
+			I.SameLenVar[var_pos] = var_len
 		}
 		if del_flag {
-			I.Del_Var[var_pos] = var_len - 1
+			I.DelVar[var_pos] = var_len - 1
 		}
 	}
 	PrintMemStats("Memstats after creating auxiliary data structures for variant profile")
 
-	I.Rev_FMI = *fmi.Load(INPUT_INFO.Rev_index_file)
+	I.RevFMI = *fmi.Load(INPUT_INFO.Rev_index_file)
 	PrintMemStats("Memstats after loading index of reverse multigenome")
 
 	return I
@@ -111,7 +111,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
 
 	rev_s_pos = len(read) - 1 - p
-	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.Rev_FMI, rev_read, rev_s_pos)
+	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.RevFMI, rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
 		//convert rev_e_pos in forward search to s_pos in backward search
@@ -119,7 +119,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 		e_pos = p
 		if rev_ep-rev_sp+1 <= INPUT_INFO.Max_snum && s_pos-e_pos >= INPUT_INFO.Min_slen {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				m_pos[idx-rev_sp] = len(I.Seq) - 1 - int(I.Rev_FMI.SA[idx]) - (s_pos - e_pos)
+				m_pos[idx-rev_sp] = len(I.Seq) - 1 - int(I.RevFMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}
