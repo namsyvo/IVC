@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------------------------------
-// IVC - Debug variables and functions.
+// ISC: debug.go - Debug variables and functions.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
@@ -66,9 +66,9 @@ func PrintMemStats(mesg string) {
 	}
 }
 
-/*------------------------
-//Printing Alignment info
--------------------------*/
+//------------------------
+// Printing Alignment info
+//------------------------
 
 func PrintLoopTraceInfo(loop_num int, mess string) {
 	if PRINT_ALIGN_TRACE_INFO {

@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------------------------------
-// IVC - Sharing variables and functions.
+// ISC: share.go - Sharing variables and functions.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
@@ -8,6 +8,7 @@ package isc
 import (
 	"fmt"
 	"log"
+	"bytes"
 	"math"
 	"math/rand"
 )
@@ -34,7 +35,7 @@ var (
 )
 
 //--------------------------------------------------------------------------------------------------
-//Input information
+// Input information
 //--------------------------------------------------------------------------------------------------
 type InputInfo struct {
 	//File names for:
@@ -59,7 +60,7 @@ type InputInfo struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-//Parameter used in alignment algorithm
+// Parameter used in alignment algorithm
 //--------------------------------------------------------------------------------------------------
 type ParaInfo struct {
 	Dist_thres      int     //threshold for distances between reads and multigenomes
@@ -82,7 +83,7 @@ type ParaInfo struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-//SetPara sets values of parameters for alignment process
+// SetPara sets values of parameters for alignment process
 //--------------------------------------------------------------------------------------------------
 func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres, iter_num int) *ParaInfo {
 	para_info := new(ParaInfo)
@@ -130,7 +131,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 }
 
 //--------------------------------------------------------------------------------------------------
-//Read information
+// Information of input reads
 //--------------------------------------------------------------------------------------------------
 type ReadInfo struct {
 	Read1, Read2                   []byte //first and second ends
@@ -143,7 +144,7 @@ type ReadInfo struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-//InitReadInfo create a read info object and initializes its content
+// InitReadInfo creates a ReadInfo object and initializes its content
 //--------------------------------------------------------------------------------------------------
 func InitReadInfo(read_len, info_len int) *ReadInfo {
 	read_info := new(ReadInfo)
@@ -158,7 +159,7 @@ func InitReadInfo(read_len, info_len int) *ReadInfo {
 }
 
 //--------------------------------------------------------------------------------------------------
-//PrintReads prints read information
+// PrintReads prints read information
 //--------------------------------------------------------------------------------------------------
 func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("read1: ", string(read_info.Read1))
@@ -170,7 +171,7 @@ func (read_info *ReadInfo) PrintReads() {
 }
 
 //--------------------------------------------------------------------------------------------------
-//RevComp computes reverse, reverse complement, and complement of a read.
+// RevComp computes reverse, reverse complement, and complement of a read.
 //--------------------------------------------------------------------------------------------------
 func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
 	read_len := len(read)
@@ -201,7 +202,7 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 }
 
 //--------------------------------------------------------------------------------------------------
-//Alignment information, served as shared variables between functions for alignment process
+// Alignment information, served as shared variables between functions for alignment process
 //--------------------------------------------------------------------------------------------------
 type AlignInfo struct {
 	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT    [][]float64 // Distance matrix for backward alignment
@@ -211,7 +212,7 @@ type AlignInfo struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-//InitAlignInfo allocates memory for share variables for alignment process
+// InitAlignInfo allocates memory for share variables for alignment process
 //--------------------------------------------------------------------------------------------------
 func InitAlignInfo(arr_len int) *AlignInfo {
 	align_info := new(AlignInfo)
@@ -225,7 +226,7 @@ func InitAlignInfo(arr_len int) *AlignInfo {
 }
 
 //--------------------------------------------------------------------------------------------------
-//InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
+// InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
 //--------------------------------------------------------------------------------------------------
 func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
 	dis_mat := make([][]float64, arr_len+1)
@@ -242,15 +243,16 @@ func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
 	return dis_mat, trace_mat
 }
 
+
 //--------------------------------------------------------------------------------------------------
-//Utility functions
+// Utility functions
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
-// IntervalHasVar determines whether [i, j] contains Var positions which are stores in array A.
-// This function impelements interpolation search. The array A must be sorted in increasing order.
+// IntervalHasVariants determines whether [i, j] contains variant positions which are stores in array A.
+// This function implements interpolation search. The array A must be sorted in increasing order.
 //--------------------------------------------------------------------------------------------------
-func IntervalHasVar(A []int, i, j int) bool {
+func IntervalHasVariants(A []int, i, j int) bool {
 	L := 0
 	R := len(A) - 1
 	var m int
@@ -265,4 +267,50 @@ func IntervalHasVar(A []int, i, j int) bool {
 		}
 	}
 	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
+}
+
+//--------------------------------------------------------------------------------------------------
+// SplitN splits a slice of bytes using an memory-efficient method.
+//--------------------------------------------------------------------------------------------------
+func SplitN(s, sep []byte, n int) ([][]byte, int) {
+	first_idx, sep_idx := 0, 0
+	sep_num := 0
+	t := make([][]byte, 0)
+	for first_idx < len(s) {
+		sep_idx = bytes.Index(s[first_idx:], sep)
+		if sep_idx != -1 {
+			sep_num++
+			tmp := make([]byte, first_idx+sep_idx-first_idx)
+			copy(tmp, s[first_idx:first_idx+sep_idx])
+			t = append(t, tmp)
+			if sep_num == n {
+				return t, sep_num
+			}
+			first_idx = first_idx + sep_idx + 1
+		} else {
+			return t, sep_num
+		}
+	}
+	return t, sep_num
+}
+
+//--------------------------------------------------------------------------------------------------
+// IndexN returns index of a pattern in a slice of bytes.
+//--------------------------------------------------------------------------------------------------
+func IndexN(s, sep []byte, n int) int {
+	first_idx, sep_idx := 0, 0
+	sep_num := 0
+	for first_idx < len(s) {
+		sep_idx = bytes.Index(s[first_idx:], sep)
+		if sep_idx != -1 {
+			sep_num++
+			if sep_num == n {
+				return first_idx + sep_idx
+			}
+			first_idx = first_idx + sep_idx + 1
+		} else {
+			return -1
+		}
+	}
+	return -1
 }

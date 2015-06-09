@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------------------
-// ISC - main program
-// Copyright 2014 Nam Sy Vo
+// ISC: isc.go - Main program.
+// Copyright 2015 Nam Sy Vo.
 //----------------------------------------------------------------------------------------
 
 package main
@@ -48,7 +48,7 @@ func main() {
 }
 
 //--------------------------------------------------------------------------------------------------
-//Read input information and parameters
+// Read input information and parameters
 //--------------------------------------------------------------------------------------------------
 func ReadInputInfo() isc.InputInfo {
 	var genome_file = flag.String("g", "", "reference genome file")

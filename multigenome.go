@@ -1,7 +1,7 @@
 //-------------------------------------------------------------------------------------------------
-// IVC - Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
-// Multigenome includes a "star" sequence and a variant profile for variant locations.
-// Copyright 2015 by Nam Sy Vo.
+// ISC: multigenome.go - Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
+// Multigenome includes a multi-sequence (include standard bases and *) and a variant profile for variant locations.
+// Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
 package isc
@@ -22,6 +22,9 @@ type VarProf struct {
 	AleFreq []float32
 }
 
+//-------------------------------------------------------------------------------------------------
+// LoadVarProf loads variant profile from file and return a map of variants.
+//-------------------------------------------------------------------------------------------------
 func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 	Variant := make(map[int][][]byte)
 	AleFreq := make(map[int][]float32)
@@ -62,6 +65,9 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 	return Variant, AleFreq
 }
 
+//-------------------------------------------------------------------------------------------------
+// SaveVarProf saves variant profile to file.
+//-------------------------------------------------------------------------------------------------
 func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 	file, err := os.Create(file_name)
 	if err != nil {
@@ -87,6 +93,9 @@ func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 	}
 }
 
+//-------------------------------------------------------------------------------------------------
+// SaveMultigenome saves multi-sequence to file.
+//-------------------------------------------------------------------------------------------------
 func SaveMultigenome(file_name string, multigenome []byte) {
 	file, err := os.Create(file_name)
 	if err != nil {
@@ -97,6 +106,9 @@ func SaveMultigenome(file_name string, multigenome []byte) {
 	file.Write(multigenome)
 }
 
+//-------------------------------------------------------------------------------------------------
+// LoadMultigenome loads multi-sequence from file.
+//-------------------------------------------------------------------------------------------------
 func LoadMultigenome(file_name string) []byte {
 	bs, err := ioutil.ReadFile(file_name)
 	if err != nil {
@@ -106,6 +118,9 @@ func LoadMultigenome(file_name string) []byte {
 	return bs
 }
 
+//-------------------------------------------------------------------------------------------------
+// BuildMultigenome biulds multi-sequence from variant profile.
+//-------------------------------------------------------------------------------------------------
 func BuildMultigenome(var_prof map[int]VarProf, seq []byte) []byte {
 	multigenome := make([]byte, len(seq))
 	copy(multigenome, seq)
@@ -116,7 +131,7 @@ func BuildMultigenome(var_prof map[int]VarProf, seq []byte) []byte {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Read FASTA files
+// ReadFASTA reads reference genome from FASTA files.
 //--------------------------------------------------------------------------------------------------
 func ReadFASTA(sequence_file string) []byte {
 	f, err := os.Open(sequence_file)
@@ -134,7 +149,6 @@ func ReadFASTA(sequence_file string) []byte {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-	//fmt.Printf("%s",line)
 	var line []byte
 	for {
 		line, isPrefix, err = br.ReadLine()
@@ -148,7 +162,7 @@ func ReadFASTA(sequence_file string) []byte {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Read VCF files
+// ReadVCF reads variant profile from VCF files.
 //--------------------------------------------------------------------------------------------------
 func ReadVCF(file_name string) map[int]VarProf {
 	var_prof := make(map[int]VarProf)
@@ -168,17 +182,15 @@ func ReadVCF(file_name string) map[int]VarProf {
 	for {
 		line, err = data.ReadBytes('\n')
 		if err != nil {
-			//fmt.Printf("%v\n",err)
 			break
 		}
 		if bytes.Equal(line[0:1], []byte("#")) {
-			//fmt.Printf("%s \n",line)
+			continue
 		} else {
 			tmp := VarProf{}
 			sub_line, _ := SplitN(line, []byte("\t"), 9)
 			pos, _ = strconv.Atoi(string(sub_line[1]))
 			tmp.Variant = append(tmp.Variant, sub_line[3])
-			//Temporal impl for allele freq, need to be changed later
 			tmp.AleFreq = append(tmp.AleFreq, 0)
 			alt = bytes.Split(sub_line[4], []byte(","))
 			info = bytes.Split(sub_line[7], []byte(";"))
@@ -195,49 +207,8 @@ func ReadVCF(file_name string) map[int]VarProf {
 				tmp.AleFreq = append(tmp.AleFreq, p)
 			}
 			tmp.AleFreq[0] = 1 - p
-			//sort.Strings(tmp.Variant)
 			var_prof[pos-1] = tmp
 		}
 	}
 	return var_prof
-}
-
-func SplitN(s, sep []byte, n int) ([][]byte, int) {
-	first_idx, sep_idx := 0, 0
-	sep_num := 0
-	t := make([][]byte, 0)
-	for first_idx < len(s) {
-		sep_idx = bytes.Index(s[first_idx:], sep)
-		if sep_idx != -1 {
-			sep_num++
-			tmp := make([]byte, first_idx+sep_idx-first_idx)
-			copy(tmp, s[first_idx:first_idx+sep_idx])
-			t = append(t, tmp)
-			if sep_num == n {
-				return t, sep_num
-			}
-			first_idx = first_idx + sep_idx + 1
-		} else {
-			return t, sep_num
-		}
-	}
-	return t, sep_num
-}
-
-func IndexN(s, sep []byte, n int) int {
-	first_idx, sep_idx := 0, 0
-	sep_num := 0
-	for first_idx < len(s) {
-		sep_idx = bytes.Index(s[first_idx:], sep)
-		if sep_idx != -1 {
-			sep_num++
-			if sep_num == n {
-				return first_idx + sep_idx
-			}
-			first_idx = first_idx + sep_idx + 1
-		} else {
-			return -1
-		}
-	}
-	return -1
 }

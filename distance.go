@@ -1,7 +1,7 @@
 //-------------------------------------------------------------------------------------------------
-// IVC - Calculating distance and determining alignment between reads and multigenomes.
+// ISC: distance.go - Calculating distance and determining alignment between reads and multigenomes.
 // Alignment is performed in both backward and forward directions.
-// Copyright 2014 Nam Sy Vo.
+// Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
 package isc
@@ -12,8 +12,7 @@ import (
 )
 
 //-------------------------------------------------------------------------------------------------
-// Cost functions for computing distance between reads and multi-genomes.
-// Input slices should have same length
+// AlignCostKnownLoci calculates cost of alignment between a read and the reference at known loci.
 //-------------------------------------------------------------------------------------------------
 func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 	p := 0.0
@@ -28,10 +27,8 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 }
 
 //-------------------------------------------------------------------------------------------------
-// Calculate the distance between read and ref in backward direction.
-// 	read is a read.
-// 	ref is part of a multi-genome.
-// The reads include standard bases, the multi-genome includes standard bases and "*" characters.
+// BackwardDistance calculates the distance between a read and a ref in backward direction.
+// The read include standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
@@ -250,10 +247,8 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 }
 
 //-------------------------------------------------------------------------------------------------
-// BackwardTraceBack constructs alignment between reads and refs from BackwardDistanceMulti.
-// 	read is a read.
-// 	ref is part of a multi-genome.
-// The reads include standard bases, the multi-genomes include standard bases and "*" characters.
+// BackwardTraceBack constructs alignment between a read and a ref from BackwardDistance.
+// The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
@@ -403,10 +398,8 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 }
 
 //-------------------------------------------------------------------------------------------------
-// Calculate the distance between read and ref in forward direction.
-// 	read is a read.
-// 	ref is part of a multi-genome.
-// The reads include standard bases, the multi-genomes include standard bases and "*" characters.
+// ForwardDistance calculates the distance between a read and a ref in forward direction.
+// The read includes standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
@@ -631,10 +624,8 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 }
 
 //-------------------------------------------------------------------------------------------------
-// ForwardTraceBack constructs alignment based on the results from ForwardDistanceMulti.
-// 	read is a read.
-// 	ref is part of a multi-genome.
-// The reads include standard bases, the multi-genomes include standard bases and "*" characters.
+// ForwardTraceBack constructs alignment between a read and a ref from ForwardDistance.
+// The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {

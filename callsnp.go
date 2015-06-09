@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------------------------------
-// IVC - Calling genomic variants based on alignment between reads and the reference multigenome.
+// ISC: callsnp.go - Calling genomic variants based on alignment between reads and the reference multigenome.
 // Variants and probability of correct variant calls is determined using Bayesian update.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
@@ -20,10 +20,10 @@ import (
 	"time"
 )
 
-/*--------------------------------------------------------------------------------------------------
-VarInfo represents variants obtained during alignment phase.
-It serves as temporary variable during variant calling phase.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// VarInfo represents variants obtained during alignment phase.
+// It serves as temporary variable during variant calling phase.
+//---------------------------------------------------------------------------------------------------
 type VarInfo struct {
 	Pos   uint32  //postion of variants on ref
 	Bases []byte  //bases of variants
@@ -40,10 +40,10 @@ type VarInfo struct {
 	Stra2 bool    //strand (backward/forward) of read2 of exact match
 }
 
-/*--------------------------------------------------------------------------------------------------
-VarCall represents info of aligned reads and bases at the variant call positions on reference multigenome.
-This struct also has functions defined on it for calling variants.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// VarCall represents info of aligned reads and bases at the variant call positions on reference multigenome.
+// This struct also has functions defined on it for calling variants.
+//---------------------------------------------------------------------------------------------------
 type VarCall struct {
 	/*
 		VarProb stores all possible variants at each position and their confident probablilities.
@@ -65,10 +65,10 @@ type VarCall struct {
 	ReadInfo  map[uint32]map[string][][]byte  //Info of aligned reads at the variant call position
 }
 
-/*--------------------------------------------------------------------------------------------------
-InitIndex initializes indexes and parameters.
-This function will be called from main program.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// InitIndex initializes indexes and parameters.
+// This function will be called from main program.
+//---------------------------------------------------------------------------------------------------
 func NewVariantCaller(input_info InputInfo) *VarCall {
 
 	INPUT_INFO = input_info
@@ -147,11 +147,11 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 	return VC
 }
 
-/*--------------------------------------------------------------------------------------------------
-CallVariants initializes share variables, channels, reads input reads, finds all possible variants,
-and updates variant information in VarCall.
-This function will be called from main program.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// CallVariants initializes share variables, channels, reads input reads, finds all possible variants,
+// and updates variant information in VarCall.
+// This function will be called from main program.
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) CallVariants() {
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindVariants,
 	//when a FindSNPs goroutine finish copying a read to its own memory,
@@ -198,9 +198,9 @@ func (VC *VarCall) CallVariants() {
 	//------------------------
 }
 
-/*--------------------------------------------------------------------------------------------------
-ReadReads reads all reads from input FASTQ files and put them into data channel.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// ReadReads reads all reads from input FASTQ files and put them into data channel.
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 
 	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
@@ -250,9 +250,9 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 	close(read_data)
 }
 
-/*--------------------------------------------------------------------------------------------------
-FindVariants takes data from data channel, find all possible Vars and put them into results channel.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// FindVariants takes data from data channel, find all possible Vars and put them into results channel.
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool, var_results chan VarInfo,
 	wg *sync.WaitGroup) {
 	wg.Add(1)
@@ -290,10 +290,10 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 	}
 }
 
-/*--------------------------------------------------------------------------------------------------
-FindVariantsFromPairedEndReads returns Vars found from alignment between pair-end reads and the multigenome.
-This version treats each end of the reads independently.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// FindVariantsFromPairedEndReads returns Vars found from alignment between pair-end reads and the multigenome.
+// This version treats each end of the reads independently.
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results chan VarInfo, align_info *AlignInfo, m_pos []int) {
 
 	var var_info VarInfo
@@ -440,9 +440,9 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 	NO_ALIGN_READ_INFO_CHAN <- at
 }
 
-/*--------------------------------------------------------------------------------------------------
-FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, []int, []int, []int,
 	[]int, []bool, []bool, bool) {
 
@@ -574,12 +574,12 @@ func (VC *VarCall) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 	return s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, false
 }
 
-/*--------------------------------------------------------------------------------------------------
-FindVariantsFromExtension determines Vars based on alignment between reads and multi-genomes.
-	Extend read and ref from exact matches found from bachward search with FM-index
-	Perform backward (for left extension of read and ref) and forward alignment (for right extension)
-	between read and multigenome to determine aligned bases as candidates for variant calls
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// FindVariantsFromExtension determines Vars based on alignment between reads and multi-genomes.
+//	Extend read and ref from exact matches found from bachward search with FM-index
+//	Perform backward (for left extension of read and ref) and forward alignment (for right extension)
+//	between read and multigenome to determine aligned bases as candidates for variant calls
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte,
 	align_info *AlignInfo) ([]VarInfo, int, int, float64) {
 
@@ -701,11 +701,11 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 	return vars_arr, -1, -1, -1
 }
 
-/*--------------------------------------------------------------------------------------------------
-UpdateSNPProb updates variant probablilities for all possible variants.
-	Input: a variant of type VarInfo which is a SNP.
-	Output: update of all SNPs in VC.VarProb[var_info.Pos].
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// UpdateSNPProb updates variant probablilities for all possible variants.
+//	Input: a variant of type VarInfo which is a SNP.
+//	Output: update of all SNPs in VC.VarProb[var_info.Pos].
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 	pos := var_info.Pos
 	a := string(var_info.Bases[0])
@@ -763,11 +763,11 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 	}
 }
 
-/*--------------------------------------------------------------------------------------------------
-UpdateIndelProb updates Indel probablilities for all possible Indels.
-	Input: a variant of type VarInfo which is an Indel.
-	Output: update of all Indels in VC.VarProb[var_info.Pos].
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// UpdateIndelProb updates Indel probablilities for all possible Indels.
+//	Input: a variant of type VarInfo which is an Indel.
+//	Output: update of all Indels in VC.VarProb[var_info.Pos].
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	pos := var_info.Pos
 	a := string(var_info.Bases)
@@ -836,10 +836,10 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	}
 }
 
-/*--------------------------------------------------------------------------------------------------
-OutputVarCalls determines variant calls, convert their probabilities to Phred scores, and writes them
-to file in proper format (VCF-like format at this stage).
---------------------------------------------------------------------------------------------------*/
+//---------------------------------------------------------------------------------------------------
+// OutputVarCalls determines variant calls, convert their probabilities to Phred scores, and writes them
+// to file in proper format (VCF-like format at this stage).
+//---------------------------------------------------------------------------------------------------
 func (VC *VarCall) OutputVarCalls() {
 
 	file, err := os.Create(INPUT_INFO.Var_call_file)
@@ -891,7 +891,7 @@ func (VC *VarCall) OutputVarCalls() {
 				if VC.VarType[var_pos][var_call][0] == 2 { //DEL
 					//Ignore indel calls of length 2 that are homopolymer
 					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						fmt.Println("Variant calls (DEL) of length 2 that are homopolymer:", pos, var_call)
+						fmt.Println("Unknown DELs of length 2 are homopolymer:", pos, var_call)
 						continue
 					}
 					line_a = append(line_a, var_call)
@@ -899,7 +899,7 @@ func (VC *VarCall) OutputVarCalls() {
 				} else if VC.VarType[var_pos][var_call][0] == 1 { //INS
 					//Ignore indel calls of length 2 that are homopolymer
 					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						fmt.Println("Variant calls (INS) of length 2 that are homopolymer:", pos, var_call)
+						fmt.Println("Unknown INS of length 2 are homopolymer:", pos, var_call)
 						continue
 					}
 					line_a = append(line_a, string(INDEX.Seq[pos]))
@@ -907,14 +907,14 @@ func (VC *VarCall) OutputVarCalls() {
 				} else { //SUB
 					//Ignore variants that are identical with ref
 					if var_call == string(INDEX.Seq[pos]) {
-						fmt.Println("Variant calls (SNP) are identical with ref:", pos, var_call, string(INDEX.Seq[pos]))
+						fmt.Println("Unknown SNPs are identical with ref (pos, var_call, ref_base):", pos, var_call, string(INDEX.Seq[pos]))
 						continue
 					}
 					line_a = append(line_a, string(INDEX.Seq[pos]))
 					line_a = append(line_a, var_call)
 				}
 			} else {
-				fmt.Println("Variant calls without type:", pos, var_call, string(INDEX.Seq[pos]))
+				fmt.Println("POS have non-ref aligned bases but calls are not made (pos, base_with_max_prob, ref_base):", pos, var_call, string(INDEX.Seq[pos]))
 				continue
 			}
 		}

@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// IVC - Finding seeds of matches betwwen reads and multigenomes using exact search with FM index.
+// ISC: align.go - Finding seeds of alignment betwwen reads and multigenomes using FM index.
 // Searching is perfomed from a random position on reads.
 // Copyright 2015 Nam Sy Vo.
 //--------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ type Index struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Init function sets initial values for global variables and parameters for Index object
+// NewIndex creates index instance and set up its variables
 //--------------------------------------------------------------------------------------------------
 func NewIndex() *Index {
 
@@ -67,7 +67,8 @@ func NewIndex() *Index {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Bachward Search with FM-index, start from any position on the pattern.
+// BackwardSearchFrom searches for exact matches between a pattern and the reference using FM-index,
+// It starts to search from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
 func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) (int, int, int) {
 	var sp, ep, offset uint32
@@ -102,8 +103,9 @@ func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos in
 }
 
 //--------------------------------------------------------------------------------------------------
-// FindSeeds function returns positions and distances of LCS between reads and multi-genomes.
-// It uses both backward search and forward search (backward search on reverse references).
+// FindSeeds returns positions and distances of seeds between a read and the reference.
+// It uses both backward search and forward search
+// Forward search is backward search on reverse of the reference.
 //--------------------------------------------------------------------------------------------------
 func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
 
