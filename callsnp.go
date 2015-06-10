@@ -66,8 +66,8 @@ type VarCall struct {
 }
 
 //---------------------------------------------------------------------------------------------------
-// InitIndex initializes indexes and parameters.
-// This function will be called from main program.
+// NewVariantCaller creates an instance of VarCall and sets up its variables.
+// This function will be called from the main program.
 //---------------------------------------------------------------------------------------------------
 func NewVariantCaller(input_info InputInfo) *VarCall {
 
@@ -575,10 +575,10 @@ func (VC *VarCall) FindSeedsFromPairedEnds(read_info *ReadInfo) ([]int, []int, [
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindVariantsFromExtension determines Vars based on alignment between reads and multi-genomes.
-//	Extend read and ref from exact matches found from bachward search with FM-index
-//	Perform backward (for left extension of read and ref) and forward alignment (for right extension)
-//	between read and multigenome to determine aligned bases as candidates for variant calls
+// FindVariantsFromExtension determines variants based on alignment between reads and multi-genomes.
+// Extend read and ref from exact matches (found from searching with FM-index).
+// Perform backward alignment (for left extension of read and ref) and forward alignment (for right extension)
+// between read and multigenome to determine aligned bases as candidates for variant calls.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual []byte,
 	align_info *AlignInfo) ([]VarInfo, int, int, float64) {
@@ -702,9 +702,8 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 }
 
 //---------------------------------------------------------------------------------------------------
-// UpdateSNPProb updates variant probablilities for all possible variants.
+// UpdateSNPProb updates probablilities of all possible SNPs.
 //	Input: a variant of type VarInfo which is a SNP.
-//	Output: update of all SNPs in VC.VarProb[var_info.Pos].
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 	pos := var_info.Pos
@@ -764,9 +763,8 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 }
 
 //---------------------------------------------------------------------------------------------------
-// UpdateIndelProb updates Indel probablilities for all possible Indels.
+// UpdateIndelProb updates probablilities of all possible Indels.
 //	Input: a variant of type VarInfo which is an Indel.
-//	Output: update of all Indels in VC.VarProb[var_info.Pos].
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	pos := var_info.Pos
@@ -837,8 +835,8 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 }
 
 //---------------------------------------------------------------------------------------------------
-// OutputVarCalls determines variant calls, convert their probabilities to Phred scores, and writes them
-// to file in proper format (VCF-like format at this stage).
+// OutputVarCalls determines variant calls, convert their probabilities to Phred scores, and writes
+// all variant calls to file in VCF format.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) OutputVarCalls() {
 

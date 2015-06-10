@@ -12,7 +12,7 @@ import (
 )
 
 //--------------------------------------------------------------------------------------------------
-//Index for SNP caller
+//Index represents info and index used for alignment process.
 //--------------------------------------------------------------------------------------------------
 type Index struct {
 	Seq        []byte            //store reference multigenomes
@@ -24,7 +24,7 @@ type Index struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-// NewIndex creates index instance and set up its variables
+// NewIndex creates an instance of Index and seta up its variables.
 //--------------------------------------------------------------------------------------------------
 func NewIndex() *Index {
 

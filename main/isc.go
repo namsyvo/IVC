@@ -19,6 +19,7 @@ func main() {
 
 	//Starting Program----------------------------------------------------------//
 	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
+	fmt.Println("ISC-main: Calling variants based on alignment between reads and multigenome.")
 	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	//--------------------------------------------------------------------------//
 
