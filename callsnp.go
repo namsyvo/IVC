@@ -597,7 +597,7 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 	l_align_e_pos := m_pos - 1 + PARA_INFO.Seed_backup
 	i = l_align_e_pos
 	j = 0 //to check length of l_ref_flank
-	for j < l_read_flank_len && i >= 0 {
+	for j < l_read_flank_len + PARA_INFO.Indel_backup && i >= 0 {
 		if _, is_var = INDEX.VarProf[i]; is_var {
 			if del_len, is_del = INDEX.DelVar[i]; is_del {
 				if del_len < j && del_len < len(l_ref_flank) {
@@ -633,7 +633,7 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 	r_align_s_pos := m_pos + seed_len - PARA_INFO.Seed_backup
 	i = r_align_s_pos
 	j = 0 //to check length of r_ref_flank
-	for j < r_read_flank_len && i < len(INDEX.Seq) {
+	for j < r_read_flank_len + PARA_INFO.Indel_backup && i < len(INDEX.Seq) {
 		r_ref_pos_map = append(r_ref_pos_map, i)
 		r_ref_flank = append(r_ref_flank, INDEX.Seq[i])
 		if _, is_var = INDEX.VarProf[i]; is_var {
