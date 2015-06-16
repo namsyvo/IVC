@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------------------
-// ISC: align.go - Finding seeds of alignment betwwen reads and multigenomes using FM index.
+// ISC: seed.go - Finding seeds of alignment betwwen reads and multigenomes using FM index.
 // Searching is perfomed from a random position on reads.
 // Copyright 2015 Nam Sy Vo.
 //--------------------------------------------------------------------------------------------------

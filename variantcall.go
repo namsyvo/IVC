@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------------------------------
-// ISC: callsnp.go - Calling genomic variants based on alignment between reads and the reference multigenome.
+// ISC: variantcall.go - Calling genomic variants based on alignment between reads and the reference multigenome.
 // Variants and probability of correct variant calls is determined using Bayesian update.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
