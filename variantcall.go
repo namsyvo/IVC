@@ -1,10 +1,10 @@
 //---------------------------------------------------------------------------------------------------
-// ISC: variantcall.go - Calling genomic variants based on alignment between reads and the reference multigenome.
+// IVC: variantcall.go - Calling genomic variants based on alignment between reads and the reference multigenome.
 // Variants and probability of correct variant calls is determined using Bayesian update.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
-package isc
+package ivc
 
 import (
 	"bufio"
@@ -929,7 +929,7 @@ func (VC *VarCall) OutputVarCalls() {
 		line_a = append(line_a, ".")
 		//FORMAT
 		line_a = append(line_a, ".")
-		//ISC-INFO
+		//IVC-INFO
 		line_a = append(line_a, strconv.FormatFloat(var_call_prob, 'f', 5, 32))
 		line_a = append(line_a, strconv.Itoa(VC.VarRNum[var_pos][var_call]))
 		str_a = strings.Join(line_a, "\t")

@@ -1,20 +1,20 @@
 //----------------------------------------------------------------------------------------
-// Copyright 2013 Nam Sy Vo
-// Test for ISC
+// Test for variant quality calculation
+// Copyright 2015 Nam Sy Vo
 //----------------------------------------------------------------------------------------
 
-package isc_test
+package ivc_test
 
 import (
 	//"fmt"
 	//"testing"
-    //"github.com/namsyvo/ISC"
+    //"github.com/namsyvo/IVC"
 )
 /*
 func TestSNPQual(t *testing.T) {
 	defer __(o_())
 
-	var S isc.SNP_Prof
+	var S ivc.SNP_Prof
 	S.SNP_Calls = make(map[uint32]map[string]float64)
 	S.SNP_Calls[100] = make(map[string]float64)
 	S.SNP_Calls[100]["A"] = 0.97
@@ -23,7 +23,7 @@ func TestSNPQual(t *testing.T) {
 	S.SNP_Calls[100]["T"] = 0.01
 	//S.SNP_Calls[100]["ACT"] = 0.1
 	
-	snps := []isc.SNP {
+	snps := []ivc.SNP {
 		{100, []byte{'C'}, []byte{'I'}},
 		//{100, []byte{'C'}, []byte{'1'}},
 		//{100, []byte{'A'}, []byte{'5'}},
@@ -33,7 +33,7 @@ func TestSNPQual(t *testing.T) {
 		//{100, []byte{'T'}, []byte{'I'}},
 	}
 
-	snps2 := []isc.SNP {
+	snps2 := []ivc.SNP {
 		{100, []byte{'A'}, []byte{'I'}},
 		{100, []byte{'A'}, []byte{'I'}},
 		{100, []byte{'G'}, []byte{'I'}},
@@ -42,7 +42,7 @@ func TestSNPQual(t *testing.T) {
 		{100, []byte{'G'}, []byte{'I'}},
 		{100, []byte{'G'}, []byte{'I'}},
 	}
-	snps3 := []isc.SNP {
+	snps3 := []ivc.SNP {
 		{100, []byte{}, []byte{}},
 		{100, []byte{'A', 'G', 'T'}, []byte{'4', '4', '4'}},
 		{100, []byte{'A', 'G', 'T'}, []byte{'4', '4', '4'}},
@@ -55,7 +55,7 @@ func TestSNPQual(t *testing.T) {
 
 	for snp, prob := range S.SNP_Calls[100] {
 		fmt.Print("SNP: ", snp, "\t")
-		fmt.Println("Prob: ", prob, "\tQual: ", isc.ProbtoQual(prob))
+		fmt.Println("Prob: ", prob, "\tQual: ", ivc.ProbtoQual(prob))
 	}
 	for _, snp := range snps {
 		fmt.Println("a: ", string(snp.Bases))
@@ -63,7 +63,7 @@ func TestSNPQual(t *testing.T) {
 		S.UpdateSNPProb(snp)
 		for snp, prob := range S.SNP_Calls[100] {
 			fmt.Print("SNP: ", snp, "\t")
-			fmt.Println("Prob: ", prob, "\tQual: ", isc.ProbtoQual(prob))
+			fmt.Println("Prob: ", prob, "\tQual: ", ivc.ProbtoQual(prob))
 		}
 	}
 }
@@ -104,15 +104,15 @@ func TestSNPQual(t *testing.T) {
 	fmt.Println("e: ", string(e[0]))
 	for j, v := range bases {
 		fmt.Print("SNP: ", string(v), "\t")
-		fmt.Println("Prob: ", p_b[j], "\tQual: ", isc.ProbtoQual(p_b[j]))
+		fmt.Println("Prob: ", p_b[j], "\tQual: ", ivc.ProbtoQual(p_b[j]))
 	}
 	for i, _ := range(a[0]) {
 		fmt.Println("base: ", string(a[0][i]))
-		snp_prob := isc.CalcPosProb(a[0][i], e[0][i], bases, p_b)
+		snp_prob := ivc.CalcPosProb(a[0][i], e[0][i], bases, p_b)
 		copy(p_b, snp_prob)
 		for j, v := range bases {
 			fmt.Print("SNP: ", string(v), "\t")
-			fmt.Println("Prob: ", p_b[j], "\tQual: ", isc.ProbtoQual(p_b[j]))
+			fmt.Println("Prob: ", p_b[j], "\tQual: ", ivc.ProbtoQual(p_b[j]))
 		}
 	}
 }

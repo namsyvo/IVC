@@ -1,5 +1,5 @@
 //----------------------------------------------------------------------------------------
-// ISC: isc.go - Main program.
+// IVC: ivc.go - Main program.
 // Copyright 2015 Nam Sy Vo.
 //----------------------------------------------------------------------------------------
 
@@ -8,7 +8,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/namsyvo/ISC"
+	"github.com/namsyvo/IVC"
 	"log"
 	"path"
 	"runtime"
@@ -19,7 +19,7 @@ func main() {
 
 	//Starting Program----------------------------------------------------------//
 	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
-	fmt.Println("ISC-main: Calling variants based on alignment between reads and multigenome.")
+	fmt.Println("IVC-main: Calling variants based on alignment between reads and multigenome.")
 	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	//--------------------------------------------------------------------------//
 
@@ -28,10 +28,10 @@ func main() {
 	start_time := time.Now()
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
-	variant_caller := isc.NewVariantCaller(input_info)
+	variant_caller := ivc.NewVariantCaller(input_info)
 	index_time := time.Since(start_time)
 	log.Printf("Time for initializing the variant caller\t%s", index_time)
-	isc.PrintProcessMem("Memstats after initializing the variant caller")
+	ivc.PrintProcessMem("Memstats after initializing the variant caller")
 	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
 
@@ -41,7 +41,7 @@ func main() {
 	variant_caller.CallVariants()
 	call_var_time := time.Since(start_time)
 	log.Printf("Time for calling variants:\t%s", call_var_time)
-	isc.PrintProcessMem("Memstats after calling variants")
+	ivc.PrintProcessMem("Memstats after calling variants")
 	variant_caller.OutputVarCalls()
 	fmt.Println("Check results in the file", input_info.Var_call_file)
 	fmt.Println("Finish calling variants.")
@@ -51,7 +51,7 @@ func main() {
 //--------------------------------------------------------------------------------------------------
 // Read input information and parameters
 //--------------------------------------------------------------------------------------------------
-func ReadInputInfo() isc.InputInfo {
+func ReadInputInfo() ivc.InputInfo {
 	var genome_file = flag.String("g", "", "reference genome file")
 	var var_prof_file = flag.String("s", "", "variant profile file")
 	var idx_dir = flag.String("i", "", "index directory")
@@ -78,7 +78,7 @@ func ReadInputInfo() isc.InputInfo {
 	_, var_prof_file_name := path.Split(*var_prof_file)
 	var_prof_index_file_name := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 
-	input_info := isc.InputInfo{}
+	input_info := ivc.InputInfo{}
 	input_info.Ref_file = multigenome_file_name
 	input_info.Var_prof_file = var_prof_index_file_name
 	input_info.Index_file = multigenome_file_name + ".index/"

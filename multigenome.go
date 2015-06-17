@@ -1,10 +1,10 @@
 //-------------------------------------------------------------------------------------------------
-// ISC: multigenome.go - Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
+// IVC: multigenome.go - Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
 // Multigenome includes a multi-sequence (include standard bases and *) and a variant profile for variant locations.
 // Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
-package isc
+package ivc
 
 import (
 	"bufio"

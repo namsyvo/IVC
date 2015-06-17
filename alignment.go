@@ -1,10 +1,10 @@
 //-------------------------------------------------------------------------------------------------
-// ISC: alignment.go - Calculating alignment between reads and multigenomes.
+// IVC: alignment.go - Calculating alignment between reads and multigenomes.
 // Alignment is performed in both backward and forward directions.
 // Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
-package isc
+package ivc
 
 import (
 	//"fmt"

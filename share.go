@@ -1,9 +1,9 @@
 //---------------------------------------------------------------------------------------------------
-// ISC: share.go - Shared variables and functions.
+// IVC: share.go - Shared variables and functions.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
-package isc
+package ivc
 
 import (
 	"fmt"

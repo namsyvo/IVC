@@ -1,9 +1,9 @@
 //---------------------------------------------------------------------------------------------------
-// ISC: debug.go - Debug variables and functions.
+// IVC: debug.go - Debug variables and functions.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
-package isc
+package ivc
 
 import (
 	"bufio"

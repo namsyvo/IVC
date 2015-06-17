@@ -1,9 +1,9 @@
 //----------------------------------------------------------------------------------------
-// Copyright 2013 Nam Sy Vo
-// Test for ISC
+// Test for IVC main program
+// Copyright 2015 Nam Sy Vo
 //----------------------------------------------------------------------------------------
 
-package isc_test
+package ivc_test
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	//"os"
 	//"bufio"
 	//"testing"
-    //"github.com/namsyvo/ISC"
+    //"github.com/namsyvo/IVC"
 )
 
 func o_() string {
@@ -31,7 +31,7 @@ func __(name string) {
 	fmt.Println()
 }
 /*
-func TestISC_NC007194(t *testing.T) {
+func TestIVC_NC007194(t *testing.T) {
 	defer __(o_())
 
     fmt.Println("@@@-Read-MultiGenome Alignment ----------------------")
@@ -41,7 +41,7 @@ func TestISC_NC007194(t *testing.T) {
     var index_file = "../test_data/indexes/multigenome.txt.index"
     var rev_index_file = "../test_data/indexes/multigenome_rev.txt.index"
 
-    var snpcaller isc.SNPProf
+    var snpcaller ivc.SNPProf
     snpcaller.Init(genome_file, snp_file, index_file, rev_index_file, 100, 0.02, 4, 1, 32)
 
     var q_file_1 = "../test_data/reads/test_reads_1.fq"

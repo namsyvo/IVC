@@ -24,7 +24,7 @@ Minor changes:
 ##0.5.1
 - Compute alignment probability for mismatches only.
 - Change prior prob for Indel calling.
-- Change calculation of alignment prob at known snp locations.
+- Change calculation of alignment prob at known variant locations.
 
 ##0.5
 - Implement probabilistic alignment strategy.
