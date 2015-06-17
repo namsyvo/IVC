@@ -27,11 +27,11 @@ import (
 type VarInfo struct {
 	Pos   uint32  //postion of variants on ref
 	Bases []byte  //bases of variants
-	BaseQ []byte  //quality of bases of variants
-	MapQ  float64 //quality of read mapping
+	BQual []byte  //quality of bases of variants
 	Type  int     //type of variants (sub, ins, del...)
 	CDis  int     //chromosomal distance of alignment of two read-ends
 	CDiff int     //difference between aligned pos and true pos
+	MQual  float64 //quality of read mapping
 	AProb float64 //prob of correct alignment
 	CProb float64 //prob correct paired-mapping
 	RInfo []byte  //info of reads
@@ -52,18 +52,18 @@ type VarCall struct {
 			Their posterior probabilities will be updated during alignment phase based on incomming aligned bases
 	*/
 	VarProb   map[uint32]map[string]float64   //Probability of variant calls
-	VarBaseQ  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
-	VarMapQ   map[uint32]map[string][]float64 //Quality of read mapping ath the variant call position
+	VarBQual  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at variant call positions
 	VarType   map[uint32]map[string][]int     //Type of variants (currently: 0:sub, 1:ins, 2:del)
-	VarRNum   map[uint32]map[string]int       //Numer of reads (bases) aligned to the variant call postion
+	VarRNum   map[uint32]map[string]int       //Numer of reads (bases) aligned to variant call postions
 	ChrDis    map[uint32]map[string][]int     //Chromosomal distance between two aligned ends
 	ChrDiff   map[uint32]map[string][]int     //Difference betwwen aligned postions and true postions (for simulated data)
+	MapQual   map[uint32]map[string][]float64 //Quality of read mapping at variant call positions
 	AlnProb   map[uint32]map[string][]float64 //Alignment probability of aligned read at the variant call position
 	ChrProb   map[uint32]map[string][]float64 //Paired-end mapping probability
 	StartPos1 map[uint32]map[string][]int     //Start position of alignment of the first end
 	StartPos2 map[uint32]map[string][]int     //Start position of alignment of the second end
-	Strand1    map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if identicaly with ref)
-	Strand2    map[uint32]map[string][]bool    //Strand indicator of the second end
+	Strand1   map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if identicaly with ref)
+	Strand2   map[uint32]map[string][]bool    //Strand indicator of the second end
 	ReadInfo  map[uint32]map[string][][]byte  //Info of aligned reads at the variant call position
 }
 
@@ -93,8 +93,8 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 
 	VC := new(VarCall)
 	VC.VarProb   = make(map[uint32]map[string]float64)
-	VC.VarBaseQ  = make(map[uint32]map[string][][]byte)
-	VC.VarMapQ      = make(map[uint32]map[string][]float64)
+	VC.VarBQual  = make(map[uint32]map[string][][]byte)
+	VC.MapQual   = make(map[uint32]map[string][]float64)
 	VC.VarType   = make(map[uint32]map[string][]int)
 	VC.VarRNum   = make(map[uint32]map[string]int)
 	VC.ChrDis    = make(map[uint32]map[string][]int)
@@ -104,8 +104,8 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 	VC.ReadInfo  = make(map[uint32]map[string][][]byte)
 	VC.StartPos1 = make(map[uint32]map[string][]int)
 	VC.StartPos2 = make(map[uint32]map[string][]int)
-	VC.Strand1    = make(map[uint32]map[string][]bool)
-	VC.Strand2    = make(map[uint32]map[string][]bool)
+	VC.Strand1   = make(map[uint32]map[string][]bool)
+	VC.Strand2   = make(map[uint32]map[string][]bool)
 
 	var pos uint32
 	var var_bases []byte
@@ -134,19 +134,19 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 				VC.VarProb[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		VC.VarBaseQ[pos]  = make(map[string][][]byte)
-		VC.VarMapQ[pos]  = make(map[string][]float64)
+		VC.VarBQual[pos]  = make(map[string][][]byte)
 		VC.VarType[pos]   = make(map[string][]int)
 		VC.VarRNum[pos]   = make(map[string]int)
 		VC.ChrDis[pos]    = make(map[string][]int)
 		VC.ChrDiff[pos]   = make(map[string][]int)
+		VC.MapQual[pos]   = make(map[string][]float64)
 		VC.AlnProb[pos]   = make(map[string][]float64)
 		VC.ChrProb[pos]   = make(map[string][]float64)
 		VC.ReadInfo[pos]  = make(map[string][][]byte)
 		VC.StartPos1[pos] = make(map[string][]int)
 		VC.StartPos2[pos] = make(map[string][]int)
-		VC.Strand1[pos]    = make(map[string][]bool)
-		VC.Strand2[pos]    = make(map[string][]bool)
+		VC.Strand1[pos]   = make(map[string][]bool)
+		VC.Strand2[pos]   = make(map[string][]bool)
 	}
 	return VC
 }
@@ -329,20 +329,17 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 	}
 	//---------------------------------------------------------------------
 
-	var p_idx, s_idx int
-	var paired_prob, align_prob1, align_prob2 float64
-
 	//Try to align both ends
 	loop_num := 1
-	paired_prob = math.MaxFloat64
-	var has_seeds bool
 	align_num := 0
+	paired_prob := math.MaxFloat64
+	var has_seeds bool
+	var p_idx, s_idx int
+	var align_prob1, align_prob2 float64
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, has_seeds = VC.FindSeedsFromPairedEnds(read_info)
-		align_num = 0
 		if has_seeds {
-			align_num = 0
 			for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 				//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
 				//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
@@ -383,9 +380,9 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
 								vars_get1[s_idx].Pos   = vars1[s_idx].Pos
 								vars_get1[s_idx].Bases = make([]byte, len(vars1[s_idx].Bases))
-								vars_get1[s_idx].BaseQ = make([]byte, len(vars1[s_idx].BaseQ))
+								vars_get1[s_idx].BQual = make([]byte, len(vars1[s_idx].BQual))
 								copy(vars_get1[s_idx].Bases, vars1[s_idx].Bases)
-								copy(vars_get1[s_idx].BaseQ, vars1[s_idx].BaseQ)
+								copy(vars_get1[s_idx].BQual, vars1[s_idx].BQual)
 								vars_get1[s_idx].Type  = vars1[s_idx].Type
 								vars_get1[s_idx].CDis  = l_align_pos1 - l_align_pos2
 								vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
@@ -403,9 +400,9 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 							for s_idx = 0; s_idx < len(vars2); s_idx++ {
 								vars_get2[s_idx].Pos   = vars2[s_idx].Pos
 								vars_get2[s_idx].Bases = make([]byte, len(vars2[s_idx].Bases))
-								vars_get2[s_idx].BaseQ = make([]byte, len(vars2[s_idx].BaseQ))
+								vars_get2[s_idx].BQual = make([]byte, len(vars2[s_idx].BQual))
 								copy(vars_get2[s_idx].Bases, vars2[s_idx].Bases)
-								copy(vars_get2[s_idx].BaseQ, vars2[s_idx].BaseQ)
+								copy(vars_get2[s_idx].BQual, vars2[s_idx].BQual)
 								vars_get2[s_idx].Type  = vars2[s_idx].Type
 								vars_get2[s_idx].CDis  = l_align_pos1 - l_align_pos2
 								vars_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
@@ -428,18 +425,17 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 		loop_num++
 	}
 	if paired_prob <= 2*PARA_INFO.Prob_thres {
-		if align_num == 0 {
-			align_num = INPUT_INFO.Max_psnum
-		}
+		fmt.Println("map_num", align_num)
+		map_qual := 1.0/float64(align_num)
 		if len(vars_get1) > 0 {
 			for _, var_info = range vars_get1 {
-				var_info.MapQ = 1.0/float64(align_num)
+				var_info.MQual = map_qual
 				var_results <- var_info
 			}
 		}
 		if len(vars_get2) > 0 {
 			for _, var_info = range vars_get2 {
-				var_info.MapQ = 1.0/float64(align_num)
+				var_info.MQual = map_qual
 				var_results <- var_info
 			}
 		}
@@ -447,6 +443,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 	}
 
 	//Cannot align any ends, consider as unaligned reads
+	fmt.Println("map_num", -1)
 	var at Align_trace_info
 	at.read_info1 = read_info1
 	at.read_info2 = read_info2
@@ -696,14 +693,14 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 		for k = 0; k < len(l_var_pos); k++ {
 			PrintMemStats("Before GetVar left, var_num " + strconv.Itoa(k))
 			var var_info VarInfo
-			var_info.Pos, var_info.Bases, var_info.BaseQ, var_info.Type = uint32(l_var_pos[k]), l_var_base[k], l_var_qual[k], l_var_type[k]
+			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(l_var_pos[k]), l_var_base[k], l_var_qual[k], l_var_type[k]
 			vars_arr = append(vars_arr, var_info)
 			PrintMemStats("After GetVar left, var_num " + strconv.Itoa(k))
 		}
 		for k = 0; k < len(r_var_pos); k++ {
 			PrintMemStats("Before GetVar right, var_num " + strconv.Itoa(k))
 			var var_info VarInfo
-			var_info.Pos, var_info.Bases, var_info.BaseQ, var_info.Type = uint32(r_var_pos[k]), r_var_base[k], r_var_qual[k], r_var_type[k]
+			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(r_var_pos[k]), r_var_base[k], r_var_qual[k], r_var_type[k]
 			vars_arr = append(vars_arr, var_info)
 			PrintMemStats("After GetVar right, var_num " + strconv.Itoa(k))
 		}
@@ -721,7 +718,7 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 	pos := var_info.Pos
 	a := string(var_info.Bases[0])
-	q := var_info.BaseQ[0]
+	q := var_info.BQual[0]
 
 	if _, var_exist := VC.VarProb[pos]; !var_exist {
 		VC.VarProb[pos] = make(map[string]float64)
@@ -731,12 +728,12 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 				VC.VarProb[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		VC.VarBaseQ[pos]  = make(map[string][][]byte)
-		VC.VarMapQ[pos]   = make(map[string][]float64)
+		VC.VarBQual[pos]  = make(map[string][][]byte)
 		VC.VarType[pos]   = make(map[string][]int)
 		VC.VarRNum[pos]   = make(map[string]int)
 		VC.ChrDis[pos]    = make(map[string][]int)
 		VC.ChrDiff[pos]   = make(map[string][]int)
+		VC.MapQual[pos]   = make(map[string][]float64)
 		VC.AlnProb[pos]   = make(map[string][]float64)
 		VC.ChrProb[pos]   = make(map[string][]float64)
 		VC.ReadInfo[pos]  = make(map[string][][]byte)
@@ -745,12 +742,12 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 		VC.Strand1[pos]   = make(map[string][]bool)
 		VC.Strand2[pos]   = make(map[string][]bool)
 	}
-	VC.VarBaseQ[pos][a]  = append(VC.VarBaseQ[pos][a], var_info.BaseQ)
-	VC.VarMapQ[pos][a]  = append(VC.VarMapQ[pos][a], var_info.MapQ)
+	VC.VarBQual[pos][a]  = append(VC.VarBQual[pos][a], var_info.BQual)
 	VC.VarType[pos][a]   = append(VC.VarType[pos][a], var_info.Type)
 	VC.VarRNum[pos][a]   += 1
 	VC.ChrDis[pos][a]    = append(VC.ChrDis[pos][a], var_info.CDis)
 	VC.ChrDiff[pos][a]   = append(VC.ChrDiff[pos][a], var_info.CDiff)
+	VC.MapQual[pos][a]   = append(VC.MapQual[pos][a], var_info.MQual)
 	VC.AlnProb[pos][a]   = append(VC.AlnProb[pos][a], var_info.AProb)
 	VC.ChrProb[pos][a]   = append(VC.ChrProb[pos][a], var_info.CProb)
 	VC.ReadInfo[pos][a]  = append(VC.ReadInfo[pos][a], var_info.RInfo)
@@ -784,7 +781,7 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	pos := var_info.Pos
 	a := string(var_info.Bases)
-	q := var_info.BaseQ
+	q := var_info.BQual
 
 	//Notice: Need to be corrected!
 	if _, var_exist := VC.VarProb[pos]; !var_exist {
@@ -795,12 +792,12 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 				VC.VarProb[pos][string(b)] = NEW_SNP_RATE
 			}
 		}
-		VC.VarBaseQ[pos]  = make(map[string][][]byte)
-		VC.VarMapQ[pos]   = make(map[string][]float64)
+		VC.VarBQual[pos]  = make(map[string][][]byte)
 		VC.VarType[pos]   = make(map[string][]int)
 		VC.VarRNum[pos]   = make(map[string]int)
 		VC.ChrDis[pos]    = make(map[string][]int)
 		VC.ChrDiff[pos]   = make(map[string][]int)
+		VC.MapQual[pos]   = make(map[string][]float64)
 		VC.AlnProb[pos]   = make(map[string][]float64)
 		VC.ChrProb[pos]   = make(map[string][]float64)
 		VC.ReadInfo[pos]  = make(map[string][][]byte)
@@ -813,12 +810,12 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	if _, ok := VC.VarProb[pos][a]; !ok {
 		VC.VarProb[pos][a] = NEW_SNP_RATE
 	}
-	VC.VarBaseQ[pos][a]  = append(VC.VarBaseQ[pos][a], var_info.BaseQ)
-	VC.VarMapQ[pos][a]   = append(VC.VarMapQ[pos][a], var_info.MapQ)
+	VC.VarBQual[pos][a]  = append(VC.VarBQual[pos][a], var_info.BQual)
 	VC.VarType[pos][a]   = append(VC.VarType[pos][a], var_info.Type)
 	VC.VarRNum[pos][a]   += 1
 	VC.ChrDis[pos][a]    = append(VC.ChrDis[pos][a], var_info.CDis)
 	VC.ChrDiff[pos][a]   = append(VC.ChrDiff[pos][a], var_info.CDiff)
+	VC.MapQual[pos][a]   = append(VC.MapQual[pos][a], var_info.MQual)
 	VC.AlnProb[pos][a]   = append(VC.AlnProb[pos][a], var_info.AProb)
 	VC.ChrProb[pos][a]   = append(VC.ChrProb[pos][a], var_info.CProb)
 	VC.ReadInfo[pos][a]  = append(VC.ReadInfo[pos][a], var_info.RInfo)
@@ -865,7 +862,7 @@ func (VC *VarCall) OutputVarCalls() {
 	defer file.Close()
 
 	fmt.Println("Outputing Variant Calls...")
-	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
+	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t\tQUAL0\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))
 	for var_pos, _ = range VC.VarProb {
@@ -906,7 +903,7 @@ func (VC *VarCall) OutputVarCalls() {
 				if VC.VarType[var_pos][var_call][0] == 2 { //DEL
 					//Ignore indel calls of length 2 that are homopolymer
 					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						fmt.Println("Unknown DELs of length 2 are homopolymer:", pos, var_call)
+						fmt.Println("U-D-homo2", pos, var_call)
 						continue
 					}
 					line_a = append(line_a, var_call)
@@ -914,7 +911,7 @@ func (VC *VarCall) OutputVarCalls() {
 				} else if VC.VarType[var_pos][var_call][0] == 1 { //INS
 					//Ignore indel calls of length 2 that are homopolymer
 					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						fmt.Println("Unknown INS of length 2 are homopolymer:", pos, var_call)
+						fmt.Println("U-I-homo2", pos, var_call)
 						continue
 					}
 					line_a = append(line_a, string(INDEX.Seq[pos]))
@@ -922,23 +919,22 @@ func (VC *VarCall) OutputVarCalls() {
 				} else { //SUB
 					//Ignore variants that are identical with ref
 					if var_call == string(INDEX.Seq[pos]) {
-						fmt.Println("Unknown SNPs are identical with ref (pos, var_call, ref_base):", pos, var_call, string(INDEX.Seq[pos]))
+						fmt.Println("U-S-same-ref", pos, var_call, string(INDEX.Seq[pos]))
 						continue
 					}
 					line_a = append(line_a, string(INDEX.Seq[pos]))
 					line_a = append(line_a, var_call)
 				}
 			} else {
-				fmt.Println("POS have some non-ref aligned bases which are not called as variants (pos, base_with_max_prob, ref_base):", pos, var_call, string(INDEX.Seq[pos]))
+				fmt.Println("U-V-no-type", pos, var_call, string(INDEX.Seq[pos]))
 				continue
 			}
 		}
 		//QUAL
 		var_mapq = 1.0
-		for _, q = range VC.VarMapQ[var_pos][var_call] {
+		for _, q = range VC.MapQual[var_pos][var_call] {
 			var_mapq *= q
 		}
-		var_mapq = math.Pow(var_mapq, float64(len(VC.VarMapQ[var_pos][var_call])))
 		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob*var_mapq), 'f', 5, 32)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
@@ -951,7 +947,15 @@ func (VC *VarCall) OutputVarCalls() {
 		line_a = append(line_a, ".")
 		//FORMAT
 		line_a = append(line_a, ".")
+
 		//IVC-INFO
+		//QUAL_WITHOUT_MAP
+		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob), 'f', 5, 32)
+		if str_qual != "+Inf" {
+			line_a = append(line_a, str_qual)
+		} else {
+			line_a = append(line_a, "1000")
+		}
 		line_a = append(line_a, strconv.FormatFloat(var_call_prob, 'f', 5, 32))
 		line_a = append(line_a, strconv.Itoa(VC.VarRNum[var_pos][var_call]))
 		str_a = strings.Join(line_a, "\t")
@@ -962,11 +966,12 @@ func (VC *VarCall) OutputVarCalls() {
 		}
 		str_b = strings.Join(line_b, "\t")
 		//Write variant calls to file
-		for idx, _ = range VC.VarBaseQ[var_pos][var_call] {
+		for idx, _ = range VC.VarBQual[var_pos][var_call] {
 			_, err = file.WriteString(str_a + "\t")
-			_, err = file.WriteString(string(VC.VarBaseQ[var_pos][var_call][idx]) + "\t")
+			_, err = file.WriteString(string(VC.VarBQual[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]) + "\t")
+			_, err = file.WriteString(strconv.FormatFloat(VC.MapQual[var_pos][var_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]) + "\t")

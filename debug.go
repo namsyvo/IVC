@@ -134,11 +134,11 @@ func PrintGetVariants(p_prob, m_prob1, m_prob2 float64, vars1, vars2 []VarInfo) 
 		fmt.Println("dis to get vars (1st-end, 2nd-end)", p_prob, m_prob1, m_prob2)
 		fmt.Println("1st-end variants")
 		for _, s := range vars1 {
-			fmt.Println(string(s.Bases), string(s.BaseQ))
+			fmt.Println(string(s.Bases), string(s.BQual))
 		}
 		fmt.Println("2nd-end variants")
 		for _, s := range vars2 {
-			fmt.Println(string(s.Bases), string(s.BaseQ))
+			fmt.Println(string(s.Bases), string(s.BQual))
 		}
 	}
 }
