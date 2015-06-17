@@ -7,16 +7,16 @@ package ivc
 
 import (
 	"bufio"
-	"bytes"
+	//"bytes"
 	"fmt"
 	"log"
 	"math"
 	"os"
 	"runtime"
-	"sort"
+	//"sort"
 	"strconv"
 	"strings"
-	"time"
+	//"time"
 )
 
 //Global variable for turnning on/off info profiling
@@ -263,10 +263,10 @@ var (
 	VAR_TRACE_INFO_MAP      = make(map[uint32][]Var_trace_info)
 	NO_ALIGN_READ_INFO_CHAN = make(chan Align_trace_info)
 	NO_ALIGN_READ_INFO_ARR  = make([]Align_trace_info, 0)
-	TRUE_VAR_COMP           = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_comp.txt")
-	TRUE_VAR_PART           = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_part.txt")
-	TRUE_VAR_NONE           = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_none.txt")
-	QUAL_THRES              = 25.0
+	//TRUE_VAR_COMP           = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_comp.txt")
+	//TRUE_VAR_PART           = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_part.txt")
+	//TRUE_VAR_NONE           = LoadTrueVar("/data/nsvo/test-data/GRCh37_chr1/refs/ref_alt_mutant/mutant_0.3300/variant_none.txt")
+	//QUAL_THRES              = 25.0
 )
 
 type Align_trace_info struct {
@@ -336,6 +336,19 @@ func GetNoAlignReadInfo() {
 	}
 }
 
+//Processing noalign reads and related info
+func ProcessNoAlignReadInfo(var_call map[uint32]map[string]float64) {
+	if PRINT_NA {
+		fmt.Println("Processing noaligned read info...")
+		file, _ := os.Create(INPUT_INFO.Var_call_file + ".noalign")
+		defer file.Close()
+		for _, at := range NO_ALIGN_READ_INFO_ARR {
+			file.WriteString(string(at.read_info1) + "\t" + string(at.read_info2) + "\n")
+		}
+		fmt.Println("Finish processing noaligned read info.")
+	}
+}
+
 /*
  TP-FP info: Log file format:
   var_pos  true_var  var_base  var_qual end_from  align_dis1  align_dis2  align_pos_diff  l_align_pos1  l_align_pos2  true_pos_diff  true_pos1  true_pos2  read_id
@@ -363,6 +376,7 @@ func GetNoAlignReadInfo() {
 */
 //--------------------------------------------------------------------------------------------------
 
+/*
 //Processing TP, FP variants info
 func ProcessTPFPVarInfo(var_call map[uint32]map[string]float64) {
 	if PRINT_TPFP {
@@ -492,7 +506,7 @@ func WriteTPFPVarInfo(file *os.File, st Var_trace_info, var_pos uint32, true_var
 	}
 	file.Sync()
 }
-
+*/
 /*
  FN info: Log file format:
   fn_pos  fn_var  ref_base var_base  var_prob  align_pos_diff  true_align_pos_diff  align_pos1  align_pos2  true_pos1  true_pos2  align_dis1  align_dis2  read_id  align_base1  base_prob1  align_base2 base_prob2 ...
@@ -520,7 +534,7 @@ func WriteTPFPVarInfo(file *os.File, st Var_trace_info, var_pos uint32, true_var
   other: info at other locations (totaly false positives)
 */
 //--------------------------------------------------------------------------------------------------
-
+/*
 type Var_Call struct {
 	Bases string
 	Prob  float64
@@ -719,19 +733,6 @@ func WriteFNVarInfo(file *os.File, at Align_trace_info, pos int, true_var []byte
 	file.Sync()
 }
 
-//Processing noalign reads and related info
-func ProcessNoAlignReadInfo(var_call map[uint32]map[string]float64) {
-	if PRINT_NA {
-		fmt.Println("Processing noaligned read info...")
-		file, _ := os.Create(INPUT_INFO.Var_call_file + ".noalign")
-		defer file.Close()
-		for _, at := range NO_ALIGN_READ_INFO_ARR {
-			file.WriteString(string(at.read_info1) + "\t" + string(at.read_info2) + "\n")
-		}
-		fmt.Println("Finish processing noaligned read info.")
-	}
-}
-
 //Loading true variants which are used to generate the mutant genome
 func LoadTrueVar(file_name string) map[int][]byte {
 	barr := make(map[int][]byte)
@@ -761,7 +762,7 @@ func LoadTrueVar(file_name string) map[int][]byte {
 /*---------------
 Utility funtions
 ---------------*/
-
+/*
 //QualtoProb converts base qualities decoded by ASCII codes to probabilities
 func QualtoProb(e byte) float64 {
 	return math.Pow(10, -(float64(e)-33)/10.0)
@@ -771,3 +772,4 @@ func QualtoProb(e byte) float64 {
 func ProbtoQual(p float64) float32 {
 	return float32(-10 * math.Log10(1-p))
 }
+*/
