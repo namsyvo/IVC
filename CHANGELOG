@@ -28,8 +28,8 @@ Minor changes:
 
 ##0.5
 - Implement probabilistic alignment strategy.
-    + Cost of substitution is calculated based on SNP profile at the postion and the base aligned to that position.
-- Use updated SNP profile during alignment process.
+    + Cost of substitution is calculated based on variant profile at the postion and the base aligned to that position.
+- Use updated variant profile during alignment process.
 
 ##0.4.3
 - Use all paired-seeds if there is no unique paired-seed.
@@ -38,41 +38,41 @@ Minor changes:
 - Check minimum seed length when finding seeds.
 
 ##0.4.2
-- Apply other filtering techniques for called SNPs.
+- Apply other filtering techniques for called variants.
     + Filter based on correct alignment probability during alignment process.
-    + Filter based on number of SNPs, edit distance, and chromosomal distance for determining called SNPs.
+    + Filter based on number of variants, edit distance, and chromosomal distance for determining called variants.
 
 ##0.4.1
-- Apply several filtering techniques for both alignment and SNP determination processes.
+- Apply several filtering techniques for both alignment and variant determination processes.
 	+ Alignment: check for chromosomal distances of alignments of paired-ends reads and match strands of two ends.
 	 (for Illumina technology, two ends of the reads should include forward and reverse ends).
-	+ SNP calling: consider a cut-off quality to call SNPs, which is estimated based on input base quality
-	 and assigned prior probabilities of SNP calls.
+	+ Variant calling: consider a cut-off quality to call variants, which is estimated based on input base quality
+	 and assigned prior probabilities of variant calls.
 
 ##0.4
-- Call new SNPs (new Indels are not considered at this point).
-	+ Detect mismatches between reads and multigenomes outside of known SNPs locations to discover new SNPs.
-	+ Assign proper prior probabilities for new SNPs.
+- Call new variants (new Indels are not considered at this point).
+	+ Detect mismatches between reads and multigenomes outside of known variants locations to discover new variants.
+	+ Assign proper prior probabilities for new variants.
 
 ## 0.3.7
-- Call SNPs and calculate SNP call quality during alignment phase.
-    + Eliminate data structures for storing all possible SNPs during the alignment phase.
-    + Eliminate functions for calling SNPs after the alignment phase.
+- Call variants and calculate variant call quality during alignment phase.
+    + Eliminate data structures for storing all possible variants during the alignment phase.
+    + Eliminate functions for calling variants after the alignment phase.
 
 ## 0.3.6:
-- Calculate SNP quality for SNP calls using Bayesian method.
-    + Read allele frequency from reference SNP profile (VCF files).
-    + Store all possible SNPs at each position found from read-multigenome alignment.
-    + Calculate SNP quality based on Bayesian method.
-- Improve running time by using goroutines to call SNPs.
+- Calculate variant quality for variant calls using Bayesian method.
+    + Read allele frequency from reference variant profile (VCF files).
+    + Store all possible variants at each position found from read-multigenome alignment.
+    + Calculate variant quality based on Bayesian method.
+- Improve running time by using goroutines to call variants.
 - Make implementation more efficiently.
-    + Use uint32 for positions of SNP calls.
+    + Use uint32 for positions of variant calls.
     + Re-organize functions, remove redundant code.
 
 ## 0.3.5:
 - Improve memory usage by using a memory-efficient version of fmi package for multigenome (use uint32 instead of int).
 - Improve running time by using goroutines to load index (modify function Load() in fmi package).
-- Improve user interface (main/index.go and main/isc.go).
+- Improve user interface (main/index.go and main/ivc.go).
 
 ## 0.3.4
 - Use goroutines to process reads simultaneously:
@@ -87,7 +87,7 @@ Minor changes:
 and put code for initializing memory to functions on structs.)
 
 ## 0.4
-- Call new SNPs from alignment with known alleles (postponned)
+- Call new variants from alignment with known alleles (postponned)
 
 ## 0.3
 - Use randomized algorithm with one index as the main strategy.
@@ -99,7 +99,7 @@ and put code for initializing memory to functions on structs.)
 - Use one index for alignment step.
 
 ## 0.2.1
-- Add call SNPs quality calculation
+- Add call variants quality calculation
 
 ## 0.2
 - Work with pair-end reads. Consider reverse complement of reads.
@@ -108,6 +108,6 @@ and put code for initializing memory to functions on structs.)
 
 ## 0.1 Initial version
 - Implement seed-and-extend strategy to align reads to the multi-genome. Work with
- single-end reads, no reverse complement. Allow only known SNPs.
+ single-end reads, no reverse complement. Allow only known variants.
 - Implement algorithm to calculate distance between reads and the multi-genome.
 - Build reference multi-genome
