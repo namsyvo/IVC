@@ -1,3 +1,42 @@
+##0.5.4 (TODO)
+- Call known deletions:
+    + Adjust code to capture known deletions in alignment.
+    + Report all types of variants.
+
+##0.5.3
+Major changes:
+- Implement affine gap alignment strategy.
+Minor changes:
+- Stop searching minimum alignment if getting small enough cost.
+- Do not call homopolymer indels.
+- Stop Hamming distance when reaching the first mismatch.
+- Fix a bug of taking quality for deletions.
+- Change values for base cases in edit distance calculation.
+
+##0.5.2
+Major changes:
+- Implement gap alignment algorithm outside of known variant locations.
+Minor changes:
+- Correct the positions of aligned bases.
+- Fix bugs in forward gap edit distance.
+- Add test cases for gap alignment trace back.
+
+##0.5.1
+- Compute alignment probability for mismatches only.
+- Change prior prob for Indel calling.
+- Change calculation of alignment prob at known snp locations.
+
+##0.5
+- Implement probabilistic alignment strategy.
+    + Cost of substitution is calculated based on SNP profile at the postion and the base aligned to that position.
+- Use updated SNP profile during alignment process.
+
+##0.4.3
+- Use all paired-seeds if there is no unique paired-seed.
+    + Loop through several unique paired-seeds and find the alignment with minimum distance.
+    + Stop if finding same ending pos of seeds after 3 iterations.
+- Check minimum seed length when finding seeds.
+
 ##0.4.2
 - Apply other filtering techniques for called SNPs.
     + Filter based on correct alignment probability during alignment process.
