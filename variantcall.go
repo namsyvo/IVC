@@ -28,6 +28,7 @@ type VarInfo struct {
 	Pos   uint32  //postion of variants on ref
 	Bases []byte  //bases of variants
 	BaseQ []byte  //quality of bases of variants
+	MapQ  float64 //quality of read mapping
 	Type  int     //type of variants (sub, ins, del...)
 	CDis  int     //chromosomal distance of alignment of two read-ends
 	CDiff int     //difference between aligned pos and true pos
@@ -52,6 +53,7 @@ type VarCall struct {
 	*/
 	VarProb   map[uint32]map[string]float64   //Probability of variant calls
 	VarBaseQ  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
+	VarMapQ   map[uint32]map[string][]float64 //Quality of read mapping ath the variant call position
 	VarType   map[uint32]map[string][]int     //Type of variants (currently: 0:sub, 1:ins, 2:del)
 	VarRNum   map[uint32]map[string]int       //Numer of reads (bases) aligned to the variant call postion
 	ChrDis    map[uint32]map[string][]int     //Chromosomal distance between two aligned ends
@@ -92,6 +94,7 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 	VC := new(VarCall)
 	VC.VarProb   = make(map[uint32]map[string]float64)
 	VC.VarBaseQ  = make(map[uint32]map[string][][]byte)
+	VC.VarMapQ      = make(map[uint32]map[string][]float64)
 	VC.VarType   = make(map[uint32]map[string][]int)
 	VC.VarRNum   = make(map[uint32]map[string]int)
 	VC.ChrDis    = make(map[uint32]map[string][]int)
@@ -132,6 +135,7 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 			}
 		}
 		VC.VarBaseQ[pos]  = make(map[string][][]byte)
+		VC.VarMapQ[pos]  = make(map[string][]float64)
 		VC.VarType[pos]   = make(map[string][]int)
 		VC.VarRNum[pos]   = make(map[string]int)
 		VC.ChrDis[pos]    = make(map[string][]int)
@@ -332,10 +336,13 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 	loop_num := 1
 	paired_prob = math.MaxFloat64
 	var has_seeds bool
+	align_num := 0
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, has_seeds = VC.FindSeedsFromPairedEnds(read_info)
+		align_num = 0
 		if has_seeds {
+			align_num = 0
 			for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 				//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
 				//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
@@ -367,6 +374,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 
 				if align_prob1 != -1 && align_prob2 != -1 {
 					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
+					align_num++
 					if paired_prob > align_prob1+align_prob2 {
 						paired_prob = align_prob1 + align_prob2
 						vars_get1 = make([]VarInfo, len(vars1))
@@ -420,13 +428,18 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 		loop_num++
 	}
 	if paired_prob <= 2*PARA_INFO.Prob_thres {
+		if align_num == 0 {
+			align_num = INPUT_INFO.Max_psnum
+		}
 		if len(vars_get1) > 0 {
 			for _, var_info = range vars_get1 {
+				var_info.MapQ = 1.0/float64(align_num)
 				var_results <- var_info
 			}
 		}
 		if len(vars_get2) > 0 {
 			for _, var_info = range vars_get2 {
+				var_info.MapQ = 1.0/float64(align_num)
 				var_results <- var_info
 			}
 		}
@@ -719,6 +732,7 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 			}
 		}
 		VC.VarBaseQ[pos]  = make(map[string][][]byte)
+		VC.VarMapQ[pos]   = make(map[string][]float64)
 		VC.VarType[pos]   = make(map[string][]int)
 		VC.VarRNum[pos]   = make(map[string]int)
 		VC.ChrDis[pos]    = make(map[string][]int)
@@ -732,6 +746,7 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 		VC.Strand2[pos]   = make(map[string][]bool)
 	}
 	VC.VarBaseQ[pos][a]  = append(VC.VarBaseQ[pos][a], var_info.BaseQ)
+	VC.VarMapQ[pos][a]  = append(VC.VarMapQ[pos][a], var_info.MapQ)
 	VC.VarType[pos][a]   = append(VC.VarType[pos][a], var_info.Type)
 	VC.VarRNum[pos][a]   += 1
 	VC.ChrDis[pos][a]    = append(VC.ChrDis[pos][a], var_info.CDis)
@@ -781,6 +796,7 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 			}
 		}
 		VC.VarBaseQ[pos]  = make(map[string][][]byte)
+		VC.VarMapQ[pos]   = make(map[string][]float64)
 		VC.VarType[pos]   = make(map[string][]int)
 		VC.VarRNum[pos]   = make(map[string]int)
 		VC.ChrDis[pos]    = make(map[string][]int)
@@ -798,6 +814,7 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 		VC.VarProb[pos][a] = NEW_SNP_RATE
 	}
 	VC.VarBaseQ[pos][a]  = append(VC.VarBaseQ[pos][a], var_info.BaseQ)
+	VC.VarMapQ[pos][a]   = append(VC.VarMapQ[pos][a], var_info.MapQ)
 	VC.VarType[pos][a]   = append(VC.VarType[pos][a], var_info.Type)
 	VC.VarRNum[pos][a]   += 1
 	VC.ChrDis[pos][a]    = append(VC.ChrDis[pos][a], var_info.CDis)
@@ -859,7 +876,7 @@ func (VC *VarCall) OutputVarCalls() {
 	var var_base, var_call, str_qual string
 	var str_a, str_b string
 	var line_a, line_b []string
-	var var_call_prob, var_prob float64
+	var var_call_prob, var_prob, var_mapq, q float64
 	var var_num, idx int
 	var is_var bool
 	for _, pos := range Var_Pos {
@@ -912,12 +929,17 @@ func (VC *VarCall) OutputVarCalls() {
 					line_a = append(line_a, var_call)
 				}
 			} else {
-				fmt.Println("POS have non-ref aligned bases but calls are not made (pos, base_with_max_prob, ref_base):", pos, var_call, string(INDEX.Seq[pos]))
+				fmt.Println("POS have some non-ref aligned bases which are not called as variants (pos, base_with_max_prob, ref_base):", pos, var_call, string(INDEX.Seq[pos]))
 				continue
 			}
 		}
 		//QUAL
-		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob), 'f', 5, 32)
+		var_mapq = 1.0
+		for _, q = range VC.VarMapQ[var_pos][var_call] {
+			var_mapq *= q
+		}
+		var_mapq = math.Pow(var_mapq, float64(len(VC.VarMapQ[var_pos][var_call])))
+		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob*var_mapq), 'f', 5, 32)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
 		} else {
