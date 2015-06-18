@@ -6,9 +6,9 @@
 package ivc
 
 import (
+	"bytes"
 	"fmt"
 	"log"
-	"bytes"
 	"math"
 	"math/rand"
 )
@@ -242,7 +242,6 @@ func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
 	}
 	return dis_mat, trace_mat
 }
-
 
 //--------------------------------------------------------------------------------------------------
 // Utility functions

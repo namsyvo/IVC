@@ -20,7 +20,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 		if read[i] != ref[i] {
 			return math.MaxFloat64
 		} else {
-			p = p - math.Log10(1.0-math.Pow(10, -(float64(qual[i])-33)/10.0))
+			p = p + QUAL_TO_COST[qual[i]]
 		}
 	}
 	return p - math.Log10(prob)
@@ -64,7 +64,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 					var_qual = append(var_qual, []byte{qual[m - 1]})
 					var_type = append(var_type, 0)
 				*/
-				align_prob += PARA_INFO.Sub_cost - math.Log10(1.0-math.Pow(10, -(float64(qual[m-1])-33)/10.0))
+				align_prob += PARA_INFO.Sub_cost + QUAL_TO_COST[qual[m-1]]
 			}
 			m--
 			n--
@@ -150,7 +150,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var selected_var_len int
 	var prob_i, prob_i_var, sub_i, mis_i, ins_i_open, ins_i_ext float64
 	for i = 1; i <= m; i++ {
-		prob_i = -math.Log10(1.0 - math.Pow(10, -(float64(qual[i-1])-33)/10.0))
+		prob_i = QUAL_TO_COST[qual[i-1]]
 		mis_i = PARA_INFO.Sub_cost + prob_i
 		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
@@ -308,7 +308,8 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				var_qual = append(var_qual, q)
 				if _, is_del = INDEX.DelVar[ref_pos_map[j-1]]; is_del {
 					var_type = append(var_type, 2)
-				} else if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[j-1]]; is_same_len_var {var_type = append(var_type, 0)
+				} else if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[j-1]]; is_same_len_var {
+					var_type = append(var_type, 0)
 				} else {
 					var_type = append(var_type, 1)
 				}
@@ -435,7 +436,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				   var_qual = append(var_qual, []byte{qual[M - m]})
 				   var_type = append(var_type, 0)
 				*/
-				align_prob += PARA_INFO.Sub_cost - math.Log10(1.0-math.Pow(10, -(float64(qual[M-m])-33)/10.0))
+				align_prob += PARA_INFO.Sub_cost + QUAL_TO_COST[qual[M-m]]
 			}
 			m--
 			n--
@@ -521,7 +522,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	var selected_var_len int
 	var prob_i, prob_i_var, sub_i, mis_i, ins_i_open, ins_i_ext float64
 	for i = 1; i <= m; i++ {
-		prob_i = -math.Log10(1.0 - math.Pow(10, -(float64(qual[M-i])-33)/10.0))
+		prob_i = QUAL_TO_COST[qual[M-i]]
 		mis_i = PARA_INFO.Sub_cost + prob_i
 		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
