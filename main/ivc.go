@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"github.com/namsyvo/IVC"
 	"log"
+	"os"
 	"path"
 	"runtime"
+	"runtime/pprof"
 	"time"
 )
 
@@ -34,6 +36,13 @@ func main() {
 	ivc.PrintProcessMem("Memstats after initializing the variant caller")
 	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
+
+	f, err := os.Create("cpuprofile.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
 
 	//Call Variants from read-multigenome alignment----------------------------//
 	fmt.Println("Calling variants...")
