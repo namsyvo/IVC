@@ -57,6 +57,7 @@ type InputInfo struct {
 	Max_psnum      int    //maximum number of paired-seeds
 	Dist_thres     int    //threshold for distances between reads and multigenomes
 	Iter_num       int    //number of random iterations to find proper alignments
+	Cpu_prof_file  string //file to write cpu profile
 }
 
 //--------------------------------------------------------------------------------------------------

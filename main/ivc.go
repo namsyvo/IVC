@@ -37,12 +37,14 @@ func main() {
 	fmt.Println("Finish initializing indexes and parameters.")
 	//-------------------------------------------------------------------------//
 
-	f, err := os.Create("cpuprofile.txt")
-	if err != nil {
-		log.Fatal(err)
+	if input_info.Cpu_prof_file != "" {
+		f, err := os.Create(input_info.Cpu_prof_file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
 
 	//Call Variants from read-multigenome alignment----------------------------//
 	fmt.Println("Calling variants...")
@@ -78,6 +80,7 @@ func ReadInputInfo() ivc.InputInfo {
 	var max_psnum = flag.Int("k", 1024, "maximum number of paired-seeds")
 	var dist_thres = flag.Int("d", 0, "threshold of alignment distances")
 	var iter_num = flag.Int("r", 0, "maximum number of iterations")
+	var cpu_prof_file = flag.String("c", "", "file to write cpu profile")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
 
@@ -110,6 +113,8 @@ func ReadInputInfo() ivc.InputInfo {
 	input_info.Max_psnum = *max_psnum
 	input_info.Dist_thres = *dist_thres
 	input_info.Iter_num = *iter_num
+
+	input_info.Cpu_prof_file = *cpu_prof_file
 
 	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file: %s, Rev_index_file: %s,"+
 		" Read_file_1: %s, Read_file_2: %s, Var_call_file: %s",

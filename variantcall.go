@@ -341,16 +341,17 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 	//---------------------------------------------------------------------
 
 	//Try to align both ends
-	loop_num := 1
-	align_num := 0
-	paired_prob := math.MaxFloat64
+	var cand_num []int
 	var has_seeds bool
-	var p_idx, s_idx int
+	var p_idx, s_idx, c_num int
 	var align_prob1, align_prob2 float64
+	paired_prob := math.MaxFloat64
+	loop_num := 1
+	loop_has_cand := 0
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
 		s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2, strand_r1, strand_r2, has_seeds = VC.FindSeedsFromPairedEnds(read_info)
-		align_num = 0
+		c_num = 0
 		if has_seeds {
 			for p_idx = 0; p_idx < len(s_pos_r1); p_idx++ {
 				//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
@@ -382,12 +383,13 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 				PrintMemStats("After FindVariantsFromEnd2")
 
 				if align_prob1 != -1 && align_prob2 != -1 {
+					c_num++
 					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
-					align_num++
 					if paired_prob > align_prob1+align_prob2 {
+						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
-						vars_get1 = make([]VarInfo, len(vars1))
 						PrintGetVariants(paired_prob, align_prob1, align_prob2, vars1, vars2)
+						vars_get1 = make([]VarInfo, len(vars1))
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
 								vars_get1[s_idx].Pos = vars1[s_idx].Pos
@@ -431,14 +433,15 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 				}
 			}
 		}
+		cand_num = append(cand_num, c_num)
 		if paired_prob < 1 {
 			break
 		}
 		loop_num++
 	}
-	if paired_prob <= 2*PARA_INFO.Prob_thres {
-		fmt.Println("map_num", align_num)
-		map_qual := 1.0 / float64(align_num)
+	if loop_has_cand != 0 {
+		fmt.Println("cand_num", cand_num[loop_has_cand-1])
+		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
 		if len(vars_get1) > 0 {
 			for _, var_info = range vars_get1 {
 				var_info.MQual = map_qual
@@ -455,7 +458,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 	}
 
 	//Cannot align any ends, consider as unaligned reads
-	fmt.Println("map_num", -1)
+	fmt.Println("cand_num", -1)
 	var at Align_trace_info
 	at.read_info1 = read_info1
 	at.read_info2 = read_info2
@@ -874,7 +877,7 @@ func (VC *VarCall) OutputVarCalls() {
 	defer file.Close()
 
 	fmt.Println("Outputing Variant Calls...")
-	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t\tQUAL0\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
+	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t\tMQUAL\tVAR_PROB\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))
 	for var_pos, _ = range VC.VarProb {
