@@ -955,12 +955,12 @@ func (VC *VarCall) OutputVarCalls() {
 		line_a = append(line_a, ".")
 
 		//IVC-INFO
-		line_a = append(line_a, strconv.FormatFloat(var_call_prob, 'f', 10, 64))
+		line_a = append(line_a, strconv.FormatFloat(var_call_prob, 'f', 20, 64))
 		map_prob = 1.0
 		for _, p = range VC.MapProb[var_pos][var_call] {
 			map_prob *= p
 		}
-		line_a = append(line_a, strconv.FormatFloat(map_prob, 'f', 10, 64))
+		line_a = append(line_a, strconv.FormatFloat(map_prob, 'f', 20, 64))
 		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob*map_prob), 'f', 5, 64)
 		if str_qual != "+Inf" {
 			line_a = append(line_a, str_qual)
@@ -982,9 +982,9 @@ func (VC *VarCall) OutputVarCalls() {
 			_, err = file.WriteString(string(VC.VarBQual[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 10, 64) + "\t")
-			_, err = file.WriteString(strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 10, 64) + "\t")
-			_, err = file.WriteString(strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 10, 64) + "\t")
+			_, err = file.WriteString(strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
+			_, err = file.WriteString(strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
+			_, err = file.WriteString(strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.FormatBool(VC.Strand1[var_pos][var_call][idx]) + "\t")
 			_, err = file.WriteString(strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]) + "\t")
