@@ -75,7 +75,7 @@ type VarCall struct {
 // NewVariantCaller creates an instance of VarCall and sets up its variables.
 // This function will be called from the main program.
 //---------------------------------------------------------------------------------------------------
-func NewVariantCaller(input_info InputInfo) *VarCall {
+func NewVariantCaller(input_info *InputInfo) *VarCall {
 
 	//Initialize global variables
 	INPUT_INFO = input_info
@@ -91,10 +91,10 @@ func NewVariantCaller(input_info InputInfo) *VarCall {
 	700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
 	0.01 is mutation rate (currently is estimated from dbSNP of human genome)
 	*/
-	PARA_INFO = *SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Iter_num)
+	PARA_INFO = SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Iter_num)
 	RAND_GEN = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	INDEX = *NewIndex()
+	INDEX = NewIndex()
 	var q byte
 	for i := 33; i < 74; i++ {
 		q = byte(i)
@@ -311,11 +311,9 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results chan VarInfo, align_info *AlignInfo, m_pos []int) {
 
-	var var_info VarInfo
 	var vars1, vars2 []VarInfo
 	var vars_get1, vars_get2 []VarInfo
 	var l_align_pos1, l_align_pos2 int
-
 	var s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2 []int
 	var strand_r1, strand_r2 []bool
 
@@ -443,13 +441,13 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, var_results c
 		fmt.Println("cand_num", cand_num[loop_has_cand-1])
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
 		if len(vars_get1) > 0 {
-			for _, var_info = range vars_get1 {
+			for _, var_info := range vars_get1 {
 				var_info.MProb = map_qual
 				var_results <- var_info
 			}
 		}
 		if len(vars_get2) > 0 {
-			for _, var_info = range vars_get2 {
+			for _, var_info := range vars_get2 {
 				var_info.MProb = map_qual
 				var_results <- var_info
 			}
@@ -774,12 +772,6 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 	var p float64
 	p_ab := make(map[string]float64)
 	p_a := 0.0
-
-	fmt.Println("Before update", pos, a, string(q))
-	for b, p_b := range VC.VarProb[pos] {
-		fmt.Println(b, p_b)
-	}
-
 	for b, p_b := range VC.VarProb[pos] {
 		if a == b {
 			p = 1.0 - math.Pow(10, -(float64(q)-33)/10.0) //Phred-encoding factor (33) need to be estimated from input data
@@ -791,11 +783,6 @@ func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
 	}
 	for b, p_b := range VC.VarProb[pos] {
 		VC.VarProb[pos][b] = p_b * (p_ab[b] / p_a)
-	}
-
-	fmt.Println("After update", pos, a, string(q))
-	for b, p_b := range VC.VarProb[pos] {
-		fmt.Println(b, p_b)
 	}
 }
 
@@ -853,7 +840,6 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	var qi byte
 	p_ab := make(map[string]float64)
 	p_a := 0.0
-
 	for b, p_b := range VC.VarProb[pos] {
 		p = 1
 		if a == b {
@@ -951,7 +937,6 @@ func (VC *VarCall) OutputVarCalls() {
 					line_a = append(line_a, var_call)
 				}
 			} else {
-				fmt.Println("U-V-no-type", pos, var_call, string(INDEX.Seq[pos]))
 				continue
 			}
 		}

@@ -62,7 +62,7 @@ func main() {
 //--------------------------------------------------------------------------------------------------
 // Read input information and parameters
 //--------------------------------------------------------------------------------------------------
-func ReadInputInfo() ivc.InputInfo {
+func ReadInputInfo() *ivc.InputInfo {
 	var genome_file = flag.String("g", "", "reference genome file")
 	var var_prof_file = flag.String("s", "", "variant profile file")
 	var idx_dir = flag.String("i", "", "index directory")
@@ -90,7 +90,7 @@ func ReadInputInfo() ivc.InputInfo {
 	_, var_prof_file_name := path.Split(*var_prof_file)
 	var_prof_index_file_name := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 
-	input_info := ivc.InputInfo{}
+	input_info := new(ivc.InputInfo)
 	input_info.Ref_file = multigenome_file_name
 	input_info.Var_prof_file = var_prof_index_file_name
 	input_info.Index_file = multigenome_file_name + ".index/"

@@ -70,24 +70,24 @@ func NewIndex() *Index {
 // BackwardSearchFrom searches for exact matches between a pattern and the reference using FM-index,
 // It starts to search from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
-func (I *Index) BackwardSearchFrom(index fmi.Index, pattern []byte, start_pos int) (int, int, int) {
+func (I *Index) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int) {
 	var sp, ep, offset uint32
 	var ok bool
 
 	c := pattern[start_pos]
-	sp, ok = index.C[c]
+	sp, ok = I.RevFMI.C[c]
 	if !ok {
 		return 0, -1, -1
 	}
-	ep = index.EP[c]
+	ep = I.RevFMI.EP[c]
 	var sp0, ep0 uint32
 	var i int
 	for i = start_pos - 1; i >= 0 && i >= start_pos-INPUT_INFO.Max_slen; i-- {
 		c = pattern[i]
-		offset, ok = index.C[c]
+		offset, ok = I.RevFMI.C[c]
 		if ok {
-			sp0 = offset + index.OCC[c][sp-1]
-			ep0 = offset + index.OCC[c][ep] - 1
+			sp0 = offset + I.RevFMI.OCC[c][sp-1]
+			ep0 = offset + I.RevFMI.OCC[c][ep] - 1
 			if sp0 <= ep0 {
 				sp = sp0
 				ep = ep0
@@ -113,7 +113,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
 
 	rev_s_pos = len(read) - 1 - p
-	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(I.RevFMI, rev_read, rev_s_pos)
+	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
 		//convert rev_e_pos in forward search to s_pos in backward search
