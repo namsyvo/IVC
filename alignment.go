@@ -35,7 +35,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 
 	var var_len int
 	var var_str string
-	var is_var, is_same_len_var bool
+	var is_var, is_same_len_var, is_new_var bool
 	var p, min_p, var_prob float64
 	var var_prof map[string]float64
 
@@ -58,13 +58,12 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 					n += PARA_INFO.Ham_backup
 				}
 				break
-				/*
-					var_pos = append(var_pos, ref_pos_map[n - 1])
-					var_base = append(var_base, []byte{read[m - 1]})
-					var_qual = append(var_qual, []byte{qual[m - 1]})
-					var_type = append(var_type, 0)
-				*/
-				align_prob += PARA_INFO.Sub_cost + QUAL_TO_COST[qual[m-1]]
+			}
+			if _, is_new_var = VC.VarProb[uint32(ref_pos_map[n-1])]; is_new_var {
+				var_pos = append(var_pos, ref_pos_map[n-1])
+				var_base = append(var_base, []byte{read[m-1]})
+				var_qual = append(var_qual, []byte{qual[m-1]})
+				var_type = append(var_type, 0)
 			}
 			m--
 			n--
@@ -253,7 +252,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	var is_var, is_same_len_var, is_del bool
+	var is_var, is_same_len_var, is_del, is_new_var bool
 	var var_len int
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
@@ -271,6 +270,12 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 		if !is_var { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[i-1] != ref[j-1] {
+					var_pos = append(var_pos, ref_pos_map[j-1])
+					var_base = append(var_base, []byte{read[i-1]})
+					var_qual = append(var_qual, []byte{qual[i-1]})
+					var_type = append(var_type, 0)
+				}
+				if _, is_new_var = VC.VarProb[uint32(ref_pos_map[j-1])]; is_new_var {
 					var_pos = append(var_pos, ref_pos_map[j-1])
 					var_base = append(var_base, []byte{read[i-1]})
 					var_qual = append(var_qual, []byte{qual[i-1]})
@@ -407,7 +412,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 
 	var var_len int
 	var var_prof map[string]float64
-	var is_var, is_same_len_var bool
+	var is_var, is_same_len_var, is_new_var bool
 	var var_str string
 	var p, min_p, var_prob float64
 	var var_pos, var_type []int
@@ -430,13 +435,12 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 					n += PARA_INFO.Ham_backup
 				}
 				break
-				/*
-				   var_pos = append(var_pos, ref_pos_map[N - n])
-				   var_base = append(var_base, []byte{read[M - m]})
-				   var_qual = append(var_qual, []byte{qual[M - m]})
-				   var_type = append(var_type, 0)
-				*/
-				align_prob += PARA_INFO.Sub_cost + QUAL_TO_COST[qual[M-m]]
+			}
+			if _, is_new_var = VC.VarProb[uint32(ref_pos_map[N-n])]; is_new_var {
+				var_pos = append(var_pos, ref_pos_map[N-n])
+				var_base = append(var_base, []byte{read[M-m]})
+				var_qual = append(var_qual, []byte{qual[M-m]})
+				var_type = append(var_type, 0)
 			}
 			m--
 			n--
@@ -633,7 +637,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 
 	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
 
-	var is_var, is_same_len_var, is_del bool
+	var is_var, is_same_len_var, is_del, is_new_var bool
 	var var_len int
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
@@ -650,6 +654,12 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 		if !is_var { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[M-i] != ref[N-j] {
+					var_pos = append(var_pos, ref_pos_map[N-j])
+					var_base = append(var_base, []byte{read[M-i]})
+					var_qual = append(var_qual, []byte{qual[M-i]})
+					var_type = append(var_type, 0)
+				}
+				if _, is_new_var = VC.VarProb[uint32(ref_pos_map[N-j])]; is_new_var {
 					var_pos = append(var_pos, ref_pos_map[N-j])
 					var_base = append(var_base, []byte{read[M-i]})
 					var_qual = append(var_qual, []byte{qual[M-i]})
