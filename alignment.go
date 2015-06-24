@@ -35,7 +35,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 
 	var var_len int
 	var var_str string
-	var is_var, is_same_len_var, is_new_var bool
+	var is_var, is_same_len_var, is_prof_new_var bool
 	var p, min_p, var_prob float64
 	var var_prof map[string]float64
 
@@ -43,8 +43,9 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	m, n := len(read), len(ref)
 
 	PrintEditDisInput("bw align input: read, qual, ref", read, qual, ref)
-	var var_pos, var_type []int
+	var var_pos, var_type, vtype []int
 	var var_base, var_qual [][]byte
+	var prof_var_type map[string][]int
 	for m > 0 && n > 0 {
 		if _, is_var = INDEX.VarProf[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; is_var {
 			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
@@ -59,11 +60,16 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 				}
 				break
 			}
-			if _, is_new_var = VC.VarProb[uint32(ref_pos_map[n-1])]; is_new_var {
-				var_pos = append(var_pos, ref_pos_map[n-1])
-				var_base = append(var_base, []byte{read[m-1]})
-				var_qual = append(var_qual, []byte{qual[m-1]})
-				var_type = append(var_type, 0)
+			if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[n-1])]; is_prof_new_var {
+				for _, vtype = range prof_var_type {
+					if vtype[0] == 0 {
+						var_pos = append(var_pos, ref_pos_map[n-1])
+						var_base = append(var_base, []byte{read[m-1]})
+						var_qual = append(var_qual, []byte{qual[m-1]})
+						var_type = append(var_type, 0)
+						break
+					}
+				}
 			}
 			m--
 			n--
@@ -252,10 +258,11 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	var is_var, is_same_len_var, is_del, is_new_var bool
+	var is_var, is_same_len_var, is_del, is_prof_new_var bool
 	var var_len int
-	var var_pos, var_type []int
+	var var_pos, var_type, vtype []int
 	var var_base, var_qual [][]byte
+	var prof_var_type map[string][]int
 
 	PrintEditDisInput("BwEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
 
@@ -275,11 +282,16 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 					var_qual = append(var_qual, []byte{qual[i-1]})
 					var_type = append(var_type, 0)
 				}
-				if _, is_new_var = VC.VarProb[uint32(ref_pos_map[j-1])]; is_new_var {
-					var_pos = append(var_pos, ref_pos_map[j-1])
-					var_base = append(var_base, []byte{read[i-1]})
-					var_qual = append(var_qual, []byte{qual[i-1]})
-					var_type = append(var_type, 0)
+				if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[j-1])]; is_prof_new_var {
+					for _, vtype = range prof_var_type {
+						if vtype[0] == 0 {
+							var_pos = append(var_pos, ref_pos_map[j-1])
+							var_base = append(var_base, []byte{read[i-1]})
+							var_qual = append(var_qual, []byte{qual[i-1]})
+							var_type = append(var_type, 0)
+							break
+						}
+					}
 				}
 				aligned_read = append(aligned_read, read[i-1])
 				aligned_qual = append(aligned_qual, qual[i-1])
@@ -412,11 +424,12 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 
 	var var_len int
 	var var_prof map[string]float64
-	var is_var, is_same_len_var, is_new_var bool
+	var is_var, is_same_len_var, is_prof_new_var bool
 	var var_str string
 	var p, min_p, var_prob float64
-	var var_pos, var_type []int
+	var var_pos, var_type, vtype []int
 	var var_base, var_qual [][]byte
+	var prof_var_type map[string][]int
 
 	PrintEditDisInput("fw dis input: read, qual, ref", read, qual, ref)
 	align_prob := 0.0
@@ -436,11 +449,16 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				}
 				break
 			}
-			if _, is_new_var = VC.VarProb[uint32(ref_pos_map[N-n])]; is_new_var {
-				var_pos = append(var_pos, ref_pos_map[N-n])
-				var_base = append(var_base, []byte{read[M-m]})
-				var_qual = append(var_qual, []byte{qual[M-m]})
-				var_type = append(var_type, 0)
+			if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[N-n])]; is_prof_new_var {
+				for _, vtype = range prof_var_type {
+					if vtype[0] == 0 {
+						var_pos = append(var_pos, ref_pos_map[N-n])
+						var_base = append(var_base, []byte{read[M-m]})
+						var_qual = append(var_qual, []byte{qual[M-m]})
+						var_type = append(var_type, 0)
+						break
+					}
+				}
 			}
 			m--
 			n--
@@ -637,10 +655,11 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 
 	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
 
-	var is_var, is_same_len_var, is_del, is_new_var bool
+	var is_var, is_same_len_var, is_del, is_prof_new_var bool
 	var var_len int
-	var var_pos, var_type []int
+	var var_pos, var_type, vtype []int
 	var var_base, var_qual [][]byte
+	var prof_var_type map[string][]int
 
 	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	M, N := len(read), len(ref)
@@ -659,11 +678,16 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 					var_qual = append(var_qual, []byte{qual[M-i]})
 					var_type = append(var_type, 0)
 				}
-				if _, is_new_var = VC.VarProb[uint32(ref_pos_map[N-j])]; is_new_var {
-					var_pos = append(var_pos, ref_pos_map[N-j])
-					var_base = append(var_base, []byte{read[M-i]})
-					var_qual = append(var_qual, []byte{qual[M-i]})
-					var_type = append(var_type, 0)
+				if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[N-j])]; is_prof_new_var {
+					for _, vtype = range prof_var_type {
+						if vtype[0] == 0 {
+							var_pos = append(var_pos, ref_pos_map[N-j])
+							var_base = append(var_base, []byte{read[M-i]})
+							var_qual = append(var_qual, []byte{qual[M-i]})
+							var_type = append(var_type, 0)
+							break
+						}
+					}
 				}
 				aligned_read = append(aligned_read, read[M-i])
 				aligned_qual = append(aligned_qual, qual[M-i])
