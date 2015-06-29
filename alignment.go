@@ -35,7 +35,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 
 	var var_len int
 	var var_str string
-	var is_var, is_same_len_var, is_prof_new_var bool
+	var is_same_len_var, is_prof_new_var bool
 	var p, min_p, var_prob float64
 	var var_prof map[string]float64
 
@@ -47,12 +47,12 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var var_base, var_qual [][]byte
 	var prof_var_type map[string][]int
 	for m > 0 && n > 0 {
-		if _, is_var = INDEX.VarProf[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; is_var {
+		if INDEX.Seq[ref_pos_map[n-1]-PARA_INFO.Indel_backup] == '*' {
 			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
 				break
 			}
 		}
-		if _, is_var = INDEX.VarProf[ref_pos_map[n-1]]; !is_var {
+		if INDEX.Seq[ref_pos_map[n-1]] != '*' {
 			if read[m-1] != ref[n-1] {
 				if m+PARA_INFO.Ham_backup < len(read) && n+PARA_INFO.Ham_backup < len(ref) {
 					m += PARA_INFO.Ham_backup
@@ -160,7 +160,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_var = INDEX.VarProf[ref_pos_map[j-1]]; !is_var {
+			if INDEX.Seq[ref_pos_map[j-1]] != '*' {
 				if read[i-1] == ref[j-1] {
 					sub_i = 0 //prob_i
 				} else {
@@ -258,11 +258,11 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	var is_var, is_same_len_var, is_del, is_prof_new_var bool
 	var var_len int
 	var var_pos, var_type, vtype []int
 	var var_base, var_qual [][]byte
 	var prof_var_type map[string][]int
+	var is_same_len_var, is_del, is_prof_new_var bool
 
 	PrintEditDisInput("BwEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
 
@@ -270,11 +270,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
 	for i > 0 || j > 0 {
-		is_var = false
-		if j > 0 {
-			_, is_var = INDEX.VarProf[ref_pos_map[j-1]]
-		}
-		if !is_var { //unknown VARIANT location
+		if j == 0 || INDEX.Seq[ref_pos_map[j-1]] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[i-1] != ref[j-1] {
 					var_pos = append(var_pos, ref_pos_map[j-1])
@@ -424,7 +420,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 
 	var var_len int
 	var var_prof map[string]float64
-	var is_var, is_same_len_var, is_prof_new_var bool
+	var is_same_len_var, is_prof_new_var bool
 	var var_str string
 	var p, min_p, var_prob float64
 	var var_pos, var_type, vtype []int
@@ -436,12 +432,12 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if _, is_var = INDEX.VarProf[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; is_var {
+		if INDEX.Seq[ref_pos_map[N-n]+PARA_INFO.Indel_backup] == '*' {
 			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
 				break
 			}
 		}
-		if _, is_var = INDEX.VarProf[ref_pos_map[N-n]]; !is_var {
+		if INDEX.Seq[ref_pos_map[N-n]] != '*' {
 			if read[M-m] != ref[N-n] {
 				if M-(m+PARA_INFO.Ham_backup) > 0 && N-(n+PARA_INFO.Ham_backup) > 0 {
 					m += PARA_INFO.Ham_backup
@@ -464,7 +460,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			n--
 		} else if var_len, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
 			min_p = math.MaxFloat64
-			var_prof, is_var = VC.VarProb[uint32(ref_pos_map[N-n])]
+			var_prof, _ = VC.VarProb[uint32(ref_pos_map[N-n])]
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
 					p = AlignCostKnownLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
@@ -549,7 +545,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
 		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
 		for j = 1; j <= n; j++ {
-			if _, is_var = INDEX.VarProf[ref_pos_map[N-j]]; !is_var {
+			if INDEX.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
 					sub_i = 0 //prob_i
 				} else {
@@ -655,22 +651,18 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 
 	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
 
-	var is_var, is_same_len_var, is_del, is_prof_new_var bool
 	var var_len int
 	var var_pos, var_type, vtype []int
 	var var_base, var_qual [][]byte
 	var prof_var_type map[string][]int
+	var is_same_len_var, is_del, is_prof_new_var bool
 
 	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	M, N := len(read), len(ref)
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
 	for i > 0 || j > 0 {
-		is_var = false
-		if j > 0 {
-			_, is_var = INDEX.VarProf[ref_pos_map[N-j]]
-		}
-		if !is_var { //unknown VARIANT location
+		if j == 0 || INDEX.Seq[ref_pos_map[N-j]] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[M-i] != ref[N-j] {
 					var_pos = append(var_pos, ref_pos_map[N-j])
