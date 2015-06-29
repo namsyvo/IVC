@@ -114,16 +114,16 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	PrintEditDisInput("bw align for Edit: read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	/*
-		Backtrace matrix, for each BT[i][j]:
-		BT[i][j][0]: direction, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j),
+		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
+		BT_x[i][j][0]: represents direction to trace back to, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j),
 		 	2: left arrow (back to i,j-1).
-		BT[i][j][1]: matrix, can be 0: matrix for D, 1: matrix for IS, 2: matrix for IT.
-		BT[i][j][2]: number of shift (equal to length of called variant) at known variant loc,
+		BT_x[i][j][1]: represents matrix to trace back to, can be 0: trace back to matrix D, 1: trace back to matrix IS, 2: trace back to matrix IT.
+		BT_x[i][j][2]: represents number of shifted bases (equal to length of called variants) at known variant locations,
 			can be any integer number, e.g. 5 means back to i-5,j-1.
 	*/
 	var i, j int
-	for i := 0; i <= 2*PARA_INFO.Read_len; i++ {
-		for j := 0; j <= 2*PARA_INFO.Read_len; j++ {
+	for i := 0; i <= m; i++ {
+		for j := 0; j <= n; j++ {
 			BT_D[i][j][0], BT_D[i][j][1], BT_D[i][j][2] = -1, -1, -1
 			BT_IS[i][j][0], BT_IS[i][j][1], BT_IS[i][j][2] = -1, -1, -1
 			BT_IT[i][j][0], BT_IT[i][j][1], BT_IT[i][j][2] = -1, -1, -1
@@ -136,16 +136,16 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	IS[1][0] = PARA_INFO.Gap_open_cost
 	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
 
-	for i = 1; i <= 2*PARA_INFO.Read_len; i++ {
+	for i = 1; i <= m; i++ {
 		D[i][0] = float64(math.MaxFloat32)
 		IT[i][0] = float64(math.MaxFloat32)
 	}
-	for i = 2; i <= 2*PARA_INFO.Read_len; i++ {
+	for i = 2; i <= m; i++ {
 		IS[i][0] = PARA_INFO.Gap_ext_cost
 		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
 	}
 
-	for j = 1; j <= 2*PARA_INFO.Read_len; j++ {
+	for j = 1; j <= n; j++ {
 		D[0][j] = float64(math.MaxFloat32)
 		IS[0][j] = float64(math.MaxFloat32)
 		IT[0][j] = 0.0
@@ -504,16 +504,16 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	PrintEditDisInput("fw align for Edit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
 
 	/*
-		Backtrace matrix, for each BT[i][j]:
-		BT[i][j][0]: direction, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j),
+		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
+		BT_x[i][j][0]: represents direction to trace back to, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j),
 		 	2: left arrow (back to i,j-1).
-		BT[i][j][1]: matrix, can be 0: matrix for D, 1: matrix for IS, 2: matrix for IT.
-		BT[i][j][2]: number of shift (equal to length of called variant) at known variant loc,
+		BT_x[i][j][1]: represents matrix to trace back to, can be 0: trace back to matrix D, 1: trace back to matrix IS, 2: trace back to matrix IT.
+		BT_x[i][j][2]: represents number of shifted bases (equal to length of called variants) at known variant locations,
 			can be any integer number, e.g. 5 means back to i-5,j-1.
 	*/
 	var i, j int
-	for i := 0; i <= 2*PARA_INFO.Read_len; i++ {
-		for j := 0; j <= 2*PARA_INFO.Read_len; j++ {
+	for i := 0; i <= m; i++ {
+		for j := 0; j <= n; j++ {
 			BT_D[i][j][0], BT_D[i][j][1], BT_D[i][j][2] = -1, -1, -1
 			BT_IS[i][j][0], BT_IS[i][j][1], BT_IS[i][j][2] = -1, -1, -1
 			BT_IT[i][j][0], BT_IT[i][j][1], BT_IT[i][j][2] = -1, -1, -1
@@ -521,20 +521,20 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	}
 
 	D[0][0] = 0.0
-	for i = 1; i <= 2*PARA_INFO.Read_len; i++ {
+	for i = 1; i <= m; i++ {
 		D[i][0] = float64(math.MaxFloat32)
 		IT[i][0] = float64(math.MaxFloat32)
 	}
 	IS[0][0] = float64(math.MaxFloat32)
 	IS[1][0] = PARA_INFO.Gap_open_cost
 	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
-	for i = 2; i <= 2*PARA_INFO.Read_len; i++ {
+	for i = 2; i <= m; i++ {
 		IS[i][0] = PARA_INFO.Gap_ext_cost
 		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
 	}
 
 	IT[0][0] = float64(math.MaxFloat32)
-	for j = 1; j <= 2*PARA_INFO.Read_len; j++ {
+	for j = 1; j <= n; j++ {
 		D[0][j] = float64(math.MaxFloat32)
 		IS[0][j] = float64(math.MaxFloat32)
 		IT[0][j] = 0.0
