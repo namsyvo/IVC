@@ -153,16 +153,13 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	}
 
 	var selected_var_len int
-	var prob_i, prob_i_var, sub_i, mis_i, ins_i_open, ins_i_ext float64
+	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		prob_i = QUAL_TO_COST[qual[i-1]]
-		mis_i = PARA_INFO.Sub_cost + prob_i
-		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
-		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
+		mis_i = PARA_INFO.Sub_cost + QUAL_TO_COST[qual[i-1]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[j-1]] != '*' {
 				if read[i-1] == ref[j-1] {
-					sub_i = 0 //prob_i
+					sub_i = 0
 				} else {
 					sub_i = mis_i
 				}
@@ -177,10 +174,10 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 				}
 
-				IS[i][j] = D[i-1][j] + ins_i_open
+				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+ins_i_ext {
-					IS[i][j] = IS[i-1][j] + ins_i_ext
+				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
+					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 
@@ -200,20 +197,20 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
 					if i-var_len >= 0 {
-						prob_i_var = AlignCostKnownLoci(read[i-var_len:i], []byte(var_str),
+						prob_i = AlignCostKnownLoci(read[i-var_len:i], []byte(var_str),
 							qual[i-var_len:i], var_prob)
-						if D[i][j] > D[i-var_len][j-1]+prob_i_var {
-							D[i][j] = D[i-var_len][j-1] + prob_i_var
+						if D[i][j] > D[i-var_len][j-1]+prob_i {
+							D[i][j] = D[i-var_len][j-1] + prob_i
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 0
 							selected_var_len = len(var_str)
 						}
-						if D[i][j] > IS[i-var_len][j-1]+prob_i_var {
-							D[i][j] = IS[i-var_len][j-1] + prob_i_var
+						if D[i][j] > IS[i-var_len][j-1]+prob_i {
+							D[i][j] = IS[i-var_len][j-1] + prob_i
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 1
 							selected_var_len = len(var_str)
 						}
-						if D[i][j] > IT[i-var_len][j-1]+prob_i_var {
-							D[i][j] = IT[i-var_len][j-1] + prob_i_var
+						if D[i][j] > IT[i-var_len][j-1]+prob_i {
+							D[i][j] = IT[i-var_len][j-1] + prob_i
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 							selected_var_len = len(var_str)
 						}
@@ -538,16 +535,13 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	}
 
 	var selected_var_len int
-	var prob_i, prob_i_var, sub_i, mis_i, ins_i_open, ins_i_ext float64
+	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		prob_i = QUAL_TO_COST[qual[M-i]]
-		mis_i = PARA_INFO.Sub_cost + prob_i
-		ins_i_open = PARA_INFO.Gap_open_cost // + prob_i
-		ins_i_ext = PARA_INFO.Gap_ext_cost   // + prob_i
+		mis_i = PARA_INFO.Sub_cost + QUAL_TO_COST[qual[M-i]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
-					sub_i = 0 //prob_i
+					sub_i = 0
 				} else {
 					sub_i = mis_i
 				}
@@ -562,10 +556,10 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 				}
 
-				IS[i][j] = D[i-1][j] + ins_i_open
+				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+ins_i_ext {
-					IS[i][j] = IS[i-1][j] + ins_i_ext
+				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
+					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 
@@ -584,22 +578,22 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
 					if i-var_len >= 0 {
-						prob_i_var = AlignCostKnownLoci(read[M-i:M-i+var_len], []byte(var_str),
+						prob_i = AlignCostKnownLoci(read[M-i:M-i+var_len], []byte(var_str),
 							qual[M-i:M-i+var_len], var_prob)
-						if D[i][j] > D[i-var_len][j-1]+prob_i_var {
-							D[i][j] = D[i-var_len][j-1] + prob_i_var
+						if D[i][j] > D[i-var_len][j-1]+prob_i {
+							D[i][j] = D[i-var_len][j-1] + prob_i
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 0
 							selected_var_len = len(var_str)
 						}
 						/*
-							if D[i][j] > IS[i - var_len][j - 1] + prob_i_var {
-								D[i][j] = IS[i - var_len][j - 1] + prob_i_var
+							if D[i][j] > IS[i - var_len][j - 1] + prob_i {
+								D[i][j] = IS[i - var_len][j - 1] + prob_i
 								BT_D[i][j][0], BT_D[i][j][1] = 0, 1
 								selected_var_len = len(var_str)
 							}
 						*/
-						if D[i][j] > IT[i-var_len][j-1]+prob_i_var {
-							D[i][j] = IT[i-var_len][j-1] + prob_i_var
+						if D[i][j] > IT[i-var_len][j-1]+prob_i {
+							D[i][j] = IT[i-var_len][j-1] + prob_i
 							BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 							selected_var_len = len(var_str)
 						}
@@ -608,10 +602,10 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				if selected_var_len != 0 {
 					BT_D[i][j][2] = selected_var_len
 				}
-				IS[i][j] = D[i-1][j] + ins_i_open
+				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+ins_i_ext {
-					IS[i][j] = IS[i-1][j] + ins_i_ext
+				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
+					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 			}
