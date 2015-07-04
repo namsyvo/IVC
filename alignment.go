@@ -545,17 +545,16 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 				} else {
 					sub_i = mis_i
 				}
-				D[i][j] = D[i-1][j-1] + sub_i
-				BT_D[i][j][0], BT_D[i][j][1] = 0, 0
+				D[i][j] = IT[i-1][j-1] + sub_i
+				BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 				if D[i][j] > IS[i-1][j-1]+sub_i {
 					D[i][j] = IS[i-1][j-1] + sub_i
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 1
 				}
-				if D[i][j] > IT[i-1][j-1]+sub_i {
-					D[i][j] = IT[i-1][j-1] + sub_i
-					BT_D[i][j][0], BT_D[i][j][1] = 0, 2
+				if D[i][j] > D[i-1][j-1] + sub_i {
+					D[i][j] = D[i-1][j-1] + sub_i
+					BT_D[i][j][0], BT_D[i][j][1] = 0, 0
 				}
-
 				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
 				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
