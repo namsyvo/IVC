@@ -398,10 +398,6 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
 								vars_get1[s_idx].Pos = vars1[s_idx].Pos
-								//vars_get1[s_idx].Bases = make([]byte, len(vars1[s_idx].Bases))
-								//vars_get1[s_idx].BQual = make([]byte, len(vars1[s_idx].BQual))
-								//copy(vars_get1[s_idx].Bases, vars1[s_idx].Bases)
-								//copy(vars_get1[s_idx].BQual, vars1[s_idx].BQual)
 								vars_get1[s_idx].Bases = vars1[s_idx].Bases
 								vars_get1[s_idx].BQual = vars1[s_idx].BQual								
 								vars_get1[s_idx].Type = vars1[s_idx].Type
@@ -420,10 +416,6 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 						if len(vars2) > 0 {
 							for s_idx = 0; s_idx < len(vars2); s_idx++ {
 								vars_get2[s_idx].Pos = vars2[s_idx].Pos
-								//vars_get2[s_idx].Bases = make([]byte, len(vars2[s_idx].Bases))
-								//vars_get2[s_idx].BQual = make([]byte, len(vars2[s_idx].BQual))
-								//copy(vars_get2[s_idx].Bases, vars2[s_idx].Bases)
-								//copy(vars_get2[s_idx].BQual, vars2[s_idx].BQual)
 								vars_get2[s_idx].Bases = vars2[s_idx].Bases
 								vars_get2[s_idx].BQual = vars2[s_idx].BQual
 								vars_get2[s_idx].Type = vars2[s_idx].Type
