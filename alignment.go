@@ -20,7 +20,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 		if read[i] != ref[i] {
 			return math.MaxFloat64
 		} else {
-			p = p + QUAL_TO_COST[qual[i]]
+			p = p + Q2P[qual[i]]
 		}
 	}
 	return p - math.Log10(prob)
@@ -155,7 +155,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = PARA_INFO.Sub_cost + QUAL_TO_COST[qual[i-1]]
+		mis_i = PARA_INFO.Sub_cost + Q2P[qual[i-1]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[j-1]] != '*' {
 				if read[i-1] == ref[j-1] {
@@ -537,7 +537,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = PARA_INFO.Sub_cost + QUAL_TO_COST[qual[M-i]]
+		mis_i = PARA_INFO.Sub_cost + Q2P[qual[M-i]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
@@ -561,7 +561,6 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
-
 				IT[i][j] = D[i][j-1] + PARA_INFO.Gap_open_cost
 				BT_IT[i][j][0], BT_IT[i][j][1] = 2, 0
 				if IT[i][j] > IT[i][j-1]+PARA_INFO.Gap_ext_cost {
