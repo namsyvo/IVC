@@ -30,7 +30,6 @@ var (
 var (
 	INPUT_INFO *InputInfo //Input information
 	PARA_INFO  *ParaInfo  //Parameters information
-	//RAND_GEN   *rand.Rand //Pseudo-random number generator
 	INDEX      *Index     //Index for alignment
 )
 

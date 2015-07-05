@@ -51,11 +51,9 @@ type VarInfo struct {
 // This struct also has functions defined on it for calling variants.
 //---------------------------------------------------------------------------------------------------
 type VarCall struct {
-	/*
-		VarProb stores all possible variants at each position and their confident probablilities.
-			Their prior probablities will be obtained from reference genomes and variant profiles.
-			Their posterior probabilities will be updated during alignment phase based on incomming aligned bases
-	*/
+	//VarProb stores all possible variants at each position and their confident probablilities.
+	//Prior probablities will be obtained from reference genomes and variant profiles.
+	//Posterior probabilities will be updated during alignment phase based on incomming aligned bases
 	VarProb   map[uint32]map[string]float64   //Probability of the variant call
 	VarBQual  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
 	VarType   map[uint32]map[string][]int     //Type of variants (currently: 0:sub, 1:ins, 2:del)
@@ -88,14 +86,15 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 		fmt.Println("Error: Read_file_2 does not exists!", err)
 		os.Exit(1)
 	}
-	/* SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
-	700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
-	0.01 is mutation rate (currently is estimated from dbSNP of human genome)
-	*/
+	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
+	//700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
+	//0.01 is mutation rate (currently is estimated from dbSNP of human genome)
 	PARA_INFO = SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Iter_num)
+
+	//Initialize Index object for finding seeds
 	INDEX = NewIndex()
 
-	//Initialize VarCall object
+	//Initialize VarCall object for calling variants
 	VC := new(VarCall)
 	VC.VarProb = make(map[uint32]map[string]float64)
 	VC.VarBQual = make(map[uint32]map[string][][]byte)
@@ -163,6 +162,8 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) CallVariants() {
 
+	//"Local-global" variable which shared by all downstream functions in this go routine.
+	//May consider a better solution later.
 	Q2P = make(map[byte]float64)
 	var q byte
 	for i := 33; i < 74; i++ {
@@ -201,7 +202,7 @@ func (VC *VarCall) CallVariants() {
 		//------------------------
 	}()
 
-	//Collect Vars from results channel and update Vars and their probabilities
+	//Collect variants from results channel and update their probabilities
 	var var_info VarInfo
 	for var_info = range var_results {
 		if var_info.Type == 0 {
@@ -365,7 +366,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 				if strand_r1[p_idx] == strand_r2[p_idx] {
 					continue
 				}
-				//Find Vars for the first end
+				//Find variants for the first end
 				PrintMemStats("Before FindVariantsFromEnd1")
 				if strand_r1[p_idx] == true {
 					vars1, l_align_pos1, _, align_prob1 = VC.FindVariantsFromExtension(s_pos_r1[p_idx], e_pos_r1[p_idx],
@@ -376,7 +377,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 				}
 				PrintMemStats("After FindVariantsFromEnd1")
 
-				//Find Vars for the second end
+				//Find variants for the second end
 				PrintMemStats("Before FindVariantsFromEnd2")
 				if strand_r2[p_idx] == true {
 					vars2, l_align_pos2, _, align_prob2 = VC.FindVariantsFromExtension(s_pos_r2[p_idx], e_pos_r2[p_idx],
@@ -537,7 +538,6 @@ func (VC *VarCall) FindSeedsFromPairedEnds(read_info *ReadInfo, seed_pos [][]int
 					//Check if alignments are likely pair-end alignments
 					if (seed_pos[3][j]-seed_pos[0][i]) >= PARA_INFO.Read_len &&
 						(seed_pos[3][j]-seed_pos[0][i]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
-
 						PrintPairedSeedInfo("r1_or, r2_rc, paired pos", seed_pos[0][i], seed_pos[3][j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
@@ -561,7 +561,6 @@ func (VC *VarCall) FindSeedsFromPairedEnds(read_info *ReadInfo, seed_pos [][]int
 					//Check if alignments are likely pair-end alignments
 					if (seed_pos[1][i]-seed_pos[2][j]) >= PARA_INFO.Read_len &&
 						(seed_pos[1][i]-seed_pos[2][j]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
-
 						PrintPairedSeedInfo("r1_rc, r2_or, paired pos", seed_pos[1][i], seed_pos[2][j])
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
