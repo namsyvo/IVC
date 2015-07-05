@@ -2,6 +2,10 @@
 - Call known deletions:
     + Adjust code to capture known deletions in alignment.
     + Report all types of variants.
+- Reduce runtime:
+    + Remove redundant computation task due to redundant assignment of memory for edit distance matrix initialization.
+    + Use slice instead of map when possible.
+    + Some other runtime and memory optimization.
 
 ##0.5.3
 Major changes:

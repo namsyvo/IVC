@@ -2,6 +2,8 @@
     + Adjust code to capture known deletions in alignment.
     + Report all types of variants.
 
+(2) Reduce runtime and memory
+
 (2) Finish some back work:
     + Read fully allele frequency from SNP profile (VCF files).
     + Improve reading input (take names of index files from index directory), writing ouput (follow VCF format with more information).
