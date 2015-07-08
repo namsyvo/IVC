@@ -11,19 +11,18 @@ import (
 	"github.com/namsyvo/IVC"
 	"github.com/vtphan/fmi"
 	"log"
+	"os"
 	"path"
-	"runtime"
 	"time"
 )
 
 func main() {
+
+	//Starting program----------------------------------------------------------//
 	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
 	fmt.Println("IVC-index: Indexing reference genomes and variant profiles.")
-
-	memstats := new(runtime.MemStats)
-	runtime.ReadMemStats(memstats)
 	log.Printf("IVC-index: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
-	ivc.PrintProcessMem("IVC-index: memstats at the beginning")
+	//--------------------------------------------------------------------------//
 
 	var genome_file = flag.String("g", "", "reference genome file")
 	var var_prof_file = flag.String("v", "", "variant profile file")
@@ -32,28 +31,32 @@ func main() {
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
 
+	if _, err := os.Stat(*idx_dir); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.Mkdir(*idx_dir, 0777); err != nil {
+				fmt.Println("Could not create index directory, possibly due to a path error.")
+				os.Exit(1)
+			}
+		} else {
+			os.Exit(1)
+		}
+	}
+
+	//Creating multigenome and variant profile index---------------------------//
 	fmt.Println("Creating multigenome and variant profile index...")
 	start_time := time.Now()
-
 	genome := ivc.ReadFASTA(*genome_file)
-	runtime.ReadMemStats(memstats)
-	ivc.PrintProcessMem("IVC-index: memstats after reading genome")
-
+	ivc.PrintProcessMem("Memstats after reading genome")
 	var_prof := ivc.ReadVCF(*var_prof_file)
-	runtime.ReadMemStats(memstats)
-	ivc.PrintProcessMem("IVC-index: memstats after reading variant profile")
-
+	ivc.PrintProcessMem("Memstats after reading variant profile")
 	multigenome := ivc.BuildMultigenome(var_prof, genome)
-
-	runtime.ReadMemStats(memstats)
-	ivc.PrintProcessMem("IVC-index: memstats after building multigenome")
+	ivc.PrintProcessMem("Memstats after building multigenome")
 
 	multigenome_len := len(multigenome)
 	rev_multigenome := make([]byte, multigenome_len)
 	for i := range multigenome {
 		rev_multigenome[i] = multigenome[multigenome_len-1-i]
 	}
-
 	_, genome_file_name := path.Split(*genome_file)
 	multigenome_file_name := path.Join(*idx_dir, genome_file_name) + ".mgf"
 	rev_multigenome_file_name := path.Join(*idx_dir, genome_file_name) + "_rev.mgf"
@@ -65,10 +68,8 @@ func main() {
 	ivc.SaveVarProf(var_prof_idx_file_name, var_prof)
 
 	gen_time := time.Since(start_time)
-	log.Printf("IVC-index: time for creating multigenome and variant profile index:\t%s", gen_time)
-
-	runtime.ReadMemStats(memstats)
-	ivc.PrintProcessMem("IVC-index: memstats after creating multigenome and variant profile index")
+	log.Printf("Time for creating multigenome and variant profile index:\t%s", gen_time)
+	ivc.PrintProcessMem("Memstats after creating multigenome and variant profile index")
 
 	fmt.Println("Multigenome length: ", multigenome_len)
 	fmt.Println("Variant profile index size: ", len(var_prof))
@@ -76,33 +77,27 @@ func main() {
 	//fmt.Println("Reverse multigenome file: ", rev_multigenome_file_name)
 	fmt.Println("Variant profile index: ", var_prof_idx_file_name)
 	fmt.Println("Finish creating multigenome and variant profile index.")
+	//--------------------------------------------------------------------------//
 
+	//Indexing multigenome------------------------------------------------------//
 	fmt.Println("Indexing multigenome...")
-
 	var idx fmi.Index
 
 	//start_time = time.Now()
 	//idx = *fmi.New(multigenome_file)
 	//idx.Save(multigenome_file)
-
-	index_time := time.Since(start_time)
-	log.Printf("IVC-index: time for indexing multigenome:\t%s", index_time)
-
-	runtime.ReadMemStats(memstats)
-	ivc.PrintProcessMem("IVC-index: memstats after indexing multigenome")
+	//index_time := time.Since(start_time)
+	//log.Printf("Time for indexing multigenome:\t%s", index_time)
+	//ivc.PrintProcessMem("Memstats after indexing multigenome")
 
 	start_time = time.Now()
-
 	idx = *fmi.New(rev_multigenome_file_name)
 	idx.Save(rev_multigenome_file_name)
+	index_time := time.Since(start_time)
+	log.Printf("Time for indexing reverse multigenome:\t%s", index_time)
+	ivc.PrintProcessMem("Memstats after indexing reverse multigenome")
 
-	index_time = time.Since(start_time)
-	log.Printf("IVC-index: time for indexing reverse multigenome:\t%s", index_time)
-
-	runtime.ReadMemStats(memstats)
-	ivc.PrintProcessMem("IVC-index: memstats after indexing reverse multigenome")
-
-	//fmt.Println("Index directory for multigenome: ", multigenome_file + ".index/")
+	//fmt.Println("Index directory for multigenome: ", multigenome_file+".index/")
 	fmt.Println("Index directory for reverse multigenome: ", rev_multigenome_file_name+".index/")
 	fmt.Println("Finish indexing multigenome.")
 

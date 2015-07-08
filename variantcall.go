@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	Q2P map[byte]float64 //Pre-calculated probability which is corresponding to Phred-based quality
+	Q2P  map[byte]float64 //Pre-calculated probability which is corresponding to Phred-based quality
 	P_AB map[string]float64
 )
 
@@ -281,7 +281,7 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 	read_info := InitReadInfo(PARA_INFO.Read_len, PARA_INFO.Info_len)
 	align_info := InitAlignInfo(2 * PARA_INFO.Read_len)
 	seed_pos := make([][]int, 4)
-	for i:= 0; i< 4; i++ {
+	for i := 0; i < 4; i++ {
 		seed_pos[i] = make([]int, INPUT_INFO.Max_snum)
 	}
 	rand_gen := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -400,7 +400,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
 								vars_get1[s_idx].Pos = vars1[s_idx].Pos
 								vars_get1[s_idx].Bases = vars1[s_idx].Bases
-								vars_get1[s_idx].BQual = vars1[s_idx].BQual								
+								vars_get1[s_idx].BQual = vars1[s_idx].BQual
 								vars_get1[s_idx].Type = vars1[s_idx].Type
 								vars_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 								vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
@@ -909,6 +909,9 @@ func (VC *VarCall) OutputVarCalls() {
 		line_a = append(line_a, ".")
 		//REF & ALT
 		if _, is_var = INDEX.VarProf[pos]; is_var {
+			if var_call == string(INDEX.VarProf[pos][0]) {
+				continue
+			}
 			line_a = append(line_a, string(INDEX.VarProf[pos][0]))
 			line_a = append(line_a, var_call)
 		} else {

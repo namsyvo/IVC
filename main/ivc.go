@@ -19,24 +19,14 @@ import (
 
 func main() {
 
-	//Starting Program----------------------------------------------------------//
+	//Starting program----------------------------------------------------------//
 	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
 	fmt.Println("IVC-main: Calling variants based on alignment between reads and multigenome.")
-	log.Printf("memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
+	log.Printf("IVC-main: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	//--------------------------------------------------------------------------//
 
-	//Initializing Indexes and parameters---------------------------------------//
-	fmt.Println("Initializing indexes and parameters...")
-	start_time := time.Now()
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
-	variant_caller := ivc.NewVariantCaller(input_info)
-	index_time := time.Since(start_time)
-	log.Printf("Time for initializing the variant caller\t%s", index_time)
-	ivc.PrintProcessMem("Memstats after initializing the variant caller")
-	fmt.Println("Finish initializing indexes and parameters.")
-	//-------------------------------------------------------------------------//
-
 	if input_info.Cpu_prof_file != "" {
 		f, err := os.Create(input_info.Cpu_prof_file)
 		if err != nil {
@@ -46,17 +36,37 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	//Call Variants from read-multigenome alignment----------------------------//
+	//Initializing indexes and parameters---------------------------------------//
+	fmt.Println("Initializing indexes and parameters...")
+	start_time := time.Now()
+	variant_caller := ivc.NewVariantCaller(input_info)
+	index_time := time.Since(start_time)
+	log.Printf("Time for initializing the variant caller\t%s", index_time)
+	ivc.PrintProcessMem("Memstats after initializing the variant caller")
+	fmt.Println("Finish initializing indexes and parameters.")
+	//-------------------------------------------------------------------------//
+
+	//Call variants from read-multigenome alignment----------------------------//
 	fmt.Println("Calling variants...")
 	start_time = time.Now()
 	variant_caller.CallVariants()
 	call_var_time := time.Since(start_time)
 	log.Printf("Time for calling variants:\t%s", call_var_time)
 	ivc.PrintProcessMem("Memstats after calling variants")
-	variant_caller.OutputVarCalls()
-	fmt.Println("Check results in the file", input_info.Var_call_file)
 	fmt.Println("Finish calling variants.")
 	//-------------------------------------------------------------------------//
+
+	//Output variant calls-----------------------------------------------------//
+	fmt.Println("Outputing variant calls...")
+	start_time = time.Now()
+	variant_caller.OutputVarCalls()
+	output_var_time := time.Since(start_time)
+	log.Printf("Time for outputing variant calls:\t%s", output_var_time)
+	ivc.PrintProcessMem("Memstats after outputing variant calls")
+	fmt.Println("Finish outputing variant calls.")
+
+	fmt.Println("Check results in the file", input_info.Var_call_file)
+	fmt.Println("Finish whole variant calling process.")
 }
 
 //--------------------------------------------------------------------------------------------------
