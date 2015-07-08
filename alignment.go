@@ -436,9 +436,9 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		}
 		if INDEX.Seq[ref_pos_map[N-n]] != '*' {
 			if read[M-m] != ref[N-n] {
-				if M-(m+PARA_INFO.Ham_backup) > 0 && N-(n+PARA_INFO.Ham_backup) > 0 {
-					m += PARA_INFO.Ham_backup
-					n += PARA_INFO.Ham_backup
+				if M-(m+2*PARA_INFO.Ham_backup) > 0 && N-(n+2*PARA_INFO.Ham_backup) > 0 {
+					m += 2*PARA_INFO.Ham_backup
+					n += 2*PARA_INFO.Ham_backup
 				}
 				break
 			}

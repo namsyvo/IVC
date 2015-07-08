@@ -89,7 +89,7 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 	para_info := new(ParaInfo)
 	para_info.Seed_backup = 6
 	para_info.Indel_backup = 6
-	para_info.Ham_backup = 3
+	para_info.Ham_backup = 6
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
 	para_info.Iter_num_factor = 2

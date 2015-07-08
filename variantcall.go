@@ -391,7 +391,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 				if align_prob1 != -1 && align_prob2 != -1 {
 					c_num++
 					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
-					if paired_prob > align_prob1+align_prob2 {
+					if paired_prob >= align_prob1+align_prob2 {
 						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
 						PrintGetVariants(paired_prob, align_prob1, align_prob2, vars1, vars2)
