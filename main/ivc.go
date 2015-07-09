@@ -114,7 +114,7 @@ func ReadInputInfo() *ivc.InputInfo {
 	input_info.Proc_num = *proc_num
 	input_info.Routine_num = *routine_num
 	if *proc_num <= 0 || *routine_num <= 0 {
-		input_info.Proc_num = runtime.NumCPU()
+		input_info.Proc_num = runtime.NumCPU() + 5
 		input_info.Routine_num = runtime.NumCPU()
 	}
 	input_info.Max_snum = *max_snum

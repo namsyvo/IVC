@@ -20,7 +20,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 		if read[i] != ref[i] {
 			return math.MaxFloat64
 		} else {
-			p = p + Q2P[qual[i]]
+			p = p + 0.0//Q2P[qual[i]]
 		}
 	}
 	return p - math.Log10(prob)
@@ -155,11 +155,11 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = PARA_INFO.Sub_cost + Q2P[qual[i-1]]
+		mis_i = PARA_INFO.Sub_cost// + Q2P[qual[i-1]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[j-1]] != '*' {
 				if read[i-1] == ref[j-1] {
-					sub_i = 0
+					sub_i = 0.0
 				} else {
 					sub_i = mis_i
 				}
@@ -537,11 +537,11 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = PARA_INFO.Sub_cost + Q2P[qual[M-i]]
+		mis_i = PARA_INFO.Sub_cost// + Q2P[qual[M-i]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
-					sub_i = 0
+					sub_i = 0.0
 				} else {
 					sub_i = mis_i
 				}
