@@ -27,22 +27,24 @@ func main() {
 
 	input_info := ReadInputInfo()
 	runtime.GOMAXPROCS(input_info.Proc_num)
+	ivc.MEM_STATS = new(runtime.MemStats)
+	var err error
 	if input_info.Cpu_prof_file != "" {
-		f, err := os.Create(input_info.Cpu_prof_file)
+		ivc.CPU_FILE, err = os.Create(input_info.Cpu_prof_file)
 		if err != nil {
 			log.Fatal(err)
 		}
-		pprof.StartCPUProfile(f)
+		pprof.StartCPUProfile(ivc.CPU_FILE)
 		defer pprof.StopCPUProfile()
 	}
 	if input_info.Mem_prof_file != "" {
-		var err error
 		ivc.MEM_FILE, err = os.Create(input_info.Mem_prof_file)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer ivc.MEM_FILE.Close()
 	}
+
 	//Initializing indexes and parameters---------------------------------------//
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
