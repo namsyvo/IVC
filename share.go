@@ -120,13 +120,13 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 		para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 	}
 
-	para_info.Sub_cost = 4      //NEW_SNP_RATE_LOG
-	para_info.Gap_open_cost = 6 //NEW_INDEL_RATE_LOG
-	para_info.Gap_ext_cost = 1  //NEW_SNP_RATE_LOG
+	para_info.Sub_cost = 4.0      //NEW_SNP_RATE_LOG
+	para_info.Gap_open_cost = 6.0 //NEW_INDEL_RATE_LOG
+	para_info.Gap_ext_cost = 1.0  //NEW_SNP_RATE_LOG
 
 	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d,"+
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d,"+
-		" Sub_cost: %d, Gap_open_cost: %d, Gap_ext_cost: %d, Seed_backup: %d, Indel_backup: %d, Ham_backup: %d",
+		" Sub_cost: %f, Gap_open_cost: %f, Gap_ext_cost: %f, Seed_backup: %d, Indel_backup: %d, Ham_backup: %d",
 		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
 		para_info.Sub_cost, para_info.Gap_open_cost, para_info.Gap_ext_cost, para_info.Seed_backup, para_info.Indel_backup, para_info.Ham_backup)

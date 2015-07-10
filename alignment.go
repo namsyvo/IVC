@@ -377,7 +377,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				v = append(v, aligned_read[j])
 				q = append(q, aligned_qual[j])
 			}
-			if j < len(aligned_ref) && read_ori_pos > 7 {
+			if j < len(aligned_ref) - 2 && read_ori_pos > 2 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -392,7 +392,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				v = append(v, aligned_ref[j])
 			}
-			if j < len(aligned_read) && read_ori_pos > 7 {
+			if j < len(aligned_read) - 2 && read_ori_pos < m - 2 && ref_ori_pos + j - i < n {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -778,7 +778,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				v = append(v, aligned_read[j])
 				q = append(q, aligned_qual[j])
 			}
-			if j < len(aligned_ref) && read_ori_pos < M - 7 {
+			if j < len(aligned_ref) - 2 && read_ori_pos + j - i < M - 2 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -794,7 +794,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				v = append(v, aligned_ref[j])
 			}
-			if j < len(aligned_read) && read_ori_pos < M - 7 {
+			if j < len(aligned_read) - 2 && read_ori_pos < M - 2 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
