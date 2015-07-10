@@ -4,10 +4,7 @@
     + Try better scoring scheme.
     + Reduce runtime and memory usage.
 
-(2) Finish some back work:
-    + Improve reading input (take names of index files from index directory).
-
-(3) Integrate indexing and SNP calling phases:
+(2) Integrate indexing and SNP calling phases:
     (a) Create or load the index:
         + Create the index only if (A) it does not exist, or (B) it exists but there is an error loading it.
     (b) Call SNPs.
