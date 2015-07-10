@@ -38,26 +38,27 @@ var (
 //--------------------------------------------------------------------------------------------------
 type InputInfo struct {
 	//File names for:
-	Ref_file       string //reference multigenome
-	Var_prof_file  string //variant profile
-	Index_file     string //index of original reference genomes
-	Rev_index_file string //index of reverse reference genomes
-	Read_file_1    string //first end of read
-	Read_file_2    string //second end of read
-	Var_call_file  string //store Var call
-	Search_mode    int    //searching mode for finding seeds
-	Start_pos      int    //starting postion on reads for finding seeds
-	Search_step    int    //step for searching in deterministic mode
-	Proc_num       int    //maximum number of CPUs using by Go
-	Routine_num    int    //number of goroutines
-	Max_snum       int    //maximum number of seeds
-	Min_slen       int    //minimum length of seeds
-	Max_slen       int    //maximum length of seeds
-	Max_psnum      int    //maximum number of paired-seeds
-	Dist_thres     int    //threshold for distances between reads and multigenomes
-	Iter_num       int    //number of random iterations to find proper alignments
-	Cpu_prof_file  string //file to write cpu profile
-	Mem_prof_file  string //file to write mem profile
+	Ref_file       string  //reference multigenome
+	Var_prof_file  string  //variant profile
+	Index_file     string  //index of original reference genomes
+	Rev_index_file string  //index of reverse reference genomes
+	Read_file_1    string  //first end of read
+	Read_file_2    string  //second end of read
+	Var_call_file  string  //store Var call
+	Search_mode    int     //searching mode for finding seeds
+	Start_pos      int     //starting postion on reads for finding seeds
+	Search_step    int     //step for searching in deterministic mode
+	Proc_num       int     //maximum number of CPUs using by Go
+	Routine_num    int     //number of goroutines
+	Max_snum       int     //maximum number of seeds
+	Max_psnum      int     //maximum number of paired-seeds
+	Min_slen       int     //minimum length of seeds
+	Max_slen       int     //maximum length of seeds
+	Dist_thres     int     //threshold for distances between reads and multigenomes
+	Prob_thres     float64 //threshold for alignment prob between reads and multigenomes
+	Iter_num       int     //number of random iterations to find proper alignments
+	Cpu_prof_file  string  //file to write cpu profile
+	Mem_prof_file  string  //file to write mem profile
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -86,7 +87,7 @@ type ParaInfo struct {
 //--------------------------------------------------------------------------------------------------
 // SetPara sets values of parameters for alignment process
 //--------------------------------------------------------------------------------------------------
-func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres, iter_num int) *ParaInfo {
+func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres int, prob_thres float64, iter_num int) *ParaInfo {
 	para_info := new(ParaInfo)
 	para_info.Seed_backup = 6
 	para_info.Indel_backup = 6
@@ -111,9 +112,11 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 		para_info.Dist_thres = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) +
 			int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
 	}
-	//para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
-	para_info.Prob_thres = 36.0
-
+	if prob_thres != 0 {
+		para_info.Prob_thres = prob_thres
+	} else {
+		para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
+	}
 	if iter_num != 0 {
 		para_info.Iter_num = iter_num
 	} else {
@@ -124,9 +127,9 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 	para_info.Gap_open_cost = 6.0 //NEW_INDEL_RATE_LOG
 	para_info.Gap_ext_cost = 1.0  //NEW_SNP_RATE_LOG
 
-	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Err_rate: %.5f, Err_var_factor: %d,"+
+	log.Printf("Parameters:\tDist_thres: %d, Prob_thres: %.5f, Iter_num: %d, Max_ins: %d, Max_err: %.5f, Err_var_factor: %d,"+
 		" Mut_rate: %.5f, Mut_var_factor: %d, Iter_num_factor: %d, Read_len: %d, Info_len: %d,"+
-		" Sub_cost: %f, Gap_open_cost: %f, Gap_ext_cost: %f, Seed_backup: %d, Indel_backup: %d, Ham_backup: %d",
+		" Sub_cost: %.5f, Gap_open_cost: %.5f, Gap_ext_cost: %.5f, Seed_backup: %d, Indel_backup: %d, Ham_backup: %d",
 		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
 		para_info.Sub_cost, para_info.Gap_open_cost, para_info.Gap_ext_cost, para_info.Seed_backup, para_info.Indel_backup, para_info.Ham_backup)

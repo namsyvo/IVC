@@ -62,7 +62,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			}
 			if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[n-1])]; is_prof_new_var {
 				for _, vtype = range prof_var_type {
-					if vtype[0] == 0 {
+					if vtype[0] == 0 && m-1 > 1 && m-1 < len(read)-2 {
 						var_pos = append(var_pos, ref_pos_map[n-1])
 						var_base = append(var_base, []byte{read[m-1]})
 						var_qual = append(var_qual, []byte{qual[m-1]})
@@ -269,7 +269,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	for i > 0 || j > 0 {
 		if j == 0 || INDEX.Seq[ref_pos_map[j-1]] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
-				if read[i-1] != ref[j-1] {
+				if read[i-1] != ref[j-1] && i-1 > 1 && i-1 < m-2 {
 					var_pos = append(var_pos, ref_pos_map[j-1])
 					var_base = append(var_base, []byte{read[i-1]})
 					var_qual = append(var_qual, []byte{qual[i-1]})
@@ -277,7 +277,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				}
 				if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[j-1])]; is_prof_new_var {
 					for _, vtype = range prof_var_type {
-						if vtype[0] == 0 {
+						if vtype[0] == 0 && i-1 > 1 && i-1 < m-2 {
 							var_pos = append(var_pos, ref_pos_map[j-1])
 							var_base = append(var_base, []byte{read[i-1]})
 							var_qual = append(var_qual, []byte{qual[i-1]})
@@ -377,7 +377,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				v = append(v, aligned_read[j])
 				q = append(q, aligned_qual[j])
 			}
-			if j < len(aligned_ref) - 2 && read_ori_pos > 2 {
+			if j < len(aligned_ref)-1 && read_ori_pos > 1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -392,7 +392,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				v = append(v, aligned_ref[j])
 			}
-			if j < len(aligned_read) - 2 && read_ori_pos < m - 2 && ref_ori_pos + j - i < n {
+			if j < len(aligned_read)-1 && read_ori_pos < m-1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -405,6 +405,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			i++
 		} else {
 			ref_ori_pos++
+			read_ori_pos++
 			i++
 		}
 	}
@@ -448,7 +449,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			}
 			if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[N-n])]; is_prof_new_var {
 				for _, vtype = range prof_var_type {
-					if vtype[0] == 0 {
+					if vtype[0] == 0 && m > 1 && m < M-2 {
 						var_pos = append(var_pos, ref_pos_map[N-n])
 						var_base = append(var_base, []byte{read[M-m]})
 						var_qual = append(var_qual, []byte{qual[M-m]})
@@ -660,7 +661,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 	for i > 0 || j > 0 {
 		if j == 0 || INDEX.Seq[ref_pos_map[N-j]] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
-				if read[M-i] != ref[N-j] {
+				if read[M-i] != ref[N-j] && i-1 > 1 && i-1 < m-2 {
 					var_pos = append(var_pos, ref_pos_map[N-j])
 					var_base = append(var_base, []byte{read[M-i]})
 					var_qual = append(var_qual, []byte{qual[M-i]})
@@ -668,7 +669,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				}
 				if prof_var_type, is_prof_new_var = VC.VarType[uint32(ref_pos_map[N-j])]; is_prof_new_var {
 					for _, vtype = range prof_var_type {
-						if vtype[0] == 0 {
+						if vtype[0] == 0 && i-1 > 1 && i-1 < m-2 {
 							var_pos = append(var_pos, ref_pos_map[N-j])
 							var_base = append(var_base, []byte{read[M-i]})
 							var_qual = append(var_qual, []byte{qual[M-i]})
@@ -778,7 +779,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				v = append(v, aligned_read[j])
 				q = append(q, aligned_qual[j])
 			}
-			if j < len(aligned_ref) - 2 && read_ori_pos + j - i < M - 2 {
+			if j < len(aligned_ref)-1 && read_ori_pos+j-i < M-1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -794,7 +795,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				v = append(v, aligned_ref[j])
 			}
-			if j < len(aligned_read) - 2 && read_ori_pos < M - 2 {
+			if j < len(aligned_read)-1 && read_ori_pos < M-1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -807,6 +808,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			i++
 		} else {
 			ref_ori_pos++
+			read_ori_pos++
 			i++
 		}
 	}
