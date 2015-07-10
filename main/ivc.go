@@ -35,7 +35,14 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-
+    if input_info.Mem_prof_file != "" {
+		var err error
+        ivc.MEM_FILE, err = os.Create(input_info.Mem_prof_file)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer ivc.MEM_FILE.Close()
+    }
 	//Initializing indexes and parameters---------------------------------------//
 	fmt.Println("Initializing indexes and parameters...")
 	start_time := time.Now()
@@ -91,6 +98,7 @@ func ReadInputInfo() *ivc.InputInfo {
 	var dist_thres = flag.Int("d", 0, "threshold of alignment distances")
 	var iter_num = flag.Int("r", 0, "maximum number of iterations")
 	var cpu_prof_file = flag.String("c", "", "file to write cpu profile")
+	var mem_prof_file = flag.String("b", "", "file to write mem profile")
 	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
 	flag.Parse()
 
@@ -125,6 +133,7 @@ func ReadInputInfo() *ivc.InputInfo {
 	input_info.Iter_num = *iter_num
 
 	input_info.Cpu_prof_file = *cpu_prof_file
+	input_info.Mem_prof_file = *mem_prof_file
 
 	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file: %s, Rev_index_file: %s,"+
 		" Read_file_1: %s, Read_file_2: %s, Var_call_file: %s",

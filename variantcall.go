@@ -13,6 +13,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
@@ -264,6 +265,7 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 		}
 		if read_num%10000 == 0 {
 			PrintProcessMem("Memstats after distributing 10000 reads")
+			pprof.WriteHeapProfile(MEM_FILE)
 		}
 	}
 	close(read_data)
@@ -442,7 +444,6 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 		loop_num++
 	}
 	if loop_has_cand != 0 {
-		fmt.Println("cand_num", cand_num[loop_has_cand-1])
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
 		if len(vars_get1) > 0 {
 			for _, var_info := range vars_get1 {
@@ -460,7 +461,6 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 	}
 
 	//Cannot align any ends, consider as unaligned reads
-	fmt.Println("cand_num", -1)
 	var at Align_trace_info
 	at.read_info1 = read_info1
 	at.read_info2 = read_info2
@@ -919,7 +919,6 @@ func (VC *VarCall) OutputVarCalls() {
 				if VC.VarType[var_pos][var_call][0] == 2 { //DEL
 					//Ignore indel calls of length 2 that are homopolymer
 					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						fmt.Println("U-D-homo2", pos, var_call)
 						continue
 					}
 					line_a = append(line_a, var_call)
@@ -927,7 +926,6 @@ func (VC *VarCall) OutputVarCalls() {
 				} else if VC.VarType[var_pos][var_call][0] == 1 { //INS
 					//Ignore indel calls of length 2 that are homopolymer
 					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						fmt.Println("U-I-homo2", pos, var_call)
 						continue
 					}
 					line_a = append(line_a, string(INDEX.Seq[pos]))
@@ -935,7 +933,6 @@ func (VC *VarCall) OutputVarCalls() {
 				} else { //SUB
 					//Ignore variants that are identical with ref
 					if var_call == string(INDEX.Seq[pos]) {
-						fmt.Println("U-S-same-ref", pos, var_call, string(INDEX.Seq[pos]))
 						continue
 					}
 					line_a = append(line_a, string(INDEX.Seq[pos]))

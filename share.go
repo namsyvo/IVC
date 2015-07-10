@@ -57,6 +57,7 @@ type InputInfo struct {
 	Dist_thres     int    //threshold for distances between reads and multigenomes
 	Iter_num       int    //number of random iterations to find proper alignments
 	Cpu_prof_file  string //file to write cpu profile
+	Mem_prof_file  string //file to write mem profile
 }
 
 //--------------------------------------------------------------------------------------------------

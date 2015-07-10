@@ -40,6 +40,7 @@ var (
 
 //Global variable for memory profiling
 var (
+	MEM_FILE *os.File
 	MEM_STATS = new(runtime.MemStats)
 )
 
