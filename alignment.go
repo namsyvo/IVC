@@ -355,12 +355,14 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 
 	//Get Vars
 	ref_ori_pos := 0
+	read_ori_pos := 0
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
 			ref_ori_pos++
 			i++
 		} else if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+			read_ori_pos++
 			i++
 		} else {
 			break
@@ -375,12 +377,13 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				v = append(v, aligned_read[j])
 				q = append(q, aligned_qual[j])
 			}
-			if j < len(aligned_ref) {
+			if j < len(aligned_ref) && read_ori_pos > 7 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
 				var_type = append(var_type, 1)
 			}
+			read_ori_pos += j - i
 			i = j
 		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Deletions
 			v, q := make([]byte, 0), make([]byte, 0)
@@ -389,7 +392,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				v = append(v, aligned_ref[j])
 			}
-			if j < len(aligned_read) {
+			if j < len(aligned_read) && read_ori_pos > 7 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -398,6 +401,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			ref_ori_pos += j - i
 			i = j
 		} else if aligned_ref[i] == '+' {
+			read_ori_pos++
 			i++
 		} else {
 			ref_ori_pos++
@@ -752,12 +756,14 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 
 	//Get Vars
 	ref_ori_pos := N - n
+	read_ori_pos := M - m
 	i = 0
 	for i < len(aligned_ref) {
 		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
 			ref_ori_pos++
 			i++
 		} else if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+			read_ori_pos++
 			i++
 		} else {
 			break
@@ -772,12 +778,13 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				v = append(v, aligned_read[j])
 				q = append(q, aligned_qual[j])
 			}
-			if j < len(aligned_ref) {
+			if j < len(aligned_ref) && read_ori_pos < M - 7 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
 				var_type = append(var_type, 1)
 			}
+			read_ori_pos += j - i
 			i = j
 		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Deletions
 			v, q := make([]byte, 0), make([]byte, 0)
@@ -787,7 +794,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
 				v = append(v, aligned_ref[j])
 			}
-			if j < len(aligned_read) {
+			if j < len(aligned_read) && read_ori_pos < M - 7 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -796,6 +803,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			ref_ori_pos += j - i
 			i = j
 		} else if aligned_ref[i] == '+' {
+			read_ori_pos++
 			i++
 		} else {
 			ref_ori_pos++
