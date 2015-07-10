@@ -1,4 +1,4 @@
-## 0.7.2 <Jun 16, 2015>
+## 0.7.2 <Jun 16, 2015> <known-del>
 Major changes:
 - Call known deletions:
     + Adjust code to capture known deletions in alignment.
@@ -12,7 +12,7 @@ Minor changes:
 - Do not consider base quality for matches and gaps, consider base quality for mismatches and known variants
 - Get longer extended-ref for alignment
 
-## 0.7.1 <May 24, 2015>
+## 0.7.1 <May 24, 2015> <aff-gap>
 Major changes:
 - Implement affine gap alignment strategy.
 Minor changes:
@@ -22,7 +22,7 @@ Minor changes:
 - Fix a bug of taking quality for deletions.
 - Change values for base cases in edit distance calculation.
 
-## 0.7.0 <gap-aln> <Apr 22, 2015>
+## 0.7.0 <Apr 22, 2015> <gap-aln>
 Major changes:
 - Implement gap alignment algorithm outside of known variant locations.
 Minor changes:
@@ -30,45 +30,45 @@ Minor changes:
 - Fix bugs in forward gap edit distance.
 - Add test cases for gap alignment trace back.
 
-## 0.6.2 <Mar 4, 2015>
+## 0.6.2 <Mar 4, 2015> <para-change>
 - Compute alignment probability for mismatches only.
 - Change prior prob for Indel calling.
 - Change calculation of alignment prob at known variant locations.
 
-## 0.6.1 <Feb 22, 2015>
+## 0.6.1 <Feb 22, 2015> <aln-filter>
 - Use all paired-seeds if there is no unique paired-seed.
     + Loop through several unique paired-seeds and find the alignment with minimum distance.
     + Stop if finding same ending pos of seeds after 3 iterations.
 - Check minimum seed length when finding seeds.
 
-## 0.6 <Jan 25, 2015> <prob-aln>
+## 0.6.0 <Jan 25, 2015> <prob-aln>
 - Implement probabilistic alignment strategy.
     + Cost of substitution is calculated based on variant profile at the postion and the base aligned to that position.
 - Use updated variant profile during alignment process.
 
-## 0.5.2 <Jan 4, 2015>
+## 0.5.2 <Jan 4, 2015> <var-filter>
 - Apply other filtering techniques for called variants.
     + Filter based on correct alignment probability during alignment process.
     + Filter based on number of variants, edit distance, and chromosomal distance for determining called variants.
 
-## 0.5.1 <Dec 16, 2014>
+## 0.5.1 <Dec 16, 2014> <var-filter>
 - Apply several filtering techniques for both alignment and variant determination processes.
     + Alignment: check for chromosomal distances of alignments of paired-ends reads and match strands of two ends.
      (for Illumina technology, two ends of the reads should include forward and reverse ends).
     + Variant calling: consider a cut-off quality to call variants, which is estimated based on input base quality
      and assigned prior probabilities of variant calls.
 
-## 0.5 <Nov 30, 2014> <new-SNP>
+## 0.5.0 <Nov 30, 2014> <new-SNP>
 - Call new variants (new Indels are not considered at this point).
     + Detect mismatches between reads and multigenomes outside of known variants locations to discover new variants.
     + Assign proper prior probabilities for new variants.
 
-## 0.4.1 <Sep 28, 2014>
+## 0.4.1 <Sep 28, 2014> <update-qual>
 - Call variants and calculate variant call quality during alignment phase.
     + Eliminate data structures for storing all possible variants during the alignment phase.
     + Eliminate functions for calling variants after the alignment phase.
 
-## 0.4 <Sep 15, 2014> <Bayesian-var-qual>
+## 0.4.0 <Sep 15, 2014> <Bayesian-var-qual>
 - Calculate variant quality for variant calls using Bayesian method.
     + Read allele frequency from reference variant profile (VCF files).
     + Store all possible variants at each position found from read-multigenome alignment.
@@ -78,7 +78,7 @@ Minor changes:
     + Use uint32 for positions of variant calls.
     + Re-organize functions, remove redundant code.
 
-## 0.3.1 <Aug 13, 2014>
+## 0.3.1 <Aug 13, 2014> <mem-time>
 - Improve memory usage by using a memory-efficient version of fmi package for multigenome (use uint32 instead of int).
 - Improve running time by using goroutines to load index (modify function Load() in fmi package).
 - Improve user interface (main/index.go and main/ivc.go).
@@ -89,22 +89,22 @@ Minor changes:
     + Other goroutines take data from the data channel and process them.
 - Make several minor changes.
 
-## 0.2.5 <Jul 28, 2014>
+## 0.2.5 <Jul 28, 2014> <mem-time>
 - Make several non-algorithm changes.
 - Improve memory usage: put read info and alignment info into shared variables.
 - Re-organize code: put related parameters and variables together in structs,
 and put code for initializing memory to functions on structs.)
 
-## 0.2.4 <Jul 14, 2014>
+## 0.2.4 <Jul 14, 2014> <rand-search>
 - Stick to randomized algorithm with one index as the main strategy.
 
-## 0.2.3 <Jul 9, 2014>
+## 0.2.3 <Jul 9, 2014> <onde-index>
 - Use one index for alignment step.
 
-## 0.2.2 <Jun 22, 2014>
+## 0.2.2 <Jun 22, 2014> <determ-search>
 - Use deterministic search for alignment step.
 
-## 0.2.1 <Jul 17, 2014>
+## 0.2.1 <Jul 17, 2014> <var-qual>
 - Add call variants quality calculation.
 
 ## 0.2.0 <Jun 12, 2014> <pair-end, rev-comp>
@@ -118,3 +118,5 @@ and put code for initializing memory to functions on structs.)
 - Implement seed-and-extend strategy to align reads to the multi-genome.
 - Implement algorithm to calculate distance between reads and the multi-genome.
 - Implement package to build reference multi-genome.
+
+## 0.0.0 <Jan 15, 2014> <initial version>
