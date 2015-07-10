@@ -1,12 +1,11 @@
-(1) Call known deletions:
-    + Adjust code to capture known deletions in alignment.
-    + Report all types of variants.
-
-(2) Reduce runtime and memory
+(1) For 0.7.3 version: Further decrease FP, increase TP, reduce runtime & mem
+    + Consider mapping quality.
+    + Filter unreliable indels at beginning and end of reads.
+    + Try better scoring scheme.
+    + Reduce runtime and memory usage.
 
 (2) Finish some back work:
-    + Read fully allele frequency from SNP profile (VCF files).
-    + Improve reading input (take names of index files from index directory), writing ouput (follow VCF format with more information).
+    + Improve reading input (take names of index files from index directory).
 
 (3) Integrate indexing and SNP calling phases:
     (a) Create or load the index:
