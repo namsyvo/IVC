@@ -139,15 +139,16 @@ func ReadInputInfo() *ivc.InputInfo {
 	input_info.Cpu_prof_file = *cpu_prof_file
 	input_info.Mem_prof_file = *mem_prof_file
 
-	log.Printf("Input files: Genome_file: %s, Var_file: %s, Index_file=%s, Rev_index_file=%s,"+
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Rev_index_file=%s,"+
 		" Read_file_1=%s, Read_file_2=%s, Var_call_file=%s",
 		input_info.Ref_file, input_info.Var_prof_file, input_info.Index_file, input_info.Rev_index_file,
 		input_info.Read_file_1, input_info.Read_file_2, input_info.Var_call_file)
 
-	log.Printf("Input paras: Search_mode=%d, Start_pos=%d, Search_step=%d, Proc_num=%d, Routine_num=%d,"+
+	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Proc_num=%d, Routine_num=%d,"+
 		" Max_snum=%d, Max_psnum=%d, Min_slen=%d, Max_slen=%d, Dist_thres=%d, Prob_thres=%.5f, Iter_num=%d",
 		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Routine_num,
-		input_info.Max_snum, input_info.Max_psnum, input_info.Min_slen, input_info.Max_slen, input_info.Dist_thres, input_info.Prob_thres, input_info.Iter_num)
+		input_info.Max_snum, input_info.Max_psnum, input_info.Min_slen, input_info.Max_slen,
+		input_info.Dist_thres, input_info.Prob_thres, input_info.Iter_num)
 
 	return input_info
 }

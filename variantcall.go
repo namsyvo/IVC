@@ -206,11 +206,7 @@ func (VC *VarCall) CallVariants() {
 	//Collect variants from results channel and update their probabilities
 	var var_info VarInfo
 	for var_info = range var_results {
-		if var_info.Type == 0 {
-			VC.UpdateSNPProb(var_info)
-		} else {
-			VC.UpdateIndelProb(var_info)
-		}
+		VC.UpdateVariantProb(var_info)
 	}
 	//------------------------
 	//For debugging
@@ -321,12 +317,6 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *AlignInfo, seed_pos [][]int, rand_gen *rand.Rand, var_results chan VarInfo) {
 
-	var vars1, vars2 []VarInfo
-	var vars_get1, vars_get2 []VarInfo
-	var l_align_pos1, l_align_pos2 int
-	var s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2 []int
-	var strand_r1, strand_r2 []bool
-
 	//---------------------------------------------------------------------
 	//get info for simulated reads, with specific format of testing dataset
 	//need to be re-implemented for general data
@@ -348,11 +338,15 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 	}
 	//---------------------------------------------------------------------
 
-	//Try to align both ends
-	var cand_num []int
+	var vars1, vars2 []VarInfo
+	var vars_get1, vars_get2 []VarInfo
+	var l_align_pos1, l_align_pos2 int
+	var s_pos_r1, e_pos_r1, s_pos_r2, e_pos_r2, m_pos_r1, m_pos_r2 []int
+	var strand_r1, strand_r2 []bool
 	var has_seeds bool
-	var p_idx, s_idx, c_num int
 	var align_prob1, align_prob2 float64
+	var cand_num []int
+	var p_idx, s_idx, c_num int
 	paired_prob := math.MaxFloat64
 	loop_num := 1
 	loop_has_cand := 0
@@ -393,10 +387,10 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 				if align_prob1 != -1 && align_prob2 != -1 {
 					c_num++
 					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
-					if paired_prob >= align_prob1+align_prob2 {
+					if paired_prob > align_prob1+align_prob2 {
 						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
-						PrintGetVariants(paired_prob, align_prob1, align_prob2, vars1, vars2)
+						PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
 						vars_get1 = make([]VarInfo, len(vars1))
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
@@ -445,6 +439,7 @@ func (VC *VarCall) FindVariantsFromPairedEnds(read_info *ReadInfo, align_info *A
 	}
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
+		PrintGetVariants("Final_var", paired_prob, align_prob1, align_prob2, vars_get1, vars_get2)
 		if len(vars_get1) > 0 {
 			for _, var_info := range vars_get1 {
 				var_info.MProb = map_qual
@@ -729,83 +724,22 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 }
 
 //---------------------------------------------------------------------------------------------------
-// UpdateSNPProb updates probablilities of all possible SNPs.
-//	Input: a variant of type VarInfo which is a SNP.
+// UpdateVariantProb updates probablilities of variants at the location.
+//	Input: a variant of type VarInfo.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCall) UpdateSNPProb(var_info VarInfo) {
-	pos := var_info.Pos
-	a := string(var_info.Bases[0])
-	q := var_info.BQual[0]
-
-	if _, var_exist := VC.VarProb[pos]; !var_exist {
-		VC.VarProb[pos] = make(map[string]float64)
-		VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - 3*NEW_SNP_RATE
-		for _, b := range STD_BASES {
-			if _, ok := VC.VarProb[pos][string(b)]; !ok {
-				VC.VarProb[pos][string(b)] = NEW_SNP_RATE
-			}
-		}
-		VC.VarBQual[pos] = make(map[string][][]byte)
-		VC.VarType[pos] = make(map[string][]int)
-		VC.VarRNum[pos] = make(map[string]int)
-		VC.ChrDis[pos] = make(map[string][]int)
-		VC.ChrDiff[pos] = make(map[string][]int)
-		VC.MapProb[pos] = make(map[string][]float64)
-		VC.AlnProb[pos] = make(map[string][]float64)
-		VC.ChrProb[pos] = make(map[string][]float64)
-		VC.ReadInfo[pos] = make(map[string][][]byte)
-		VC.StartPos1[pos] = make(map[string][]int)
-		VC.StartPos2[pos] = make(map[string][]int)
-		VC.Strand1[pos] = make(map[string][]bool)
-		VC.Strand2[pos] = make(map[string][]bool)
-	}
-	VC.VarBQual[pos][a] = append(VC.VarBQual[pos][a], var_info.BQual)
-	VC.VarType[pos][a] = append(VC.VarType[pos][a], var_info.Type)
-	VC.VarRNum[pos][a] += 1
-	VC.ChrDis[pos][a] = append(VC.ChrDis[pos][a], var_info.CDis)
-	VC.ChrDiff[pos][a] = append(VC.ChrDiff[pos][a], var_info.CDiff)
-	VC.MapProb[pos][a] = append(VC.MapProb[pos][a], var_info.MProb)
-	VC.AlnProb[pos][a] = append(VC.AlnProb[pos][a], var_info.AProb)
-	VC.ChrProb[pos][a] = append(VC.ChrProb[pos][a], var_info.CProb)
-	VC.ReadInfo[pos][a] = append(VC.ReadInfo[pos][a], var_info.RInfo)
-	VC.StartPos1[pos][a] = append(VC.StartPos1[pos][a], var_info.SPos1)
-	VC.StartPos2[pos][a] = append(VC.StartPos2[pos][a], var_info.SPos2)
-	VC.Strand1[pos][a] = append(VC.Strand1[pos][a], var_info.Strand1)
-	VC.Strand2[pos][a] = append(VC.Strand2[pos][a], var_info.Strand2)
-
-	var p float64
-	p_a := 0.0
-	for b, p_b := range VC.VarProb[pos] {
-		if a == b {
-			p = 1.0 - math.Pow(10, -(float64(q)-33)/10.0) //Phred-encoding factor (33) need to be estimated from input data
-		} else {
-			p = math.Pow(10, -(float64(q)-33)/10.0) / 3 //need to be refined, e.g., checked with diff cases (snp vs. indel)
-		}
-		P_AB[b] = p
-		p_a += p_b * P_AB[b]
-	}
-	for b, p_b := range VC.VarProb[pos] {
-		VC.VarProb[pos][b] = p_b * (P_AB[b] / p_a)
-	}
-}
-
-//---------------------------------------------------------------------------------------------------
-// UpdateIndelProb updates probablilities of all possible Indels.
-//	Input: a variant of type VarInfo which is an Indel.
-//---------------------------------------------------------------------------------------------------
-func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
+func (VC *VarCall) UpdateVariantProb(var_info VarInfo) {
 	pos := var_info.Pos
 	a := string(var_info.Bases)
-	q := var_info.BQual
 
-	//Notice: Need to be corrected!
-	if _, var_exist := VC.VarProb[pos]; !var_exist {
+	//if found new variant locations
+	if _, var_prof_exist := VC.VarProb[pos]; !var_prof_exist {
 		VC.VarProb[pos] = make(map[string]float64)
-		VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - 4*NEW_SNP_RATE
-		for _, b := range STD_BASES {
-			if _, ok := VC.VarProb[pos][string(b)]; !ok {
-				VC.VarProb[pos][string(b)] = NEW_SNP_RATE
-			}
+		if var_info.Type == 0 {
+			VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - NEW_SNP_RATE
+			VC.VarProb[pos][a] = NEW_SNP_RATE
+		} else {
+			VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - NEW_INDEL_RATE
+			VC.VarProb[pos][a] = NEW_INDEL_RATE
 		}
 		VC.VarBQual[pos] = make(map[string][][]byte)
 		VC.VarType[pos] = make(map[string][]int)
@@ -821,9 +755,20 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 		VC.Strand1[pos] = make(map[string][]bool)
 		VC.Strand2[pos] = make(map[string][]bool)
 	}
-	//Notice: Using NEW_SNP_RATE, need to consider NEW_INDEL_RATE instead
-	if _, ok := VC.VarProb[pos][a]; !ok {
-		VC.VarProb[pos][a] = NEW_SNP_RATE
+	//if found new variants at existing locations
+	if _, var_exist := VC.VarProb[pos][a]; !var_exist {
+		l := float64(len(VC.VarProb[pos]))
+		if var_info.Type == 0 {
+			for b, _ := range VC.VarProb[pos] {
+				VC.VarProb[pos][b] = VC.VarProb[pos][b] - (1/l)*NEW_SNP_RATE
+			}
+			VC.VarProb[pos][a] = NEW_SNP_RATE
+		} else {
+			for b, _ := range VC.VarProb[pos] {
+				VC.VarProb[pos][b] = VC.VarProb[pos][b] - (1/l)*NEW_INDEL_RATE
+			}
+			VC.VarProb[pos][a] = NEW_INDEL_RATE
+		}
 	}
 	VC.VarBQual[pos][a] = append(VC.VarBQual[pos][a], var_info.BQual)
 	VC.VarType[pos][a] = append(VC.VarType[pos][a], var_info.Type)
@@ -839,24 +784,26 @@ func (VC *VarCall) UpdateIndelProb(var_info VarInfo) {
 	VC.Strand1[pos][a] = append(VC.Strand1[pos][a], var_info.Strand1)
 	VC.Strand2[pos][a] = append(VC.Strand2[pos][a], var_info.Strand2)
 
-	var p float64
+	var p, p_b float64
 	var qi byte
+	var b string
 	p_a := 0.0
-	for b, p_b := range VC.VarProb[pos] {
+	q := var_info.BQual
+	for b, p_b = range VC.VarProb[pos] {
 		p = 1
 		if a == b {
-			for _, qi = range q[0:1] { //temporary change
+			for _, qi = range q[0:1] { //consider only first base for both SNPs and Indels
 				p *= (1.0 - math.Pow(10, -(float64(qi)-33)/10.0)) //Phred-encoding factor (33) need to be estimated from input data
 			}
 		} else {
-			for _, qi = range q[0:1] { //temporary change
+			for _, qi = range q[0:1] { //consider only first base for both SNPs and Indels
 				p *= (math.Pow(10, -(float64(qi)-33)/10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
 			}
 		}
 		P_AB[b] = p
 		p_a += p_b * P_AB[b]
 	}
-	for b, p_b := range VC.VarProb[pos] {
+	for b, p_b = range VC.VarProb[pos] {
 		VC.VarProb[pos][b] = p_b * (P_AB[b] / p_a)
 	}
 }
@@ -874,7 +821,6 @@ func (VC *VarCall) OutputVarCalls() {
 	}
 	defer file.Close()
 
-	fmt.Println("Outputing Variant Calls...")
 	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))
