@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"time"
+	"runtime"
 )
 
 func main() {
@@ -44,6 +45,7 @@ func main() {
 
 	//Creating multigenome and variant profile index---------------------------//
 	fmt.Println("Creating multigenome and variant profile index...")
+	ivc.MEM_STATS = new(runtime.MemStats)
 	start_time := time.Now()
 	genome := ivc.ReadFASTA(*genome_file)
 	ivc.PrintProcessMem("Memstats after reading genome")
