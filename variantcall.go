@@ -622,7 +622,7 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 					l_ref_pos_map = l_ref_pos_map[:len(l_ref_pos_map)-del_len]
 					j -= del_len
 				} else {
-					return vars_arr, -1, -1, -1
+					return vars_arr, -1, -1, 0
 				}
 			}
 		}
@@ -658,7 +658,7 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 				if del_len < r_read_flank_len-j && i+del_len < len(INDEX.Seq) {
 					i += del_len
 				} else {
-					return vars_arr, -1, -1, 1
+					return vars_arr, -1, -1, 0
 				}
 			}
 		}
@@ -712,17 +712,9 @@ func (VC *VarCall) FindVariantsFromExtension(s_pos, e_pos, m_pos int, read, qual
 			PrintMemStats("After GetVar right, var_num " + strconv.Itoa(k))
 		}
 		PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
-		l_ref_flank = nil
-		l_ref_pos_map = nil
-		r_ref_flank = nil
-		r_ref_pos_map = nil
 		return vars_arr, l_align_s_pos, r_align_s_pos, prob
 	}
 	PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
-	l_ref_flank = nil
-	l_ref_pos_map = nil
-	r_ref_flank = nil
-	r_ref_pos_map = nil
 	return vars_arr, -1, -1, -1
 }
 
@@ -817,14 +809,17 @@ func (VC *VarCall) UpdateVariantProb(var_info VarInfo) {
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) OutputVarCalls() {
 
-	file, err := os.Create(INPUT_INFO.Var_call_file)
-	if err != nil {
-		fmt.Println("Error: Create output file", err)
+	f, e := os.Create(INPUT_INFO.Var_call_file)
+	if e != nil {
+		fmt.Println("Error: Create output file", e)
 		os.Exit(1)
 	}
-	defer file.Close()
+	defer f.Close()
 
-	file.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
+	w := bufio.NewWriter(f)
+	w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tMAP_PROB\t" +
+		"COM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\tALN_PROB\tPAIR_PROB\tS_POS1\t" +
+		"BRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))
 	for var_pos, _ = range VC.VarProb {
@@ -929,23 +924,20 @@ func (VC *VarCall) OutputVarCalls() {
 		str_b = strings.Join(line_b, "\t")
 		//Write variant calls to file
 		for idx, _ = range VC.VarBQual[var_pos][var_call] {
-			_, err = file.WriteString(str_a + "\t")
-			_, err = file.WriteString(string(VC.VarBQual[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
-			_, err = file.WriteString(strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
-			_, err = file.WriteString(strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
-			_, err = file.WriteString(strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.FormatBool(VC.Strand1[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(strconv.FormatBool(VC.Strand2[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(string(VC.ReadInfo[var_pos][var_call][idx]) + "\t")
-			_, err = file.WriteString(str_b + "\n")
-			if err != nil {
-				fmt.Println("Error: Write variant calls to file", err)
-				break
-			}
+			w.WriteString(str_a + "\t")
+			w.WriteString(string(VC.VarBQual[var_pos][var_call][idx]) + "\t")
+			w.WriteString(strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]) + "\t")
+			w.WriteString(strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]) + "\t")
+			w.WriteString(strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
+			w.WriteString(strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
+			w.WriteString(strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
+			w.WriteString(strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]) + "\t")
+			w.WriteString(strconv.FormatBool(VC.Strand1[var_pos][var_call][idx]) + "\t")
+			w.WriteString(strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]) + "\t")
+			w.WriteString(strconv.FormatBool(VC.Strand2[var_pos][var_call][idx]) + "\t")
+			w.WriteString(string(VC.ReadInfo[var_pos][var_call][idx]) + "\t")
+			w.WriteString(str_b + "\n")
 		}
 	}
+	w.Flush()
 }
