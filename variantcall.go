@@ -263,6 +263,9 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 			PrintProcessMem("Memstats after distributing 10000 reads")
 			pprof.WriteHeapProfile(MEM_FILE)
 		}
+		if read_num%100000 == 0 {
+			fmt.Println("Processed", read_num, "reads")
+		}
 	}
 	close(read_data)
 }
