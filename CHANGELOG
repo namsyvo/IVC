@@ -1,3 +1,13 @@
+## 0.7.3 <Aug 19, 2015> <long-indel>
+Major changes:
+- Allow calling very long indels.
+- Add mapping quality to variant calls.
+- Make alignment bias (w.r.t indels) to be consistent in whole alignment process.
+- Make some improvements in both runtime and memory usage.
+Minor changes:
+- Increase digit precision of prob in output files.
+- Change indel filtering criteria.
+
 ## 0.7.2 <Jun 16, 2015> <known-del>
 Major changes:
 - Call known deletions:

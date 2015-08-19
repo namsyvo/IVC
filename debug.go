@@ -131,7 +131,7 @@ func PrintRefPosMap(l_ref_pos_map, r_ref_pos_map []int) {
 	}
 }
 
-func PrintGetVariants(mess string, paired_prob, prob1, prob2 float64, vars1, vars2 []VarInfo) {
+func PrintGetVariants(mess string, paired_prob, prob1, prob2 float64, vars1, vars2 []*VarInfo) {
 	if PRINT_VAR_CALL_INFO {
 		fmt.Println(mess)
 		fmt.Println("Dis to get vars: paired_prob, prob1 (1st-end), prob2 (2nd-end)", paired_prob, prob1, prob2)

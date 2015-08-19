@@ -208,10 +208,20 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 	}
 }
 
+//---------------------------------------------------------------------------------------------------
+// SeedInfo represents info of seeds between reads and the multigenome.
+//---------------------------------------------------------------------------------------------------
+type SeedInfo struct {
+	s_pos  []int  //staring position of seeds on reads.
+	e_pos  []int  //ending position of seeds on reads.
+	m_pos  []int  //(left-most) matching position of seeds on the reference multigenome.
+	strand []bool //strand (forward or reverse) of matches on the reference multigenome.
+}
+
 //--------------------------------------------------------------------------------------------------
 // Alignment information, served as shared variables between functions for alignment process
 //--------------------------------------------------------------------------------------------------
-type AlignInfo struct {
+type EditAlnInfo struct {
 	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT    [][]float64 // Distance matrix for backward alignment
 	Bw_Trace_D, Bw_Trace_IS, Bw_Trace_IT [][][]int   // Backtrace matrix for backward alignment
 	Fw_Dist_D, Fw_Dist_IS, Fw_Dist_IT    [][]float64 // Distance matrix for forward alignment
@@ -219,23 +229,23 @@ type AlignInfo struct {
 }
 
 //--------------------------------------------------------------------------------------------------
-// InitAlignInfo allocates memory for share variables for alignment process
+// InitEditAlnInfo allocates memory for share variables for alignment process
 //--------------------------------------------------------------------------------------------------
-func InitAlignInfo(arr_len int) *AlignInfo {
-	align_info := new(AlignInfo)
-	align_info.Bw_Dist_D, align_info.Bw_Trace_D = InitAlignMatrix(arr_len)
-	align_info.Bw_Dist_IS, align_info.Bw_Trace_IS = InitAlignMatrix(arr_len)
-	align_info.Bw_Dist_IT, align_info.Bw_Trace_IT = InitAlignMatrix(arr_len)
-	align_info.Fw_Dist_D, align_info.Fw_Trace_D = InitAlignMatrix(arr_len)
-	align_info.Fw_Dist_IS, align_info.Fw_Trace_IS = InitAlignMatrix(arr_len)
-	align_info.Fw_Dist_IT, align_info.Fw_Trace_IT = InitAlignMatrix(arr_len)
-	return align_info
+func InitEditAlnInfo(arr_len int) *EditAlnInfo {
+	aln_info := new(EditAlnInfo)
+	aln_info.Bw_Dist_D, aln_info.Bw_Trace_D = InitEditAlnMat(arr_len)
+	aln_info.Bw_Dist_IS, aln_info.Bw_Trace_IS = InitEditAlnMat(arr_len)
+	aln_info.Bw_Dist_IT, aln_info.Bw_Trace_IT = InitEditAlnMat(arr_len)
+	aln_info.Fw_Dist_D, aln_info.Fw_Trace_D = InitEditAlnMat(arr_len)
+	aln_info.Fw_Dist_IS, aln_info.Fw_Trace_IS = InitEditAlnMat(arr_len)
+	aln_info.Fw_Dist_IT, aln_info.Fw_Trace_IT = InitEditAlnMat(arr_len)
+	return aln_info
 }
 
 //--------------------------------------------------------------------------------------------------
-// InitAlignMatrix initializes variables for computing distance and alignment between reads and multi-genomes.
+// InitEditAlnMat initializes variables for computing distance and alignment between reads and multi-genomes.
 //--------------------------------------------------------------------------------------------------
-func InitAlignMatrix(arr_len int) ([][]float64, [][][]int) {
+func InitEditAlnMat(arr_len int) ([][]float64, [][][]int) {
 	dis_mat := make([][]float64, arr_len+1)
 	for i := 0; i <= arr_len; i++ {
 		dis_mat[i] = make([]float64, arr_len+1)
