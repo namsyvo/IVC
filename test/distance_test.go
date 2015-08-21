@@ -5,12 +5,12 @@
 
 package ivc_test
 
+/*
 import (
 	"fmt"
+	"github.com/namsyvo/IVC"
 	"testing"
-    "github.com/namsyvo/IVC"
 )
-
 type type_snpprofile map[int][][]byte
 type type_samelensnp map[int]int
 type TestCase struct {
@@ -21,7 +21,6 @@ type TestCase struct {
 	qual string
 	d float64
 }
-/*
 // Test for alignment between reads and "starred" multi-genomes
 func TestBackwarddistance2MultiAlignment(t *testing.T) {
 	defer __(o_())
@@ -224,7 +223,6 @@ func TestForwarddistance2MultiAlignment2(t *testing.T) {
 		}
 	}
 }
-*/
 // Test for alignment between reads and "starred" multi-genomes
 // Some more complex cases
 func TestBackwardAffineGapEditDistance(t *testing.T) {
@@ -232,8 +230,8 @@ func TestBackwardAffineGapEditDistance(t *testing.T) {
 
 	var test_cases = []TestCase{
 		//test for 2 snp pos
-		{ type_snpprofile{3230632: {{'A'}, {'A', 'C'}}, 3230636: {{'G'}, {'G', 'G', 'G', 'G', 'G', 'T'}}, 3230637: {{'G'}, {'C'}} },
-		 type_samelensnp{3230637: 1}, "GAATGCCGTCCTTCCCC*CCG**GGGG", "CCTTCCCCACCCGGGGGGTGCGGGG", "@>=?>=>>>???@;@@>?>=>>?=>", 38.0 },
+		{type_snpprofile{3230632: {{'A'}, {'A', 'C'}}, 3230636: {{'G'}, {'G', 'G', 'G', 'G', 'G', 'T'}}, 3230637: {{'G'}, {'C'}}},
+			type_samelensnp{3230637: 1}, "GAATGCCGTCCTTCCCC*CCG**GGGG", "CCTTCCCCACCCGGGGGGTGCGGGG", "@>=?>=>>>???@;@@>?>=>>?=>", 38.0},
 	}
 	ivc.INDEX.SNP_PROF, _, ivc.INDEX.SAME_LEN_SNP = ivc.LoadSNPLocation("/data/nsvo/test-data/GRCh37_chr1/indexes/af_mutant_index/index_0.70/ivc_snp_prof_0.70.vcf.idx")
 	ivc.PARA_INFO = *ivc.SetPara(100, 500, 700, 0.0015, 0.01)
@@ -244,10 +242,11 @@ func TestBackwardAffineGapEditDistance(t *testing.T) {
 		//Init(DIST_THRES, test_cases[i].Profile, test_cases[i].SNPlen, 100)
 		read, qual, ref := []byte(test_cases[i].read), []byte(test_cases[i].qual), []byte(test_cases[i].ref)
 		d, D, m, n, _, _, _ := snp_prof.BackwardDistance(read, qual, ref, 3230615, align_info.Bw_Dis, align_info.Bw_Trace)
-		fmt.Println("Successful alignment (distance2, read, ref, profile, m, n, case):", d + D, string([]byte(test_cases[i].read)), string([]byte(test_cases[i].ref)), test_cases[i].Profile, m, n, i)
+		fmt.Println("Successful alignment (distance2, read, ref, profile, m, n, case):", d+D, string([]byte(test_cases[i].read)), string([]byte(test_cases[i].ref)), test_cases[i].Profile, m, n, i)
 		l_pos, l_val, l_idx := snp_prof.BackwardTraceBack(read, qual, ref, m, n, 3230615, align_info.Bw_Dis, align_info.Bw_Trace)
 		for i := 0; i < len(l_pos); i++ {
-				fmt.Println(l_pos[i], string(l_val[i]), l_idx[i])
+			fmt.Println(l_pos[i], string(l_val[i]), l_idx[i])
 		}
 	}
 }
+*/
