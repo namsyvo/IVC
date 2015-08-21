@@ -282,7 +282,7 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 
 	//Initialize inter-function share variables
 	read_info := InitReadInfo(PARA_INFO.Read_len, PARA_INFO.Info_len)
-	edit_aln_info := InitEditAlnInfo(2*PARA_INFO.Read_len)
+	edit_aln_info := InitEditAlnInfo(2 * PARA_INFO.Read_len)
 	seed_pos := make([][]int, 4)
 	for i := 0; i < 4; i++ {
 		seed_pos[i] = make([]int, INPUT_INFO.Max_snum)
@@ -530,7 +530,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 				if del_len < r_read_flank_len-j && i+del_len < len(INDEX.Seq) {
 					i += del_len
 				} else {
-					return vars_arr, -1, -1, 0
+					return vars_arr, -1, -1, 1
 				}
 			}
 		}
@@ -663,8 +663,14 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 				p *= (1.0 - math.Pow(10, -(float64(qi)-33)/10.0)) //Phred-encoding factor (33) need to be estimated from input data
 			}
 		} else {
-			for _, qi = range q[0:1] { //consider only first base for both SNPs and Indels
-				p *= (math.Pow(10, -(float64(qi)-33)/10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
+			if len(a) == 1 && len(b) == 1 {
+				for _, qi = range q[0:1] { //consider only first base for both SNPs and Indels
+					p *= (math.Pow(10, -(float64(qi)-33)/10.0) / 3) //need to be refined, e.g., checked with diff cases (snp vs. indel)
+				}
+			} else if len(a) > 1 {
+				p *= math.Pow(NEW_SNP_RATE, float64(len(a)))
+			} else {
+				p *= NEW_SNP_RATE
 			}
 		}
 		P_AB[b] = p
