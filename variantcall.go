@@ -300,7 +300,7 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 	}
 
 	for read := range read_data {
-		PrintMemStats("Before copying all info from data chan")
+		//PrintMemStats("Before copying all info from data chan")
 		read_info.Info1 = read_info.Info1[:len(read.Info1)]
 		read_info.Info2 = read_info.Info2[:len(read.Info2)]
 		copy(read_info.Info1, read.Info1)
@@ -315,16 +315,16 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 		copy(read_info.Qual2, read.Qual2)
 		<-read_signal
 
-		PrintMemStats("After copying all info from data chan")
+		//PrintMemStats("After copying all info from data chan")
 		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1,
 			read_info.Comp_read1, read_info.Rev_qual1)
-		PrintMemStats("After calculating RevComp for Read1")
+		//PrintMemStats("After calculating RevComp for Read1")
 		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2,
 			read_info.Comp_read2, read_info.Rev_qual2)
-		PrintMemStats("After calculating RevComp for Read2")
+		//PrintMemStats("After calculating RevComp for Read2")
 
 		VC.FindVariantsPE(read_info, edit_aln_info, seed_pos, rand_gen, var_results)
-		PrintMemStats("After finding all Vars from reads")
+		//PrintMemStats("After finding all Vars from reads")
 	}
 }
 
@@ -365,7 +365,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	loop_num := 1
 	loop_has_cand := 0
 	for loop_num <= PARA_INFO.Iter_num {
-		PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
+		//PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
 		seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen)
 		c_num = 0
 		if has_seeds {
@@ -377,7 +377,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					continue
 				}
 				//Find variants for the first end
-				PrintMemStats("Before FindVariantsFromEnd1")
+				//PrintMemStats("Before FindVariantsFromEnd1")
 				if seed_info1.strand[p_idx] == true {
 					vars1, _, _, align_prob1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 						seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info)
@@ -385,10 +385,10 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					vars1, _, _, align_prob1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 						seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info)
 				}
-				PrintMemStats("After FindVariantsFromEnd1")
+				//PrintMemStats("After FindVariantsFromEnd1")
 
 				//Find variants for the second end
-				PrintMemStats("Before FindVariantsFromEnd2")
+				//PrintMemStats("Before FindVariantsFromEnd2")
 				if seed_info2.strand[p_idx] == true {
 					vars2, _, _, align_prob2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 						seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info)
@@ -396,7 +396,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					vars2, _, _, align_prob2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 						seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info)
 				}
-				PrintMemStats("After FindVariantsFromEnd2")
+				//PrintMemStats("After FindVariantsFromEnd2")
 
 				if align_prob1 != -1 && align_prob2 != -1 {
 					c_num++
@@ -404,7 +404,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					if paired_prob > align_prob1+align_prob2 {
 						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
-						PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
+						//PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
 						vars_get1 = make([]*VarInfo, len(vars1))
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
@@ -453,7 +453,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	}
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
-		PrintGetVariants("Final_var", paired_prob, align_prob1, align_prob2, vars_get1, vars_get2)
+		//PrintGetVariants("Final_var", paired_prob, align_prob1, align_prob2, vars_get1, vars_get2)
 		if len(vars_get1) > 0 {
 			for _, var_info := range vars_get1 {
 				if INPUT_INFO.Debug_mode {
@@ -490,7 +490,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info *EditAlnInfo) ([]*VarInfo, int, int, float64) {
 
-	PrintMemStats("Before FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
+	//PrintMemStats("Before FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 
 	var vars_arr []*VarInfo
 	var i, j, del_len int
@@ -556,8 +556,8 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		i++
 	}
 
-	PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
-	PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
+	//PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
+	//PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
 
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
 		VC.BackwardDistance(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, edit_aln_info.Bw_Dist_D,
@@ -576,7 +576,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			l_var_qual = append(l_var_qual, l_qual...)
 			l_var_type = append(l_var_type, l_type...)
 		}
-		PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_var_pos, read)
+		//PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_var_pos, read)
 		if r_m > 0 && r_n > 0 {
 			r_pos, r_base, r_qual, r_type := VC.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos,
 				r_bt_mat, edit_aln_info.Fw_Trace_D, edit_aln_info.Fw_Trace_IS, edit_aln_info.Fw_Trace_IT, r_ref_pos_map)
@@ -585,26 +585,26 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			r_var_qual = append(r_var_qual, r_qual...)
 			r_var_type = append(r_var_type, r_type...)
 		}
-		PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_var_pos, read)
+		//PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_var_pos, read)
 		var k int
 		for k = 0; k < len(l_var_pos); k++ {
-			PrintMemStats("Before GetVar left, var_num " + strconv.Itoa(k))
+			//PrintMemStats("Before GetVar left, var_num " + strconv.Itoa(k))
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(l_var_pos[k]), l_var_base[k], l_var_qual[k], l_var_type[k]
 			vars_arr = append(vars_arr, var_info)
-			PrintMemStats("After GetVar left, var_num " + strconv.Itoa(k))
+			//PrintMemStats("After GetVar left, var_num " + strconv.Itoa(k))
 		}
 		for k = 0; k < len(r_var_pos); k++ {
-			PrintMemStats("Before GetVar right, var_num " + strconv.Itoa(k))
+			//PrintMemStats("Before GetVar right, var_num " + strconv.Itoa(k))
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(r_var_pos[k]), r_var_base[k], r_var_qual[k], r_var_type[k]
 			vars_arr = append(vars_arr, var_info)
-			PrintMemStats("After GetVar right, var_num " + strconv.Itoa(k))
+			//PrintMemStats("After GetVar right, var_num " + strconv.Itoa(k))
 		}
-		PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
+		//PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 		return vars_arr, l_align_s_pos, r_align_s_pos, prob
 	}
-	PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
+	//PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 	return vars_arr, -1, -1, -1
 }
 
@@ -721,9 +721,9 @@ func (VC *VarCall) OutputVarCalls() {
 	if INPUT_INFO.Debug_mode == false {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\n")
 	} else {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tVAR_PROB\tMAP_PROB\t" +
-			"COM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\tALN_PROB\tPAIR_PROB\tS_POS1\t" +
-			"BRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
+			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
+			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
 	}
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))
