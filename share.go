@@ -59,6 +59,7 @@ type InputInfo struct {
 	Iter_num       int     //number of random iterations to find proper alignments
 	Cpu_prof_file  string  //file to write cpu profile
 	Mem_prof_file  string  //file to write mem profile
+	Debug_mode     bool    //debug mode for output
 }
 
 //--------------------------------------------------------------------------------------------------
