@@ -15,18 +15,22 @@ import (
 func TestVarQual(t *testing.T) {
 	defer __(o_())
 
+	ivc.Q2C = make(map[byte]float64)
+	ivc.Q2E = make(map[byte]float64)
 	ivc.Q2P = make(map[byte]float64)
 	var q byte
 	for i := 33; i < 74; i++ {
 		q = byte(i)
-		ivc.Q2P[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
+		//Phred-encoding factor (33) need to be estimated from input data
+		ivc.Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
+		ivc.Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
+		ivc.Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
 	}
-	ivc.P_AB = make(map[string]float64)
 
 	VC := new(ivc.VarCall)
 	VC.VarProb = make(map[uint32]map[string]float64)
 	VC.VarBQual = make(map[uint32]map[string][][]byte)
-	VC.VarType = make(map[uint32]map[string][]int)
+	VC.VarType = make(map[uint32]map[string]int)
 	VC.VarRNum = make(map[uint32]map[string]int)
 	VC.ChrDis = make(map[uint32]map[string][]int)
 	VC.ChrDiff = make(map[uint32]map[string][]int)
@@ -41,7 +45,7 @@ func TestVarQual(t *testing.T) {
 
 	VC.VarProb[100] = make(map[string]float64)
 	VC.VarBQual[100] = make(map[string][][]byte)
-	VC.VarType[100] = make(map[string][]int)
+	VC.VarType[100] = make(map[string]int)
 	VC.VarRNum[100] = make(map[string]int)
 	VC.ChrDis[100] = make(map[string][]int)
 	VC.ChrDiff[100] = make(map[string][]int)
@@ -54,169 +58,43 @@ func TestVarQual(t *testing.T) {
 	VC.Strand2[100] = make(map[string][]bool)
 	VC.ReadInfo[100] = make(map[string][][]byte)
 
-	var_desc := make([]string, 10)
-	var_info := make([][]*ivc.VarInfo, 10)
-
 	//**********************************
-	i := 0
-	var_desc[i] = "1A, 1ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 2)
-	for j := 0; j < 1; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
+	assign_var := func(m, n int) []*ivc.VarInfo {
+		var_info := make([]*ivc.VarInfo, m+n)
+		for j := 0; j < m; j++ {
+			var_info[j] = new(ivc.VarInfo)
+			var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("A"), []byte("I"), 0
+		}
+		for j := m; j < m+n; j++ {
+			var_info[j] = new(ivc.VarInfo)
+			var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("C"), []byte("I"), 0
+			//var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("ACGT"), []byte("IIII"), 1
+		}
+		return var_info
 	}
-	for j := 1; j < 2; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 1
-	var_desc[i] = "2ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 2)
-	for j := 0; j < 0; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 0; j < 2; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 2
-	var_desc[i] = "2A, 1ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 3)
-	for j := 0; j < 2; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 2; j < 3; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 3
-	var_desc[i] = "1A, 2ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 3)
-	for j := 0; j < 1; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 1; j < 3; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 4
-	var_desc[i] = "3ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 3)
-	for j := 0; j < 0; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 0; j < 3; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 5
-	var_desc[i] = "3A, 1ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 4)
-	for j := 0; j < 3; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 3; j < 4; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 6
-	var_desc[i] = "3A, 2ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 5)
-	for j := 0; j < 3; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 3; j < 5; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 7
-	var_desc[i] = "4A, 2ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 6)
-	for j := 0; j < 4; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 4; j < 6; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 8
-	var_desc[i] = "5A, 2ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 7)
-	for j := 0; j < 5; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 5; j < 7; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
-	//**********************************
-	i = 9
-	var_desc[i] = "16A, 3G, 9ACGT"
-	var_info[i] = make([]*ivc.VarInfo, 28)
-	for j := 0; j < 16; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("A"), []byte("E"), 0
-	}
-	for j := 16; j < 19; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("G"), []byte("E"), 0
-	}
-	for j := 19; j < 28; j++ {
-		var_info[i][j] = new(ivc.VarInfo)
-		var_info[i][j].Pos, var_info[i][j].Bases, var_info[i][j].BQual, var_info[i][j].Type = 100, []byte("ACGT"), []byte("EEEE"), 1
-	}
-
 	//*******************************
-    reset_prob := func() {
+	init_prob := func() {
 		VC.VarProb[100]["A"] = 0.999969
 		VC.VarProb[100]["C"] = 0.00001
 		VC.VarProb[100]["G"] = 0.00001
 		VC.VarProb[100]["T"] = 0.00001
 		VC.VarProb[100]["ACGT"] = 0.000001
-    }
+	}
 
+	init_prob()
 	fmt.Println("Initial")
 	for v, p := range VC.VarProb[100] {
 		fmt.Println("Var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
 	}
 	fmt.Println()
-	for i = 0; i < 10; i++ {
-		fmt.Println("Case", i, ":", var_desc[i])
-		reset_prob()
-		for _, var_item := range var_info[i] {
-			fmt.Println("Update for var", string(var_item.Bases))
-			VC.UpdateVariantProb(var_item)
-			for v, p := range VC.VarProb[100] {
-				fmt.Println("Var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-			}
-			fmt.Println()
+	var_info := assign_var(1, 2)
+	for _, var_item := range var_info {
+		fmt.Println("Update for var", string(var_item.Bases))
+		VC.UpdateVariantProb(var_item)
+		for v, p := range VC.VarProb[100] {
+			fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
 		}
-		fmt.Println("------------")
+		fmt.Println()
 	}
 }
 
