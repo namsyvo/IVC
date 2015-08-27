@@ -32,20 +32,20 @@ var (
 // It serves as temporary variable during variant calling phase.
 //---------------------------------------------------------------------------------------------------
 type VarInfo struct {
-	Pos     uint32  //postion of the variant (on the reference)
-	Bases   []byte  //bases of the variant
-	BQual   []byte  //quality of bases of the variant
-	Type    int     //type of the variant (sub, ins, del...)
-	CDis    int     //chromosomal distance between alignment positions of two read-ends
-	CDiff   int     //chromosomal distance between aligned pos and true pos
-	MProb   float64 //prob of correct mapped read
-	AProb   float64 //prob of correct aligned read
-	CProb   float64 //prob correct paired-end mapping
-	RInfo   []byte  //info of aligned reads
-	SPos1   int     //starting pos on read1 of exact match (i.e. ending position from backward search with FM-index)
-	SPos2   int     //starting pos on read2 of exact match
-	Strand1 bool    //strand (backward/forward) of read1 of exact match
-	Strand2 bool    //strand (backward/forward) of read2 of exact match
+	Pos     uint32  //Postion of variant (on the reference)
+	Bases   []byte  //Aligned bases to be the variant
+	BQual   []byte  //Quality sequences (in FASTQ format) of bases to be the variant
+	Type    int     //Type of the variant (0: sub, 1: ins, 2: del; other types will be considered in future)
+	CDis    int     //Chromosomal distance between alignment positions of two read-ends
+	CDiff   int     //Chromosomal distance between aligned pos and true pos
+	MProb   float64 //Probability of mapping read corectly (mapping quality)
+	AProb   float64 //Probability of aligning read correctly (alignment quality)
+	IProb   float64 //Probability of insert size to be correct (for pair-end reads)
+	SPos1   int     //Starting position on read1 of exact match (or ending position from backward search with FM-index)
+	SPos2   int     //Starting position on read2 of exact match (or ending position from backward search with FM-index)
+	Strand1 bool    //Strand (backward/forward) of read1 of exact match
+	Strand2 bool    //Strand (backward/forward) of read2 of exact match
+	RInfo   []byte  //Information sequences (in FASTQ format) of aligned reads (header of reads in FASTQ format)
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -57,19 +57,19 @@ type VarCall struct {
 	//Prior probablities will be obtained from reference genomes and variant profiles.
 	//Posterior probabilities will be updated during alignment phase based on incomming aligned bases
 	VarProb   map[uint32]map[string]float64   //Probability of the variant call
-	VarBQual  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
-	VarType   map[uint32]map[string]int       //Type of variants (currently: 0:sub, 1:ins, 2:del)
+	VarType   map[uint32]map[string]int       //Type of variants (0: sub, 1: ins, 2: del; other types will be considered in future)
 	VarRNum   map[uint32]map[string]int       //Numer of reads (bases) aligned to the variant call postion
 	ChrDis    map[uint32]map[string][]int     //Chromosomal distance between two aligned ends
 	ChrDiff   map[uint32]map[string][]int     //Chromosomal distance betwwen the aligned postion and true postion (for simulated data)
-	MapProb   map[uint32]map[string][]float64 //Probability of correct mapped read at the variant call position
-	AlnProb   map[uint32]map[string][]float64 //Probability of correct aligned read at the variant call position
-	ChrProb   map[uint32]map[string][]float64 //Probability of correct paired-end mapping
+	MapProb   map[uint32]map[string][]float64 //Probability of mapping read corectly (mapping quality)
+	AlnProb   map[uint32]map[string][]float64 //Probability of aligning read correctly (alignment quality)
+	ChrProb   map[uint32]map[string][]float64 //Probability of insert size to be correct (for pair-end reads)
 	StartPos1 map[uint32]map[string][]int     //Start position of alignment of the first end
 	StartPos2 map[uint32]map[string][]int     //Start position of alignment of the second end
-	Strand1   map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if identicaly with ref)
-	Strand2   map[uint32]map[string][]bool    //Strand indicator of the second end
-	ReadInfo  map[uint32]map[string][][]byte  //Info of aligned reads at the variant call position
+	Strand1   map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if read has same strand with ref, "false" otherwise)
+	Strand2   map[uint32]map[string][]bool    //Strand indicator of the second end ("true" if read has same strand with ref, "false" otherwise)
+	VarBQual  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
+	ReadInfo  map[uint32]map[string][][]byte  //Information sequences (in FASTQ format) of aligned reads (header of reads in FASTQ format)
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -102,17 +102,17 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 	VC.VarType = make(map[uint32]map[string]int)
 	VC.VarRNum = make(map[uint32]map[string]int)
 	if input_info.Debug_mode {
-		VC.VarBQual = make(map[uint32]map[string][][]byte)
-		VC.MapProb = make(map[uint32]map[string][]float64)
 		VC.ChrDis = make(map[uint32]map[string][]int)
 		VC.ChrDiff = make(map[uint32]map[string][]int)
+		VC.MapProb = make(map[uint32]map[string][]float64)
 		VC.AlnProb = make(map[uint32]map[string][]float64)
 		VC.ChrProb = make(map[uint32]map[string][]float64)
-		VC.ReadInfo = make(map[uint32]map[string][][]byte)
 		VC.StartPos1 = make(map[uint32]map[string][]int)
 		VC.StartPos2 = make(map[uint32]map[string][]int)
 		VC.Strand1 = make(map[uint32]map[string][]bool)
 		VC.Strand2 = make(map[uint32]map[string][]bool)
+		VC.VarBQual = make(map[uint32]map[string][][]byte)
+		VC.ReadInfo = make(map[uint32]map[string][][]byte)
 	}
 	var pos uint32
 	var var_bases []byte
@@ -144,17 +144,17 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 		VC.VarType[pos] = make(map[string]int)
 		VC.VarRNum[pos] = make(map[string]int)
 		if input_info.Debug_mode {
-			VC.VarBQual[pos] = make(map[string][][]byte)
 			VC.ChrDis[pos] = make(map[string][]int)
 			VC.ChrDiff[pos] = make(map[string][]int)
 			VC.MapProb[pos] = make(map[string][]float64)
 			VC.AlnProb[pos] = make(map[string][]float64)
 			VC.ChrProb[pos] = make(map[string][]float64)
-			VC.ReadInfo[pos] = make(map[string][][]byte)
 			VC.StartPos1[pos] = make(map[string][]int)
 			VC.StartPos2[pos] = make(map[string][]int)
 			VC.Strand1[pos] = make(map[string][]bool)
 			VC.Strand2[pos] = make(map[string][]bool)
+			VC.VarBQual[pos] = make(map[string][][]byte)
+			VC.ReadInfo[pos] = make(map[string][][]byte)
 		}
 	}
 	return VC
@@ -198,18 +198,20 @@ func (VC *VarCall) CallVariants() {
 		rand_gen[i] = rand.New(rand.NewSource(time.Now().UnixNano()))
 		go VC.FindVariants(read_data, read_signal, var_results, rand_gen[i], &wg)
 	}
-	//------------------------
-	//For debugging
-	go func() {
-		GetNoAlignReadInfo()
-	}()
+	/*
+		//------------------------
+		//For debugging
+		go func() {
+			GetNoAlignReadInfo()
+		}()
+	*/
 	//------------------------
 	go func() {
 		wg.Wait()
 		close(var_results)
 		//------------------------
 		//For debugging
-		close(NO_ALIGN_READ_INFO_CHAN)
+		//close(NO_ALIGN_READ_INFO_CHAN)
 		//------------------------
 	}()
 
@@ -220,7 +222,7 @@ func (VC *VarCall) CallVariants() {
 	}
 	//------------------------
 	//For debugging
-	ProcessNoAlignReadInfo(VC.VarProb)
+	//ProcessNoAlignReadInfo(VC.VarProb)
 	//------------------------
 }
 
@@ -298,7 +300,6 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 	for i := 0; i < 4; i++ {
 		seed_pos[i] = make([]int, INPUT_INFO.Max_snum)
 	}
-
 	for read := range read_data {
 		//PrintMemStats("Before copying all info from data chan")
 		read_info.Info1 = read_info.Info1[:len(read.Info1)]
@@ -400,7 +401,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 
 				if align_prob1 != -1 && align_prob2 != -1 {
 					c_num++
-					a_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
+					ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
 					if paired_prob > align_prob1+align_prob2 {
 						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
@@ -409,17 +410,17 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
 								vars_get1[s_idx] = vars1[s_idx]
-								//Update vars_get1 with other info
 								if INPUT_INFO.Debug_mode {
+									//Update vars_get1 with other info
 									vars_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 									vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
 									vars_get1[s_idx].AProb = align_prob1
-									vars_get1[s_idx].CProb = a_prob
-									vars_get1[s_idx].RInfo = read_info1
+									vars_get1[s_idx].IProb = ins_prob
 									vars_get1[s_idx].SPos1 = seed_info1.e_pos[p_idx]
 									vars_get1[s_idx].SPos2 = seed_info2.e_pos[p_idx]
 									vars_get1[s_idx].Strand1 = seed_info1.strand[p_idx]
 									vars_get1[s_idx].Strand2 = seed_info2.strand[p_idx]
+									vars_get1[s_idx].RInfo = read_info1
 								}
 							}
 						}
@@ -427,17 +428,17 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 						if len(vars2) > 0 {
 							for s_idx = 0; s_idx < len(vars2); s_idx++ {
 								vars_get2[s_idx] = vars2[s_idx]
-								//Update vars_get2 with other info
 								if INPUT_INFO.Debug_mode {
+									//Update vars_get2 with other info
 									vars_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
 									vars_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
 									vars_get2[s_idx].AProb = align_prob2
-									vars_get2[s_idx].CProb = a_prob
-									vars_get2[s_idx].RInfo = read_info2
+									vars_get2[s_idx].IProb = ins_prob
 									vars_get2[s_idx].SPos1 = seed_info1.e_pos[p_idx]
 									vars_get2[s_idx].SPos2 = seed_info2.e_pos[p_idx]
 									vars_get2[s_idx].Strand1 = seed_info1.strand[p_idx]
 									vars_get2[s_idx].Strand2 = seed_info2.strand[p_idx]
+									vars_get2[s_idx].RInfo = read_info2
 								}
 							}
 						}
@@ -472,14 +473,15 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 		}
 		return
 	}
-
-	//Cannot align any ends, consider as unaligned reads
-	var at Align_trace_info
-	if INPUT_INFO.Debug_mode {
-		at.read_info1 = read_info1
-		at.read_info2 = read_info2
-	}
-	NO_ALIGN_READ_INFO_CHAN <- at
+	/*
+		//Cannot align any ends, consider as unaligned reads
+		var at Align_trace_info
+		if INPUT_INFO.Debug_mode {
+			at.read_info1 = read_info1
+			at.read_info2 = read_info2
+		}
+		NO_ALIGN_READ_INFO_CHAN <- at
+	*/
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -588,18 +590,14 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		//PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_var_pos, read)
 		var k int
 		for k = 0; k < len(l_var_pos); k++ {
-			//PrintMemStats("Before GetVar left, var_num " + strconv.Itoa(k))
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(l_var_pos[k]), l_var_base[k], l_var_qual[k], l_var_type[k]
 			vars_arr = append(vars_arr, var_info)
-			//PrintMemStats("After GetVar left, var_num " + strconv.Itoa(k))
 		}
 		for k = 0; k < len(r_var_pos); k++ {
-			//PrintMemStats("Before GetVar right, var_num " + strconv.Itoa(k))
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(r_var_pos[k]), r_var_base[k], r_var_qual[k], r_var_type[k]
 			vars_arr = append(vars_arr, var_info)
-			//PrintMemStats("After GetVar right, var_num " + strconv.Itoa(k))
 		}
 		//PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 		return vars_arr, l_align_s_pos, r_align_s_pos, prob
@@ -626,17 +624,17 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 		VC.VarType[var_info.Pos] = make(map[string]int)
 		VC.VarRNum[var_info.Pos] = make(map[string]int)
 		if INPUT_INFO.Debug_mode {
-			VC.VarBQual[var_info.Pos] = make(map[string][][]byte)
 			VC.ChrDis[var_info.Pos] = make(map[string][]int)
 			VC.ChrDiff[var_info.Pos] = make(map[string][]int)
 			VC.MapProb[var_info.Pos] = make(map[string][]float64)
 			VC.AlnProb[var_info.Pos] = make(map[string][]float64)
 			VC.ChrProb[var_info.Pos] = make(map[string][]float64)
-			VC.ReadInfo[var_info.Pos] = make(map[string][][]byte)
 			VC.StartPos1[var_info.Pos] = make(map[string][]int)
 			VC.StartPos2[var_info.Pos] = make(map[string][]int)
 			VC.Strand1[var_info.Pos] = make(map[string][]bool)
 			VC.Strand2[var_info.Pos] = make(map[string][]bool)
+			VC.VarBQual[var_info.Pos] = make(map[string][][]byte)
+			VC.ReadInfo[var_info.Pos] = make(map[string][][]byte)
 		}
 	}
 	//if found new variants at existing locations
@@ -659,17 +657,17 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 	VC.VarType[var_info.Pos][string(var_info.Bases)] = var_info.Type
 	VC.VarRNum[var_info.Pos][string(var_info.Bases)] += 1
 	if INPUT_INFO.Debug_mode {
-		VC.VarBQual[var_info.Pos][string(var_info.Bases)] = append(VC.VarBQual[var_info.Pos][string(var_info.Bases)], var_info.BQual)
 		VC.ChrDis[var_info.Pos][string(var_info.Bases)] = append(VC.ChrDis[var_info.Pos][string(var_info.Bases)], var_info.CDis)
 		VC.ChrDiff[var_info.Pos][string(var_info.Bases)] = append(VC.ChrDiff[var_info.Pos][string(var_info.Bases)], var_info.CDiff)
 		VC.MapProb[var_info.Pos][string(var_info.Bases)] = append(VC.MapProb[var_info.Pos][string(var_info.Bases)], var_info.MProb)
 		VC.AlnProb[var_info.Pos][string(var_info.Bases)] = append(VC.AlnProb[var_info.Pos][string(var_info.Bases)], var_info.AProb)
-		VC.ChrProb[var_info.Pos][string(var_info.Bases)] = append(VC.ChrProb[var_info.Pos][string(var_info.Bases)], var_info.CProb)
-		VC.ReadInfo[var_info.Pos][string(var_info.Bases)] = append(VC.ReadInfo[var_info.Pos][string(var_info.Bases)], var_info.RInfo)
+		VC.ChrProb[var_info.Pos][string(var_info.Bases)] = append(VC.ChrProb[var_info.Pos][string(var_info.Bases)], var_info.IProb)
 		VC.StartPos1[var_info.Pos][string(var_info.Bases)] = append(VC.StartPos1[var_info.Pos][string(var_info.Bases)], var_info.SPos1)
 		VC.StartPos2[var_info.Pos][string(var_info.Bases)] = append(VC.StartPos2[var_info.Pos][string(var_info.Bases)], var_info.SPos2)
 		VC.Strand1[var_info.Pos][string(var_info.Bases)] = append(VC.Strand1[var_info.Pos][string(var_info.Bases)], var_info.Strand1)
 		VC.Strand2[var_info.Pos][string(var_info.Bases)] = append(VC.Strand2[var_info.Pos][string(var_info.Bases)], var_info.Strand2)
+		VC.VarBQual[var_info.Pos][string(var_info.Bases)] = append(VC.VarBQual[var_info.Pos][string(var_info.Bases)], var_info.BQual)
+		VC.ReadInfo[var_info.Pos][string(var_info.Bases)] = append(VC.ReadInfo[var_info.Pos][string(var_info.Bases)], var_info.RInfo)
 	}
 	var p_b float64
 	var qi byte
@@ -719,7 +717,7 @@ func (VC *VarCall) OutputVarCalls() {
 
 	w := bufio.NewWriter(f)
 	if INPUT_INFO.Debug_mode == false {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\n")
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\nIVC_INFO")
 	} else {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
 			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
@@ -732,8 +730,8 @@ func (VC *VarCall) OutputVarCalls() {
 	}
 	sort.Ints(Var_Pos)
 
-	var var_base, var_call, str_qual, str_aln, str_b string
-	var line_aln, line_b []string
+	var var_base, var_call, str_qual, str_aln, str_base, str_ivc string
+	var line_aln, line_base, line_ivc []string
 	var var_prob, var_call_prob, map_prob, p float64
 	var is_var bool
 	var idx, var_num int
@@ -821,26 +819,28 @@ func (VC *VarCall) OutputVarCalls() {
 		if INPUT_INFO.Debug_mode == false {
 			w.WriteString(str_aln + "\n")
 		} else {
-			line_b = make([]string, 0)
+			line_base = make([]string, 0)
 			for var_base, var_num = range VC.VarRNum[var_pos] {
-				line_b = append(line_b, var_base)
-				line_b = append(line_b, strconv.Itoa(var_num))
+				line_base = append(line_base, var_base)
+				line_base = append(line_base, strconv.Itoa(var_num))
 			}
-			str_b = strings.Join(line_b, "\t")
+			str_base = strings.Join(line_base, "\t")
 			for idx, _ = range VC.VarBQual[var_pos][var_call] {
-				w.WriteString(str_aln + "\t")
-				w.WriteString(string(VC.VarBQual[var_pos][var_call][idx]) + "\t")
-				w.WriteString(strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]) + "\t")
-				w.WriteString(strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]) + "\t")
-				w.WriteString(strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
-				w.WriteString(strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
-				w.WriteString(strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64) + "\t")
-				w.WriteString(strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]) + "\t")
-				w.WriteString(strconv.FormatBool(VC.Strand1[var_pos][var_call][idx]) + "\t")
-				w.WriteString(strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]) + "\t")
-				w.WriteString(strconv.FormatBool(VC.Strand2[var_pos][var_call][idx]) + "\t")
-				w.WriteString(string(VC.ReadInfo[var_pos][var_call][idx]) + "\t")
-				w.WriteString(str_b + "\n")
+				line_ivc = make([]string, 0)
+				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 20, 64))
+				line_ivc = append(line_ivc, strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64))
+				line_ivc = append(line_ivc, strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand1[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand2[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, string(VC.ReadInfo[var_pos][var_call][idx]))
+				str_ivc = strings.Join(line_ivc, "\t")
+				w.WriteString(str_aln + "\t" + str_ivc + "\t" + str_base + "\n")
 			}
 		}
 	}

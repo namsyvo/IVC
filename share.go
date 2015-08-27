@@ -7,7 +7,7 @@ package ivc
 
 import (
 	"bytes"
-	"fmt"
+	//"fmt"
 	"log"
 	"math"
 	//"math/rand"
@@ -17,11 +17,11 @@ import (
 // Global constants and variables
 //--------------------------------------------------------------------------------------------------
 var (
-	STD_BASES          = []byte{'A', 'C', 'G', 'T'} //Standard bases of DNA sequences
-	NEW_SNP_RATE       = 0.00001                    //Value for prior probability of new alleles
-	NEW_INDEL_RATE     = 0.000001                   //Value for prior probability of new indels
-	NEW_SNP_RATE_LOG   = -math.Log10(NEW_SNP_RATE)
-	NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
+	STD_BASES      = []byte{'A', 'C', 'G', 'T'} //Standard bases of DNA sequences
+	NEW_SNP_RATE   = 0.00001                    //Value for prior probability of new alleles
+	NEW_INDEL_RATE = 0.000001                   //Value for prior probability of new indels
+	//NEW_SNP_RATE_LOG   = -math.Log10(NEW_SNP_RATE)
+	//NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -169,6 +169,7 @@ func InitReadInfo(read_len, info_len int) *ReadInfo {
 //--------------------------------------------------------------------------------------------------
 // PrintReads prints read information
 //--------------------------------------------------------------------------------------------------
+/*
 func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("read1: ", string(read_info.Read1))
 	fmt.Println("read2: ", string(read_info.Read2))
@@ -177,6 +178,7 @@ func (read_info *ReadInfo) PrintReads() {
 	fmt.Println("info1: ", string(read_info.Info1))
 	fmt.Println("info2: ", string(read_info.Info2))
 }
+*/
 
 //--------------------------------------------------------------------------------------------------
 // RevComp computes reverse, reverse complement, and complement of a read.
@@ -264,7 +266,7 @@ func InitEditAlnMat(arr_len int) ([][]float64, [][][]int) {
 //--------------------------------------------------------------------------------------------------
 // Utility functions
 //--------------------------------------------------------------------------------------------------
-
+/*
 //--------------------------------------------------------------------------------------------------
 // IntervalHasVariants determines whether [i, j] contains variant positions which are stores in array A.
 // This function implements interpolation search. The array A must be sorted in increasing order.
@@ -285,7 +287,7 @@ func IntervalHasVariants(A []int, i, j int) bool {
 	}
 	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
 }
-
+*/
 //--------------------------------------------------------------------------------------------------
 // SplitN splits a slice of bytes using an memory-efficient method.
 //--------------------------------------------------------------------------------------------------
@@ -311,6 +313,7 @@ func SplitN(s, sep []byte, n int) ([][]byte, int) {
 	return t, sep_num
 }
 
+/*
 //--------------------------------------------------------------------------------------------------
 // IndexN returns index of a pattern in a slice of bytes.
 //--------------------------------------------------------------------------------------------------
@@ -331,3 +334,4 @@ func IndexN(s, sep []byte, n int) int {
 	}
 	return -1
 }
+*/
