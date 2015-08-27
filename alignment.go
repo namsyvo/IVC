@@ -42,7 +42,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	align_prob := 0.0
 	m, n := len(read), len(ref)
 
-	PrintEditDisInput("bw align input: read, qual, ref", read, qual, ref)
+	//PrintEditDisInput("bw align input: read, qual, ref", read, qual, ref)
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 	for m > 0 && n > 0 {
@@ -109,13 +109,13 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 		}
 	}
-	PrintDisInfo("bw Ham dis", m, n, align_prob)
+	//PrintDisInfo("bw Ham dis", m, n, align_prob)
 
 	if m == 0 || n == 0 {
 		return align_prob, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("bw align for Edit: read, qual, ref", read[:m], qual[:m], ref[:n])
+	//PrintEditDisInput("bw align for Edit: read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -226,17 +226,17 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			}
 		}
 	}
-	PrintDisInfo("BwEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("BwEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("BwEditDist, IT dis", m, n, IT[m][n])
+	//PrintDisInfo("BwEditDist, D dis", m, n, D[m][n])
+	//PrintDisInfo("BwEditDist, IS dis", m, n, IS[m][n])
+	//PrintDisInfo("BwEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("BwEditDist, D mat", D, m, n, read[:m], ref[:n])
-	PrintEditDisMat("BwEditDist, IS mat", IS, m, n, read[:m], ref[:n])
-	PrintEditDisMat("BwEditDist, IT mat", IT, m, n, read[:m], ref[:n])
+	//PrintEditDisMat("BwEditDist, D mat", D, m, n, read[:m], ref[:n])
+	//PrintEditDisMat("BwEditDist, IS mat", IS, m, n, read[:m], ref[:n])
+	//PrintEditDisMat("BwEditDist, IT mat", IT, m, n, read[:m], ref[:n])
 
-	PrintEditTraceMat("BwEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("BwEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("BwEditDist, IT trace mat", BT_IT, m, n)
+	//PrintEditTraceMat("BwEditDist, D trace mat", BT_D, m, n)
+	//PrintEditTraceMat("BwEditDist, IS trace mat", BT_IS, m, n)
+	//PrintEditTraceMat("BwEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -264,7 +264,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
 
-	PrintEditDisInput("BwEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
+	//PrintEditDisInput("BwEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	bt_mat := BT_Mat
@@ -281,21 +281,21 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				aligned_read = append(aligned_read, read[i-1])
 				aligned_qual = append(aligned_qual, qual[i-1])
 				aligned_ref = append(aligned_ref, ref[j-1])
-				GetEditTrace("0", i, j, read[i-1], ref[j-1])
+				//GetEditTrace("0", i, j, read[i-1], ref[j-1])
 				bt_mat = BT_D[i][j][1]
 				i, j = i-1, j-1
 			} else if bt_mat == 1 {
 				aligned_read = append(aligned_read, read[i-1])
 				aligned_qual = append(aligned_qual, qual[i-1])
 				aligned_ref = append(aligned_ref, '-')
-				GetEditTrace("1", i, j, read[i-1], '-')
+				//GetEditTrace("1", i, j, read[i-1], '-')
 				bt_mat = BT_IS[i][j][1]
 				i, j = i-1, j
 			} else if bt_mat == 2 {
 				aligned_read = append(aligned_read, '-')
 				aligned_qual = append(aligned_qual, '-')
 				aligned_ref = append(aligned_ref, ref[j-1])
-				GetEditTrace("2", i, j, '-', ref[j-1])
+				//GetEditTrace("2", i, j, '-', ref[j-1])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
 			}
@@ -323,14 +323,14 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 				aligned_read = append(aligned_read, read[i-var_len])
 				aligned_qual = append(aligned_qual, qual[i-var_len])
 				aligned_ref = append(aligned_ref, ref[j-1])
-				GetEditTraceKnownLoc("3", i, j, read[i-var_len:i], ref[j-1])
+				//GetEditTraceKnownLoc("3", i, j, read[i-var_len:i], ref[j-1])
 				bt_mat = BT_D[i][j][1]
 				i, j = i-var_len, j-1
 			} else {
 				aligned_read = append(aligned_read, '-')
 				aligned_qual = append(aligned_qual, '-')
 				aligned_ref = append(aligned_ref, ref[j-1])
-				GetEditTraceKnownLoc("4", i, j, []byte{'-'}, ref[j-1])
+				//GetEditTraceKnownLoc("4", i, j, []byte{'-'}, ref[j-1])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
 			}
@@ -343,7 +343,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 		aligned_qual[i], aligned_qual[j] = aligned_qual[j], aligned_qual[i]
 		aligned_ref[i], aligned_ref[j] = aligned_ref[j], aligned_ref[i]
 	}
-	PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
+	//PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get Vars
 	ref_ori_pos := 0
@@ -409,7 +409,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			i++
 		}
 	}
-	PrintVarInfo("BwEditTraceBack, variant info", var_pos, var_base, var_qual)
+	//PrintVarInfo("BwEditTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }
 
@@ -428,7 +428,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 
-	PrintEditDisInput("fw dis input: read, qual, ref", read, qual, ref)
+	//PrintEditDisInput("fw dis input: read, qual, ref", read, qual, ref)
 	align_prob := 0.0
 	M, N := len(read), len(ref)
 	m, n := M, N
@@ -497,13 +497,13 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		}
 	}
 
-	PrintDisInfo("fw Ham dis", m, n, align_prob)
+	//PrintDisInfo("fw Ham dis", m, n, align_prob)
 
 	if m == 0 || n == 0 {
 		return align_prob, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("fw align for Edit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
+	//PrintEditDisInput("fw align for Edit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -618,17 +618,17 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			}
 		}
 	}
-	PrintDisInfo("FwEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("FwEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("FwEditDist, IT dis", m, n, IT[m][n])
+	//PrintDisInfo("FwEditDist, D dis", m, n, D[m][n])
+	//PrintDisInfo("FwEditDist, IS dis", m, n, IS[m][n])
+	//PrintDisInfo("FwEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("FwEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("FwEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("FwEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
+	//PrintEditDisMat("FwEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
+	//PrintEditDisMat("FwEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
+	//PrintEditDisMat("FwEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
 
-	PrintEditTraceMat("FwEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("FwEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("FwEditDist, IT trace mat", BT_IT, m, n)
+	//PrintEditTraceMat("FwEditDist, D trace mat", BT_D, m, n)
+	//PrintEditTraceMat("FwEditDist, IS trace mat", BT_IS, m, n)
+	//PrintEditTraceMat("FwEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -650,7 +650,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
+	//PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
 
 	var var_len int
 	var var_pos, var_type []int
@@ -673,21 +673,21 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				aligned_read = append(aligned_read, read[M-i])
 				aligned_qual = append(aligned_qual, qual[M-i])
 				aligned_ref = append(aligned_ref, ref[N-j])
-				GetEditTrace("0", M-i, N-j, read[M-i], ref[N-j])
+				//GetEditTrace("0", M-i, N-j, read[M-i], ref[N-j])
 				bt_mat = BT_D[i][j][1]
 				i, j = i-1, j-1
 			} else if bt_mat == 1 {
 				aligned_read = append(aligned_read, read[M-i])
 				aligned_qual = append(aligned_qual, qual[M-i])
 				aligned_ref = append(aligned_ref, '-')
-				GetEditTrace("1", M-i, N-j, read[M-i], '-')
+				//GetEditTrace("1", M-i, N-j, read[M-i], '-')
 				bt_mat = BT_IS[i][j][1]
 				i, j = i-1, j
 			} else if bt_mat == 2 {
 				aligned_read = append(aligned_read, '-')
 				aligned_qual = append(aligned_qual, '-')
 				aligned_ref = append(aligned_ref, ref[N-j])
-				GetEditTrace("2", M-i, N-j, '-', ref[N-j])
+				//GetEditTrace("2", M-i, N-j, '-', ref[N-j])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
 			}
@@ -716,14 +716,14 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 						aligned_qual = append(aligned_qual, qual[M-i+k])
 						aligned_ref = append(aligned_ref, '+')
 					}
-					GetEditTraceKnownLoc("3", M-i, N-j, read[M-i:M-i+var_len], ref[N-j])
+					//GetEditTraceKnownLoc("3", M-i, N-j, read[M-i:M-i+var_len], ref[N-j])
 					bt_mat = BT_D[i][j][1]
 					i, j = i-var_len, j-1
 				} else {
 					aligned_read = append(aligned_read, '-')
 					aligned_qual = append(aligned_qual, '-')
 					aligned_ref = append(aligned_ref, ref[N-j])
-					GetEditTrace("4", M-i, N-j, '-', ref[N-j])
+					//GetEditTrace("4", M-i, N-j, '-', ref[N-j])
 					bt_mat = BT_IT[i][j][1]
 					i, j = i, j-1
 				}
@@ -731,21 +731,21 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 				aligned_read = append(aligned_read, read[M-i])
 				aligned_qual = append(aligned_qual, qual[M-i])
 				aligned_ref = append(aligned_ref, '-')
-				GetEditTrace("1", M-i, N-j, read[M-i], '-')
+				//GetEditTrace("1", M-i, N-j, read[M-i], '-')
 				bt_mat = BT_IS[i][j][1]
 				i, j = i-1, j
 			} else {
 				aligned_read = append(aligned_read, '-')
 				aligned_qual = append(aligned_qual, '-')
 				aligned_ref = append(aligned_ref, ref[N-j])
-				GetEditTrace("4", M-i, N-j, '-', ref[N-j])
+				//GetEditTrace("4", M-i, N-j, '-', ref[N-j])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
 			}
 		}
 	}
 
-	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
+	//PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get Vars
 	ref_ori_pos := N - n
@@ -812,6 +812,6 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			i++
 		}
 	}
-	PrintVarInfo("FwEditTraceBack, variant info", var_pos, var_base, var_qual)
+	//PrintVarInfo("FwEditTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }
