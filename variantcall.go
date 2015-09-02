@@ -717,7 +717,7 @@ func (VC *VarCall) OutputVarCalls() {
 
 	w := bufio.NewWriter(f)
 	if INPUT_INFO.Debug_mode == false {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\nIVC_INFO")
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tIVC_INFO\tVAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\n")
 	} else {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
 			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
