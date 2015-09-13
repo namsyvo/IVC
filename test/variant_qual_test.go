@@ -18,6 +18,7 @@ func TestVarQual(t *testing.T) {
 	ivc.Q2C = make(map[byte]float64)
 	ivc.Q2E = make(map[byte]float64)
 	ivc.Q2P = make(map[byte]float64)
+	ivc.L2E = make([]float64, 50)
 	var q byte
 	for i := 33; i < 74; i++ {
 		q = byte(i)
@@ -26,6 +27,10 @@ func TestVarQual(t *testing.T) {
 		ivc.Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
 		ivc.Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
 	}
+	for i := 1; i < 50; i++ {
+		ivc.L2E[i] = math.Pow(ivc.INDEL_ERR, float64(i))
+	}
+
 	ivc.INPUT_INFO = new(ivc.InputInfo)
 	ivc.INPUT_INFO.Debug_mode = false
 	VC := new(ivc.VarCall)
@@ -45,98 +50,53 @@ func TestVarQual(t *testing.T) {
 			VC.VarProb[100]["G"] = 0.00001
 			VC.VarProb[100]["T"] = 0.00001
 		} else if t == 1 { //known snp
-			VC.VarProb[100]["A"] = 0.4999895
-			VC.VarProb[100]["C"] = 0.4999895
+			VC.VarProb[100]["A"] = 0.98998
+			VC.VarProb[100]["C"] = 0.01
 			VC.VarProb[100]["G"] = 0.00001
 			VC.VarProb[100]["T"] = 0.00001
 		} else if t == 2 { //unknown indel
-			VC.VarProb[100]["A"]  = 0.999969
-			VC.VarProb[100]["C"]  = 0.00001
-			VC.VarProb[100]["G"]  = 0.00001
-			VC.VarProb[100]["T"]  = 0.00001
-			VC.VarProb[100]["ACG"] = 0.000001
+			VC.VarProb[100]["A"] = 0.999969
+			VC.VarProb[100]["C"] = 0.00001
+			VC.VarProb[100]["G"] = 0.00001
+			VC.VarProb[100]["T"] = 0.00001
+			VC.VarProb[100]["AC"] = 0.000001
 		} else if t == 3 { //known indel
-			VC.VarProb[100]["A"]  = 0.499985
-			VC.VarProb[100]["C"]  = 0.00001
-			VC.VarProb[100]["G"]  = 0.00001
-			VC.VarProb[100]["T"]  = 0.00001
-			VC.VarProb[100]["ACG"] = 0.499985
+			VC.VarProb[100]["A"] = 0.66664
+			VC.VarProb[100]["C"] = 0.00001
+			VC.VarProb[100]["G"] = 0.00001
+			VC.VarProb[100]["T"] = 0.00001
+			VC.VarProb[100]["AC"] = 0.33333
 		}
 	}
 	//**********************************
-	assign_var := func(m, n int) []*ivc.VarInfo {
+	//q2p: 'H': 0.0001; '<': 0.0015; '4': 0.01
+	assign_var := func(m, n int, q string) []*ivc.VarInfo {
 		var_info := make([]*ivc.VarInfo, m+n)
 		for j := 0; j < m; j++ {
 			var_info[j] = new(ivc.VarInfo)
-			var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("A"), []byte("H"), 0
+			var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("A"), []byte(q), 0
 		}
 		for j := m; j < m+n; j++ {
 			var_info[j] = new(ivc.VarInfo)
-			//var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("C"), []byte("H"), 0
-			var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("ACG"), []byte("HHH"), 1
+			//var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("C"), []byte(q), 0
+			var_info[j].Pos, var_info[j].Bases, var_info[j].BQual, var_info[j].Type = 100, []byte("AC"), []byte(q+q), 1
 		}
 		return var_info
 	}
+
 	i := 3
 	init_prob(i)
-	fmt.Println("Initial")
-	for v, p := range VC.VarProb[100] {
-		fmt.Println("Var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-	}
-	fmt.Println()
-	var_info := assign_var(0, 2)
+	fmt.Println("Initial 'H' 0.0001")
+	var_info := assign_var(3, 2, "H")
 	for _, var_item := range var_info {
-		fmt.Println("Update for var", string(var_item.Bases))
 		VC.UpdateVariantProb(var_item)
-		for v, p := range VC.VarProb[100] {
-			fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-		}
-		fmt.Println()
 	}
+
 	init_prob(i)
-	fmt.Println("Initial")
-	for v, p := range VC.VarProb[100] {
-		fmt.Println("Var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-	}
-	fmt.Println()
-	var_info = assign_var(1, 1)
+	fmt.Println("Initial '<' 0.0015")
+	var_info = assign_var(3, 2, "<")
 	for _, var_item := range var_info {
-		fmt.Println("Update for var", string(var_item.Bases))
 		VC.UpdateVariantProb(var_item)
-		for v, p := range VC.VarProb[100] {
-			fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-		}
-		fmt.Println()
-	}
-	init_prob(i)
-	fmt.Println("Initial")
-	for v, p := range VC.VarProb[100] {
-		fmt.Println("Var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-	}
-	fmt.Println()
-	var_info = assign_var(1, 2)
-	for _, var_item := range var_info {
-		fmt.Println("Update for var", string(var_item.Bases))
-		VC.UpdateVariantProb(var_item)
-		for v, p := range VC.VarProb[100] {
-			fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-		}
-		fmt.Println()
-	}
-	init_prob(i)
-	fmt.Println("Initial")
-	for v, p := range VC.VarProb[100] {
-		fmt.Println("Var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-	}
-	fmt.Println()
-	var_info = assign_var(2, 1)
-	for _, var_item := range var_info {
-		fmt.Println("Update for var", string(var_item.Bases))
-		VC.UpdateVariantProb(var_item)
-		for v, p := range VC.VarProb[100] {
-			fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-		}
-		fmt.Println()
 	}
 }
 
