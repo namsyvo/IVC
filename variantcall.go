@@ -647,7 +647,6 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 	//if found new variants at existing locations
 	var l float64
 	var b string
-	var is_del bool
 	if _, var_exist := VC.VarProb[pos][a]; !var_exist {
 		l = float64(len(VC.VarProb[pos]))
 		if t == 0 {
@@ -678,68 +677,38 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 		VC.ReadInfo[pos][a] = append(VC.ReadInfo[pos][a], var_info.RInfo)
 	}
 
+	var q byte
+	p1, p2 := 1.0, 1.0
+	for _, q = range var_info.BQual {
+		p1 *= Q2P[q]
+	}
+	for _, q = range var_info.BQual {
+		p2 *= Q2E[q]
+	}
 	var p, p_b float64
-	var qi byte
-	p_ab := make(map[string]float64)
+	var is_known_var bool
 	p_a := 0.0
-	p1 := 1.0
-	for _, qi = range var_info.BQual {
-		p1 *= Q2P[qi]
-	}
-	p2 := Q2E[var_info.BQual[0]] / 3
-	//for v, p := range VC.VarProb[pos] {
-	//	fmt.Println("prior var: pos: ", pos, "\taln_base: ", a, "\tVar:", v, "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-	//}
-	if _, is_del = INDEX.DelVar[int(pos)]; is_del {
-		for b, p_b = range VC.VarProb[pos] {
-			if b == a {
-				if len(a) == 1 {
-					p_ab[b] = L2E[len(INDEX.VarProf[int(pos)][0])-1]
-				} else {
-					p_ab[b] = INDEL_ERR
-				}
+	p_ab := make(map[string]float64)
+	for b, p_b = range VC.VarProb[pos] {
+		if b == a {
+			p_ab[b] = p1
+		} else {
+			_, is_known_var = INDEX.VarProf[int(pos)]
+			if !is_known_var && var_info.Type == 2 {
+				p_ab[b] = L2E[len(a)]
 			} else {
-				if len(a) == 1 && len(b) == 1 {
-					p_ab[b] = L2E[len(INDEX.VarProf[int(pos)][0])-1]
-				} else if a[0] == b[0] {
-					p_ab[b] = p1
-				} else {
-					p_ab[b] = p2
-				}
-			}
-			p = p_b * p_ab[b]
-			p_ab[b] = p
-			p_a += p
-			//fmt.Println("update var: pos: ", pos, "\taln_base ", a, "\tVar:", b, "\tp_b:", p_b, "\tp_a|b:", p_ab[b], "p_b*p_a|b:", p_b*p_ab[b])
+				p_ab[b] = p2
+			}				
 		}
-	} else {
-		for b, p_b = range VC.VarProb[pos] {
-			if b == a {
-				p_ab[b] = p1
-			} else {
-				if len(a) == 1 && len(b) == 1 {
-					p_ab[b] = p2
-				} else if len(a) == 1 && len(b) > 1 {
-					p_ab[b] = INDEL_ERR
-				} else if len(a) > 1 && len(b) ==1 {
-					p_ab[b] = L2E[len(a)-1]
-				}
-			}
-			p = p_b * p_ab[b]
-			p_ab[b] = p
-			p_a += p
-			//fmt.Println("update var: pos: ", pos, "\taln_base ", a, "\tVar:", b, "\tp_b:", p_b, "\tp_a|b:", p_ab[b], "p_b*p_a|b:", p_b*p_ab[b])
-		}
+		p = p_b * p_ab[b]
+		p_ab[b] = p
+		p_a += p
 	}
-	//fmt.Println("post p_a: pos: ", pos, "\taln_base ", a, "\tVar:", p_a)
 	i := 0
 	for b, p_b = range VC.VarProb[pos] {
 		VC.VarProb[pos][b] = p_ab[b] / p_a
 		i++
 	}
-	//for v, p := range VC.VarProb[pos] {
-	//	fmt.Println("post var: pos: ", pos, "\taln_base ", a, "\tVar:", v, "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
-	//}
 }
 
 //---------------------------------------------------------------------------------------------------
