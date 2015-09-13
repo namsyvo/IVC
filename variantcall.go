@@ -25,6 +25,7 @@ var (
 	Q2C map[byte]float64 //Pre-calculated alignment cost which is based on Phred-based quality
 	Q2E map[byte]float64 //Pre-calculated error rate which is corresponding to Phred-based quality
 	Q2P map[byte]float64 //Pre-calculated probability which is corresponding to Phred-based quality
+	L2E []float64        //Pre-calculated indel error which is corresponding to length of indels
 )
 
 //---------------------------------------------------------------------------------------------------
@@ -172,6 +173,7 @@ func (VC *VarCall) CallVariants() {
 	Q2C = make(map[byte]float64)
 	Q2E = make(map[byte]float64)
 	Q2P = make(map[byte]float64)
+	L2E = make([]float64, 50)
 	var q byte
 	for i := 33; i < 74; i++ {
 		q = byte(i)
@@ -179,6 +181,9 @@ func (VC *VarCall) CallVariants() {
 		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
 		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
 		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
+	}
+	for i := 1; i < 50; i++ {
+		L2E[i] = math.Pow(INDEL_ERR, float64(i))
 	}
 
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindVariants,
@@ -192,11 +197,10 @@ func (VC *VarCall) CallVariants() {
 
 	//Call goroutines to find Vars, pass shared variable to each goroutine
 	var_results := make(chan *VarInfo)
-	rand_gen := make([]*rand.Rand, INPUT_INFO.Routine_num)
 	var wg sync.WaitGroup
 	for i := 0; i < INPUT_INFO.Routine_num; i++ {
-		rand_gen[i] = rand.New(rand.NewSource(time.Now().UnixNano()))
-		go VC.FindVariants(read_data, read_signal, var_results, rand_gen[i], &wg)
+		wg.Add(1)
+		go VC.FindVariants(read_data, read_signal, var_results, &wg)
 	}
 	/*
 		//------------------------
@@ -288,9 +292,8 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 // FindVariants takes data from data channel, find all possible Vars and put them into results channel.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool, var_results chan *VarInfo,
-	rand_gen *rand.Rand, wg *sync.WaitGroup) {
+	wg *sync.WaitGroup) {
 
-	wg.Add(1)
 	defer wg.Done()
 
 	//Initialize inter-function share variables
@@ -300,6 +303,7 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 	for i := 0; i < 4; i++ {
 		seed_pos[i] = make([]int, INPUT_INFO.Max_snum)
 	}
+	rand_gen := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for read := range read_data {
 		//PrintMemStats("Before copying all info from data chan")
 		read_info.Info1 = read_info.Info1[:len(read.Info1)]
@@ -405,7 +409,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					if paired_prob > align_prob1+align_prob2 {
 						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
-						//PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
+						PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
 						vars_get1 = make([]*VarInfo, len(vars1))
 						if len(vars1) > 0 {
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
@@ -454,7 +458,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	}
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
-		//PrintGetVariants("Final_var", paired_prob, align_prob1, align_prob2, vars_get1, vars_get2)
+		PrintGetVariants("Final_var", paired_prob, align_prob1, align_prob2, vars_get1, vars_get2)
 		if len(vars_get1) > 0 {
 			for _, var_info := range vars_get1 {
 				if INPUT_INFO.Debug_mode {
@@ -558,8 +562,8 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		i++
 	}
 
-	//PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
-	//PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
+	PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
+	PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
 
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
 		VC.BackwardDistance(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, edit_aln_info.Bw_Dist_D,
@@ -578,7 +582,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			l_var_qual = append(l_var_qual, l_qual...)
 			l_var_type = append(l_var_type, l_type...)
 		}
-		//PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_var_pos, read)
+		PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_var_pos, read)
 		if r_m > 0 && r_n > 0 {
 			r_pos, r_base, r_qual, r_type := VC.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos,
 				r_bt_mat, edit_aln_info.Fw_Trace_D, edit_aln_info.Fw_Trace_IS, edit_aln_info.Fw_Trace_IT, r_ref_pos_map)
@@ -587,7 +591,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			r_var_qual = append(r_var_qual, r_qual...)
 			r_var_type = append(r_var_type, r_type...)
 		}
-		//PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_var_pos, read)
+		PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_var_pos, read)
 		var k int
 		for k = 0; k < len(l_var_pos); k++ {
 			var_info := new(VarInfo)
@@ -611,95 +615,131 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 //	Input: a variant of type VarInfo.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
+	pos := var_info.Pos
+	a := string(var_info.Bases)
+	t := var_info.Type
 	//if found new variant locations
-	if _, var_prof_exist := VC.VarProb[var_info.Pos]; !var_prof_exist {
-		VC.VarProb[var_info.Pos] = make(map[string]float64)
-		if var_info.Type == 0 {
-			VC.VarProb[var_info.Pos][string(INDEX.Seq[int(var_info.Pos)])] = 1 - NEW_SNP_RATE
-			VC.VarProb[var_info.Pos][string(var_info.Bases)] = NEW_SNP_RATE
+	if _, var_prof_exist := VC.VarProb[pos]; !var_prof_exist {
+		VC.VarProb[pos] = make(map[string]float64)
+		if t == 0 {
+			VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - NEW_SNP_RATE
+			VC.VarProb[pos][a] = NEW_SNP_RATE
 		} else {
-			VC.VarProb[var_info.Pos][string(INDEX.Seq[int(var_info.Pos)])] = 1 - NEW_INDEL_RATE
-			VC.VarProb[var_info.Pos][string(var_info.Bases)] = NEW_INDEL_RATE
+			VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - NEW_INDEL_RATE
+			VC.VarProb[pos][a] = NEW_INDEL_RATE
 		}
-		VC.VarType[var_info.Pos] = make(map[string]int)
-		VC.VarRNum[var_info.Pos] = make(map[string]int)
+		VC.VarType[pos] = make(map[string]int)
+		VC.VarRNum[pos] = make(map[string]int)
 		if INPUT_INFO.Debug_mode {
-			VC.ChrDis[var_info.Pos] = make(map[string][]int)
-			VC.ChrDiff[var_info.Pos] = make(map[string][]int)
-			VC.MapProb[var_info.Pos] = make(map[string][]float64)
-			VC.AlnProb[var_info.Pos] = make(map[string][]float64)
-			VC.ChrProb[var_info.Pos] = make(map[string][]float64)
-			VC.StartPos1[var_info.Pos] = make(map[string][]int)
-			VC.StartPos2[var_info.Pos] = make(map[string][]int)
-			VC.Strand1[var_info.Pos] = make(map[string][]bool)
-			VC.Strand2[var_info.Pos] = make(map[string][]bool)
-			VC.VarBQual[var_info.Pos] = make(map[string][][]byte)
-			VC.ReadInfo[var_info.Pos] = make(map[string][][]byte)
+			VC.ChrDis[pos] = make(map[string][]int)
+			VC.ChrDiff[pos] = make(map[string][]int)
+			VC.MapProb[pos] = make(map[string][]float64)
+			VC.AlnProb[pos] = make(map[string][]float64)
+			VC.ChrProb[pos] = make(map[string][]float64)
+			VC.StartPos1[pos] = make(map[string][]int)
+			VC.StartPos2[pos] = make(map[string][]int)
+			VC.Strand1[pos] = make(map[string][]bool)
+			VC.Strand2[pos] = make(map[string][]bool)
+			VC.VarBQual[pos] = make(map[string][][]byte)
+			VC.ReadInfo[pos] = make(map[string][][]byte)
 		}
 	}
 	//if found new variants at existing locations
 	var l float64
 	var b string
-	if _, var_exist := VC.VarProb[var_info.Pos][string(var_info.Bases)]; !var_exist {
-		l = float64(len(VC.VarProb[var_info.Pos]))
-		if var_info.Type == 0 {
-			for b, _ = range VC.VarProb[var_info.Pos] {
-				VC.VarProb[var_info.Pos][b] = VC.VarProb[var_info.Pos][b] - (1/l)*NEW_SNP_RATE
+	var is_del bool
+	if _, var_exist := VC.VarProb[pos][a]; !var_exist {
+		l = float64(len(VC.VarProb[pos]))
+		if t == 0 {
+			for b, _ = range VC.VarProb[pos] {
+				VC.VarProb[pos][b] = VC.VarProb[pos][b] - (1/l)*NEW_SNP_RATE
 			}
-			VC.VarProb[var_info.Pos][string(var_info.Bases)] = NEW_SNP_RATE
+			VC.VarProb[pos][a] = NEW_SNP_RATE
 		} else {
-			for b, _ = range VC.VarProb[var_info.Pos] {
-				VC.VarProb[var_info.Pos][b] = VC.VarProb[var_info.Pos][b] - (1/l)*NEW_INDEL_RATE
+			for b, _ = range VC.VarProb[pos] {
+				VC.VarProb[pos][b] = VC.VarProb[pos][b] - (1/l)*NEW_INDEL_RATE
 			}
-			VC.VarProb[var_info.Pos][string(var_info.Bases)] = NEW_INDEL_RATE
+			VC.VarProb[pos][a] = NEW_INDEL_RATE
 		}
 	}
-	VC.VarType[var_info.Pos][string(var_info.Bases)] = var_info.Type
-	VC.VarRNum[var_info.Pos][string(var_info.Bases)] += 1
+	VC.VarType[pos][a] = t
+	VC.VarRNum[pos][a] += 1
 	if INPUT_INFO.Debug_mode {
-		VC.ChrDis[var_info.Pos][string(var_info.Bases)] = append(VC.ChrDis[var_info.Pos][string(var_info.Bases)], var_info.CDis)
-		VC.ChrDiff[var_info.Pos][string(var_info.Bases)] = append(VC.ChrDiff[var_info.Pos][string(var_info.Bases)], var_info.CDiff)
-		VC.MapProb[var_info.Pos][string(var_info.Bases)] = append(VC.MapProb[var_info.Pos][string(var_info.Bases)], var_info.MProb)
-		VC.AlnProb[var_info.Pos][string(var_info.Bases)] = append(VC.AlnProb[var_info.Pos][string(var_info.Bases)], var_info.AProb)
-		VC.ChrProb[var_info.Pos][string(var_info.Bases)] = append(VC.ChrProb[var_info.Pos][string(var_info.Bases)], var_info.IProb)
-		VC.StartPos1[var_info.Pos][string(var_info.Bases)] = append(VC.StartPos1[var_info.Pos][string(var_info.Bases)], var_info.SPos1)
-		VC.StartPos2[var_info.Pos][string(var_info.Bases)] = append(VC.StartPos2[var_info.Pos][string(var_info.Bases)], var_info.SPos2)
-		VC.Strand1[var_info.Pos][string(var_info.Bases)] = append(VC.Strand1[var_info.Pos][string(var_info.Bases)], var_info.Strand1)
-		VC.Strand2[var_info.Pos][string(var_info.Bases)] = append(VC.Strand2[var_info.Pos][string(var_info.Bases)], var_info.Strand2)
-		VC.VarBQual[var_info.Pos][string(var_info.Bases)] = append(VC.VarBQual[var_info.Pos][string(var_info.Bases)], var_info.BQual)
-		VC.ReadInfo[var_info.Pos][string(var_info.Bases)] = append(VC.ReadInfo[var_info.Pos][string(var_info.Bases)], var_info.RInfo)
+		VC.ChrDis[pos][a] = append(VC.ChrDis[pos][a], var_info.CDis)
+		VC.ChrDiff[pos][a] = append(VC.ChrDiff[pos][a], var_info.CDiff)
+		VC.MapProb[pos][a] = append(VC.MapProb[pos][a], var_info.MProb)
+		VC.AlnProb[pos][a] = append(VC.AlnProb[pos][a], var_info.AProb)
+		VC.ChrProb[pos][a] = append(VC.ChrProb[pos][a], var_info.IProb)
+		VC.StartPos1[pos][a] = append(VC.StartPos1[pos][a], var_info.SPos1)
+		VC.StartPos2[pos][a] = append(VC.StartPos2[pos][a], var_info.SPos2)
+		VC.Strand1[pos][a] = append(VC.Strand1[pos][a], var_info.Strand1)
+		VC.Strand2[pos][a] = append(VC.Strand2[pos][a], var_info.Strand2)
+		VC.VarBQual[pos][a] = append(VC.VarBQual[pos][a], var_info.BQual)
+		VC.ReadInfo[pos][a] = append(VC.ReadInfo[pos][a], var_info.RInfo)
 	}
-	var p_b float64
+
+	var p, p_b float64
 	var qi byte
+	p_ab := make(map[string]float64)
+	p_a := 0.0
 	p1 := 1.0
 	for _, qi = range var_info.BQual {
 		p1 *= Q2P[qi]
 	}
-	p2 := 1.0
-	for _, qi = range var_info.BQual {
-		p2 *= Q2E[qi]
-	}
-	a := string(var_info.Bases)
-	p_a := 0.0
-	p_ab := make(map[string]float64)
-	var p float64
-	for b, p_b = range VC.VarProb[var_info.Pos] {
-		if b == a {
-			p_ab[b] = p1
-		} else {
-			p_ab[b] = p2
+	p2 := Q2E[var_info.BQual[0]] / 3
+	//for v, p := range VC.VarProb[pos] {
+	//	fmt.Println("prior var: pos: ", pos, "\taln_base: ", a, "\tVar:", v, "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
+	//}
+	if _, is_del = INDEX.DelVar[int(pos)]; is_del {
+		for b, p_b = range VC.VarProb[pos] {
+			if b == a {
+				if len(a) == 1 {
+					p_ab[b] = L2E[len(INDEX.VarProf[int(pos)][0])-1]
+				} else {
+					p_ab[b] = INDEL_ERR
+				}
+			} else {
+				if len(a) == 1 && len(b) == 1 {
+					p_ab[b] = L2E[len(INDEX.VarProf[int(pos)][0])-1]
+				} else if a[0] == b[0] {
+					p_ab[b] = p1
+				} else {
+					p_ab[b] = p2
+				}
+			}
+			p = p_b * p_ab[b]
+			p_ab[b] = p
+			p_a += p
+			//fmt.Println("update var: pos: ", pos, "\taln_base ", a, "\tVar:", b, "\tp_b:", p_b, "\tp_a|b:", p_ab[b], "p_b*p_a|b:", p_b*p_ab[b])
 		}
-		p = p_b * p_ab[b]
-		p_ab[b] = p
-		p_a += p
-		//fmt.Println("var:", b, "\tp_b:", p_b, "\tp_a|b:", P_AB[b], "p_b*p_a|b:", p_b*P_AB[b])
+	} else {
+		for b, p_b = range VC.VarProb[pos] {
+			if b == a {
+				p_ab[b] = p1
+			} else {
+				if len(a) == 1 && len(b) == 1 {
+					p_ab[b] = p2
+				} else if len(a) == 1 && len(b) > 1 {
+					p_ab[b] = INDEL_ERR
+				} else if len(a) > 1 && len(b) ==1 {
+					p_ab[b] = L2E[len(a)-1]
+				}
+			}
+			p = p_b * p_ab[b]
+			p_ab[b] = p
+			p_a += p
+			//fmt.Println("update var: pos: ", pos, "\taln_base ", a, "\tVar:", b, "\tp_b:", p_b, "\tp_a|b:", p_ab[b], "p_b*p_a|b:", p_b*p_ab[b])
+		}
 	}
-	//fmt.Println("p_a:", p_a)
+	//fmt.Println("post p_a: pos: ", pos, "\taln_base ", a, "\tVar:", p_a)
 	i := 0
-	for b, p_b = range VC.VarProb[var_info.Pos] {
-		VC.VarProb[var_info.Pos][b] = p_ab[b] / p_a
+	for b, p_b = range VC.VarProb[pos] {
+		VC.VarProb[pos][b] = p_ab[b] / p_a
 		i++
 	}
+	//for v, p := range VC.VarProb[pos] {
+	//	fmt.Println("post var: pos: ", pos, "\taln_base ", a, "\tVar:", v, "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
+	//}
 }
 
 //---------------------------------------------------------------------------------------------------

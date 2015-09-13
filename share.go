@@ -18,10 +18,9 @@ import (
 //--------------------------------------------------------------------------------------------------
 var (
 	STD_BASES      = []byte{'A', 'C', 'G', 'T'} //Standard bases of DNA sequences
-	NEW_SNP_RATE   = 0.00001                    //Value for prior probability of new alleles
-	NEW_INDEL_RATE = 0.000001                   //Value for prior probability of new indels
-	//NEW_SNP_RATE_LOG   = -math.Log10(NEW_SNP_RATE)
-	//NEW_INDEL_RATE_LOG = -math.Log10(NEW_INDEL_RATE)
+	NEW_SNP_RATE   = 0.00001                    //Value for probability of new alleles
+	NEW_INDEL_RATE = 0.000001                   //Value for probability of new indels
+	INDEL_ERR      = 0.0000001                  //Value for probability of indel error
 )
 
 //--------------------------------------------------------------------------------------------------
