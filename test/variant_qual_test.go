@@ -33,6 +33,10 @@ func TestVarQual(t *testing.T) {
 
 	ivc.INPUT_INFO = new(ivc.InputInfo)
 	ivc.INPUT_INFO.Debug_mode = false
+	ivc.INDEX = new(ivc.Index)
+	ivc.INDEX.VarProf = make(map[int][][]byte)
+	ivc.INDEX.VarProf[100] = make([][]byte, 0)
+
 	VC := new(ivc.VarCall)
 	VC.VarProb = make(map[uint32]map[string]float64)
 	VC.VarType = make(map[uint32]map[string]int)
@@ -91,12 +95,19 @@ func TestVarQual(t *testing.T) {
 	for _, var_item := range var_info {
 		VC.UpdateVariantProb(var_item)
 	}
-
+	for v, p := range VC.VarProb[100] {
+		fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
+	}
+	fmt.Println()
+	
 	init_prob(i)
 	fmt.Println("Initial '<' 0.0015")
 	var_info = assign_var(3, 2, "<")
 	for _, var_item := range var_info {
 		VC.UpdateVariantProb(var_item)
+	}
+	for v, p := range VC.VarProb[100] {
+		fmt.Println("Post var: ", string(v), "\tProb: ", p, "\tQual: ", -10*math.Log10(1-p))
 	}
 }
 
