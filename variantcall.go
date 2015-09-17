@@ -407,11 +407,11 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					c_num++
 					ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
 					if paired_prob > align_prob1+align_prob2 {
-						loop_has_cand = loop_num
 						paired_prob = align_prob1 + align_prob2
+						loop_has_cand = loop_num
 						PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
-						vars_get1 = make([]*VarInfo, len(vars1))
-						if len(vars1) > 0 {
+						if vars1 != nil {
+							vars_get1 = make([]*VarInfo, len(vars1))
 							for s_idx = 0; s_idx < len(vars1); s_idx++ {
 								vars_get1[s_idx] = vars1[s_idx]
 								if INPUT_INFO.Debug_mode {
@@ -428,8 +428,8 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 								}
 							}
 						}
-						vars_get2 = make([]*VarInfo, len(vars2))
-						if len(vars2) > 0 {
+						if vars2 != nil {
+							vars_get2 = make([]*VarInfo, len(vars2))
 							for s_idx = 0; s_idx < len(vars2); s_idx++ {
 								vars_get2[s_idx] = vars2[s_idx]
 								if INPUT_INFO.Debug_mode {
@@ -518,7 +518,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 					l_ref_pos_map = l_ref_pos_map[:len(l_ref_pos_map)-del_len]
 					j -= del_len
 				} else {
-					return vars_arr, -1, -1, -1
+					return nil, -1, -1, -1
 				}
 			}
 		}
@@ -554,7 +554,8 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 				if del_len < r_read_flank_len-j && i+del_len < len(INDEX.Seq) {
 					i += del_len
 				} else {
-					return vars_arr, -1, -1, 1
+					r_ref_flank = r_ref_flank[:len(r_ref_flank)-1]
+					break
 				}
 			}
 		}
@@ -607,7 +608,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		return vars_arr, l_align_s_pos, r_align_s_pos, prob
 	}
 	//PrintMemStats("After FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
-	return vars_arr, -1, -1, -1
+	return nil, -1, -1, -1
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -698,7 +699,7 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 				p_ab[b] = L2E[len(a)]
 			} else {
 				p_ab[b] = p2
-			}				
+			}
 		}
 		p = p_b * p_ab[b]
 		p_ab[b] = p
@@ -772,17 +773,9 @@ func (VC *VarCall) OutputVarCalls() {
 		} else {
 			if VC.VarType[var_pos][var_call] >= 0 {
 				if VC.VarType[var_pos][var_call] == 2 { //DEL
-					//Ignore indel calls of length 2 that are homopolymer
-					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						continue
-					}
 					line_aln = append(line_aln, var_call)
 					line_aln = append(line_aln, string(INDEX.Seq[pos]))
 				} else if VC.VarType[var_pos][var_call] == 1 { //INS
-					//Ignore indel calls of length 2 that are homopolymer
-					if len(var_call) == 2 && var_call[0] == var_call[1] {
-						continue
-					}
 					line_aln = append(line_aln, string(INDEX.Seq[pos]))
 					line_aln = append(line_aln, var_call)
 				} else { //SUB
@@ -836,7 +829,6 @@ func (VC *VarCall) OutputVarCalls() {
 			str_base = strings.Join(line_base, "\t")
 			for idx, _ = range VC.VarBQual[var_pos][var_call] {
 				line_ivc = make([]string, 0)
-				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][idx]))
 				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][idx]))
 				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]))
 				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]))
