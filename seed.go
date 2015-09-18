@@ -10,7 +10,6 @@ import (
 	//"fmt"
 	"github.com/vtphan/fmi" //to use FM index
 	"math/rand"
-	"strconv"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -169,7 +168,6 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
 
-		PrintMemStats("Before FindSeeds, loop_num " + strconv.Itoa(loop_num))
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or =
 			I.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
 		PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
@@ -198,7 +196,6 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
 				e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
 		}
-		PrintMemStats("After FindSeeds, loop_num " + strconv.Itoa(loop_num))
 
 		if has_seeds_r1_or && has_seeds_r2_rc {
 			PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
