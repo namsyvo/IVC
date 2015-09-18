@@ -371,7 +371,11 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	loop_has_cand := 0
 	for loop_num <= PARA_INFO.Iter_num {
 		//PrintLoopTraceInfo(loop_num, "FindVariantsFromReads")
-		seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen)
+		if loop_num == 1 {
+			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 0) //Search from benginning
+		} else {
+			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 1) //Random search
+		}
 		c_num = 0
 		if has_seeds {
 			for p_idx = 0; p_idx < len(seed_info1.s_pos); p_idx++ {
@@ -498,7 +502,6 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 
 	//PrintMemStats("Before FindVariantsFromExtension, m_pos " + strconv.Itoa(m_pos))
 
-	var vars_arr []*VarInfo
 	var i, j, del_len int
 	var is_var, is_del bool
 
@@ -594,6 +597,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		}
 		PrintMatchTraceInfo(m_pos, r_align_s_pos, prob, r_var_pos, read)
 		var k int
+		var vars_arr []*VarInfo
 		for k = 0; k < len(l_var_pos); k++ {
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(l_var_pos[k]), l_var_base[k], l_var_qual[k], l_var_type[k]
