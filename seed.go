@@ -135,7 +135,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 //---------------------------------------------------------------------------------------------------
 // FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
 //---------------------------------------------------------------------------------------------------
-func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
+func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand, s_mode int) (*SeedInfo, *SeedInfo, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
 	var s_pos_r1_or, e_pos_r1_or, m_num_r1_or, s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc int
@@ -144,18 +144,26 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 	var strand_r1, strand_r2 []bool
 	var i, j int
 
+	var r_pos_r1_or, r_pos_r1_rc, r_pos_r2_or, r_pos_r2_rc int
 	//Take an initial position to search
-	r_pos_r1_or := INPUT_INFO.Start_pos
-	r_pos_r1_rc := INPUT_INFO.Start_pos
-	r_pos_r2_or := INPUT_INFO.Start_pos
-	r_pos_r2_rc := INPUT_INFO.Start_pos
 	if INPUT_INFO.Search_mode == 1 {
-		r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - 5)
-		r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - 5)
-		r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - 5)
-		r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - 5)
+		if s_mode == 0 {
+			r_pos_r1_or = INPUT_INFO.Start_pos + 5
+			r_pos_r1_rc = INPUT_INFO.Start_pos + 5
+			r_pos_r2_or = INPUT_INFO.Start_pos + 5
+			r_pos_r2_rc = INPUT_INFO.Start_pos + 5
+		} else {
+			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - 5)
+			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - 5)
+			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - 5)
+			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - 5)
+		}
+	} else {
+		r_pos_r1_or = INPUT_INFO.Start_pos
+		r_pos_r1_rc = INPUT_INFO.Start_pos
+		r_pos_r2_or = INPUT_INFO.Start_pos
+		r_pos_r2_rc = INPUT_INFO.Start_pos
 	}
-
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
@@ -242,15 +250,16 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 			return &SeedInfo{s_pos_r1, e_pos_r1, m_pos_r1, strand_r1}, &SeedInfo{s_pos_r2, e_pos_r2, m_pos_r2, strand_r2}, true
 		}
 		//Take a new position to search
-		r_pos_r1_or = r_pos_r1_or + INPUT_INFO.Search_step
-		r_pos_r1_rc = r_pos_r1_rc + INPUT_INFO.Search_step
-		r_pos_r2_or = r_pos_r2_or + INPUT_INFO.Search_step
-		r_pos_r2_rc = r_pos_r2_rc + INPUT_INFO.Search_step
-		if INPUT_INFO.Search_mode == 1 {
+		if INPUT_INFO.Search_mode == 1 { //random search
 			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - 5)
 			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - 5)
 			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - 5)
 			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - 5)
+		} else {
+			r_pos_r1_or = r_pos_r1_or + INPUT_INFO.Search_step
+			r_pos_r1_rc = r_pos_r1_rc + INPUT_INFO.Search_step
+			r_pos_r2_or = r_pos_r2_or + INPUT_INFO.Search_step
+			r_pos_r2_rc = r_pos_r2_rc + INPUT_INFO.Search_step
 		}
 		loop_num++
 	}
