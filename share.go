@@ -262,33 +262,15 @@ func InitEditAlnMat(arr_len int) ([][]float64, [][][]int) {
 	return dis_mat, trace_mat
 }
 
-//--------------------------------------------------------------------------------------------------
-// Utility functions
-//--------------------------------------------------------------------------------------------------
-/*
-//--------------------------------------------------------------------------------------------------
-// IntervalHasVariants determines whether [i, j] contains variant positions which are stores in array A.
-// This function implements interpolation search. The array A must be sorted in increasing order.
-//--------------------------------------------------------------------------------------------------
-func IntervalHasVariants(A []int, i, j int) bool {
-	L := 0
-	R := len(A) - 1
-	var m int
-	for A[L] <= i && i <= A[R] && A[L] != A[R] {
-		m = L + (R-L)*((i-A[L])/(A[R]-A[L])) //out of range is possible here
-		if A[m] < i {
-			L = m + 1
-		} else if A[m] > i {
-			R = m - 1
-		} else {
-			return i <= j
-		}
-	}
-	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
+//---------------------------------------------------------------------------------------------------
+// UnAlnInfo represents info of unaligned reads.
+//---------------------------------------------------------------------------------------------------
+type UnAlnInfo struct {
+	read_info1, read_info2 []byte //unalgined read info.
 }
-*/
+
 //--------------------------------------------------------------------------------------------------
-// SplitN splits a slice of bytes using an memory-efficient method.
+// SplitN splits a slice of bytes using a memory-efficient method.
 //--------------------------------------------------------------------------------------------------
 func SplitN(s, sep []byte, n int) ([][]byte, int) {
 	first_idx, sep_idx := 0, 0
@@ -332,5 +314,26 @@ func IndexN(s, sep []byte, n int) int {
 		}
 	}
 	return -1
+}
+
+//--------------------------------------------------------------------------------------------------
+// IntervalHasVariants determines whether [i, j] contains variant positions which are stores in array A.
+// This function implements interpolation search. The array A must be sorted in increasing order.
+//--------------------------------------------------------------------------------------------------
+func IntervalHasVariants(A []int, i, j int) bool {
+	L := 0
+	R := len(A) - 1
+	var m int
+	for A[L] <= i && i <= A[R] && A[L] != A[R] {
+		m = L + (R-L)*((i-A[L])/(A[R]-A[L])) //out of range is possible here
+		if A[m] < i {
+			L = m + 1
+		} else if A[m] > i {
+			R = m - 1
+		} else {
+			return i <= j
+		}
+	}
+	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
 }
 */
