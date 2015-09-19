@@ -27,10 +27,10 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 }
 
 //-------------------------------------------------------------------------------------------------
-// BackwardDistance calculates the distance between a read and a ref in backward direction.
+// LeftAlign calculates the distance between a read and a ref in backward direction.
 // The read include standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
+func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len int
@@ -42,7 +42,7 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 	align_prob := 0.0
 	m, n := len(read), len(ref)
 
-	PrintEditDisInput("bw align input: read, qual, ref", read, qual, ref)
+	PrintEditDisInput("LeftAlign input: read, qual, ref", read, qual, ref)
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 	for m > 0 && n > 0 {
@@ -109,13 +109,13 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 		}
 	}
-	PrintDisInfo("bw Ham dis", m, n, align_prob)
+	PrintDisInfo("LeftAlignHam dis", m, n, align_prob)
 
 	if m == 0 || n == 0 {
 		return align_prob, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("bw align for Edit: read, qual, ref", read[:m], qual[:m], ref[:n])
+	PrintEditDisInput("LeftAlignEdit: read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -226,17 +226,17 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 			}
 		}
 	}
-	PrintDisInfo("BwEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("BwEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("BwEditDist, IT dis", m, n, IT[m][n])
+	PrintDisInfo("LeftAlignEditDist, D dis", m, n, D[m][n])
+	PrintDisInfo("LeftAlignEditDist, IS dis", m, n, IS[m][n])
+	PrintDisInfo("LeftAlignEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("BwEditDist, D mat", D, m, n, read[:m], ref[:n])
-	PrintEditDisMat("BwEditDist, IS mat", IS, m, n, read[:m], ref[:n])
-	PrintEditDisMat("BwEditDist, IT mat", IT, m, n, read[:m], ref[:n])
+	PrintEditDisMat("LeftAlignEditDist, D mat", D, m, n, read[:m], ref[:n])
+	PrintEditDisMat("LeftAlignEditDist, IS mat", IS, m, n, read[:m], ref[:n])
+	PrintEditDisMat("LeftAlignEditDist, IT mat", IT, m, n, read[:m], ref[:n])
 
-	PrintEditTraceMat("BwEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("BwEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("BwEditDist, IT trace mat", BT_IT, m, n)
+	PrintEditTraceMat("LeftAlignEditDist, D trace mat", BT_D, m, n)
+	PrintEditTraceMat("LeftAlignEditDist, IS trace mat", BT_IS, m, n)
+	PrintEditTraceMat("LeftAlignEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -253,10 +253,10 @@ func (VC *VarCall) BackwardDistance(read, qual, ref []byte, pos int, D, IS, IT [
 }
 
 //-------------------------------------------------------------------------------------------------
-// BackwardTraceBack constructs alignment between a read and a ref from BackwardDistance.
+// LeftAlignEditTraceBack constructs alignment between a read and a ref from LeftAlign.
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
+func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	var var_len int
@@ -264,7 +264,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
 
-	PrintEditDisInput("BwEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
+	PrintEditDisInput("LeftAlignEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	bt_mat := BT_Mat
@@ -343,7 +343,7 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 		aligned_qual[i], aligned_qual[j] = aligned_qual[j], aligned_qual[i]
 		aligned_ref[i], aligned_ref[j] = aligned_ref[j], aligned_ref[i]
 	}
-	PrintEditAlignInfo("BwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
+	PrintEditAlignInfo("LeftAlignEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get Vars
 	ref_ori_pos := 0
@@ -409,15 +409,15 @@ func (VC *VarCall) BackwardTraceBack(read, qual, ref []byte, m, n int, pos int, 
 			i++
 		}
 	}
-	PrintVarInfo("BwEditTraceBack, variant info", var_pos, var_base, var_qual)
+	PrintVarInfo("LeftAlignEditTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }
 
 //-------------------------------------------------------------------------------------------------
-// ForwardDistance calculates the distance between a read and a ref in forward direction.
+// RightAlign calculates the distance between a read and a ref in forward direction.
 // The read includes standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
+func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len int
@@ -428,7 +428,7 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 
-	PrintEditDisInput("fw dis input: read, qual, ref", read, qual, ref)
+	PrintEditDisInput("RightAlign input: read, qual, ref", read, qual, ref)
 	align_prob := 0.0
 	M, N := len(read), len(ref)
 	m, n := M, N
@@ -497,13 +497,13 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 		}
 	}
 
-	PrintDisInfo("fw Ham dis", m, n, align_prob)
+	PrintDisInfo("RightAlignHam dis", m, n, align_prob)
 
 	if m == 0 || n == 0 {
 		return align_prob, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("fw align for Edit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
+	PrintEditDisInput("RightAlignEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -618,17 +618,17 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 			}
 		}
 	}
-	PrintDisInfo("FwEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("FwEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("FwEditDist, IT dis", m, n, IT[m][n])
+	PrintDisInfo("RightAlignEditDist, D dis", m, n, D[m][n])
+	PrintDisInfo("RightAlignEditDist, IS dis", m, n, IS[m][n])
+	PrintDisInfo("RightAlignEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("FwEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("FwEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("FwEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
+	PrintEditDisMat("RightAlignEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
+	PrintEditDisMat("RightAlignEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
+	PrintEditDisMat("RightAlignEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
 
-	PrintEditTraceMat("FwEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("FwEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("FwEditDist, IT trace mat", BT_IT, m, n)
+	PrintEditTraceMat("RightAlignEditDist, D trace mat", BT_D, m, n)
+	PrintEditTraceMat("RightAlignEditDist, IS trace mat", BT_IS, m, n)
+	PrintEditTraceMat("RightAlignEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -644,13 +644,13 @@ func (VC *VarCall) ForwardDistance(read, qual, ref []byte, pos int, D, IS, IT []
 }
 
 //-------------------------------------------------------------------------------------------------
-// ForwardTraceBack constructs alignment between a read and a ref from ForwardDistance.
+// RightAlignEditTraceBack constructs alignment between a read and a ref from RightAlign.
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
-	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
+func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
+	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	PrintEditDisInput("FwEditTraceBack, read, qual, ref", read, qual, ref)
+	PrintEditDisInput("RightAlignEditTraceBack, read, qual, ref", read, qual, ref)
 
 	var var_len int
 	var var_pos, var_type []int
@@ -745,7 +745,7 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 		}
 	}
 
-	PrintEditAlignInfo("FwEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
+	PrintEditAlignInfo("RightAlignEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
 
 	//Get Vars
 	ref_ori_pos := N - n
@@ -812,6 +812,6 @@ func (VC *VarCall) ForwardTraceBack(read, qual, ref []byte, m, n int, pos int, B
 			i++
 		}
 	}
-	PrintVarInfo("FwEditTraceBack, variant info", var_pos, var_base, var_qual)
+	PrintVarInfo("RightAlignEditTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }

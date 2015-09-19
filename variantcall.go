@@ -202,32 +202,21 @@ func (VC *VarCall) CallVariants() {
 		wg.Add(1)
 		go VC.FindVariants(read_data, read_signal, var_results, &wg)
 	}
-	/*
-		//------------------------
-		//For debugging
-		go func() {
-			GetNoAlignReadInfo()
-		}()
-	*/
-	//------------------------
+
+	go GetNoAlignReadInfo()
+
 	go func() {
 		wg.Wait()
 		close(var_results)
-		//------------------------
-		//For debugging
-		//close(NO_ALIGN_READ_INFO_CHAN)
-		//------------------------
+		close(UNALIGN_INFO_CHAN)
 	}()
 
-	//Collect variants from results channel and update their probabilities
+	//Collect variants from results channel and update variant probabilities
 	var var_info *VarInfo
 	for var_info = range var_results {
 		VC.UpdateVariantProb(var_info)
 	}
-	//------------------------
-	//For debugging
-	//ProcessNoAlignReadInfo(VC.VarProb)
-	//------------------------
+	ProcessNoAlignReadInfo()
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -329,10 +318,11 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindVariantsFromPairedEndReads returns Vars found from alignment between pair-end reads and the multigenome.
-// This version treats each end of the reads independently.
+// FindVariantsPE finds variants from alignment between pair-end reads and the multigenome.
+// It uses seed-and-extend strategy and finds best alignment candidates through several iterations.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int, rand_gen *rand.Rand, var_results chan *VarInfo) {
+func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
+	rand_gen *rand.Rand, var_results chan *VarInfo) {
 	//---------------------------------------------------------------------
 	//get info for simulated reads, with specific format of testing dataset
 	//need to be re-implemented for general data
@@ -362,124 +352,109 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	var p_idx, s_idx, c_num int
 
 	paired_prob := math.MaxFloat64
-	loop_num := 1
 	loop_has_cand := 0
-	for loop_num <= PARA_INFO.Iter_num {
+	for loop_num := 1; loop_num <= PARA_INFO.Iter_num; loop_num++ {
 		if loop_num == 1 {
 			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 0) //Search from benginning
 		} else {
 			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 1) //Random search
 		}
+		if !has_seeds {
+			cand_num = append(cand_num, 0)
+			continue
+		}
 		c_num = 0
-		if has_seeds {
-			for p_idx = 0; p_idx < len(seed_info1.s_pos); p_idx++ {
-				//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
-				//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
-				//For mate-pair, they can be R-F (need to be confirmed)
-				if seed_info1.strand[p_idx] == seed_info2.strand[p_idx] {
-					continue
-				}
-				//Find variants for the first end
-				if seed_info1.strand[p_idx] == true {
-					vars1, _, _, align_prob1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
-						seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info)
-				} else {
-					vars1, _, _, align_prob1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
-						seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info)
-				}
-
-				//Find variants for the second end
-				if seed_info2.strand[p_idx] == true {
-					vars2, _, _, align_prob2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
-						seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info)
-				} else {
-					vars2, _, _, align_prob2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
-						seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info)
-				}
-
-				if align_prob1 != -1 && align_prob2 != -1 {
-					c_num++
-					ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
-					if paired_prob > align_prob1+align_prob2 {
-						paired_prob = align_prob1 + align_prob2
-						loop_has_cand = loop_num
-						PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
-						vars_get1 = make([]*VarInfo, len(vars1))
-						if vars1 != nil {
-							for s_idx = 0; s_idx < len(vars1); s_idx++ {
-								vars_get1[s_idx] = vars1[s_idx]
-								if INPUT_INFO.Debug_mode {
-									//Update vars_get1 with other info
-									vars_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
-									vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
-									vars_get1[s_idx].AProb = align_prob1
-									vars_get1[s_idx].IProb = ins_prob
-									vars_get1[s_idx].SPos1 = seed_info1.e_pos[p_idx]
-									vars_get1[s_idx].SPos2 = seed_info2.e_pos[p_idx]
-									vars_get1[s_idx].Strand1 = seed_info1.strand[p_idx]
-									vars_get1[s_idx].Strand2 = seed_info2.strand[p_idx]
-									vars_get1[s_idx].RInfo = read_info1
-								}
-							}
+		for p_idx = 0; p_idx < len(seed_info1.s_pos); p_idx++ {
+			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
+			//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
+			//For mate-pair, they can be R-F (need to be confirmed)
+			if seed_info1.strand[p_idx] == seed_info2.strand[p_idx] {
+				continue
+			}
+			//Find variants for the first end
+			if seed_info1.strand[p_idx] == true {
+				vars1, _, _, align_prob1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
+					seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info)
+			} else {
+				vars1, _, _, align_prob1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
+					seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info)
+			}
+			//Find variants for the second end
+			if seed_info2.strand[p_idx] == true {
+				vars2, _, _, align_prob2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
+					seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info)
+			} else {
+				vars2, _, _, align_prob2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
+					seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info)
+			}
+			//Currently, variants can be called iff both read-ends can be aligned
+			if align_prob1 != -1 && align_prob2 != -1 {
+				c_num++
+				ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_align_pos1-l_align_pos2))-400.0, 2.0) / (2 * 50 * 50)))
+				if paired_prob > align_prob1+align_prob2 {
+					paired_prob = align_prob1 + align_prob2
+					PrintGetVariants("Find_min", paired_prob, align_prob1, align_prob2, vars1, vars2)
+					vars_get1 = make([]*VarInfo, len(vars1)) //need to reset vars_get1 here
+					vars_get2 = make([]*VarInfo, len(vars2)) //need to reset vars_get2 here
+					loop_has_cand = loop_num
+					for s_idx = 0; s_idx < len(vars1); s_idx++ {
+						vars_get1[s_idx] = vars1[s_idx]
+						if INPUT_INFO.Debug_mode {
+							//Update vars_get1 with other info
+							vars_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
+							vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
+							vars_get1[s_idx].AProb = align_prob1
+							vars_get1[s_idx].IProb = ins_prob
+							vars_get1[s_idx].SPos1 = seed_info1.e_pos[p_idx]
+							vars_get1[s_idx].SPos2 = seed_info2.e_pos[p_idx]
+							vars_get1[s_idx].Strand1 = seed_info1.strand[p_idx]
+							vars_get1[s_idx].Strand2 = seed_info2.strand[p_idx]
+							vars_get1[s_idx].RInfo = read_info1
 						}
-						vars_get2 = make([]*VarInfo, len(vars2))
-						if vars2 != nil {
-							for s_idx = 0; s_idx < len(vars2); s_idx++ {
-								vars_get2[s_idx] = vars2[s_idx]
-								if INPUT_INFO.Debug_mode {
-									//Update vars_get2 with other info
-									vars_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
-									vars_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
-									vars_get2[s_idx].AProb = align_prob2
-									vars_get2[s_idx].IProb = ins_prob
-									vars_get2[s_idx].SPos1 = seed_info1.e_pos[p_idx]
-									vars_get2[s_idx].SPos2 = seed_info2.e_pos[p_idx]
-									vars_get2[s_idx].Strand1 = seed_info1.strand[p_idx]
-									vars_get2[s_idx].Strand2 = seed_info2.strand[p_idx]
-									vars_get2[s_idx].RInfo = read_info2
-								}
-							}
+					}
+					for s_idx = 0; s_idx < len(vars2); s_idx++ {
+						vars_get2[s_idx] = vars2[s_idx]
+						if INPUT_INFO.Debug_mode {
+							//Update vars_get2 with other info
+							vars_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
+							vars_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
+							vars_get2[s_idx].AProb = align_prob2
+							vars_get2[s_idx].IProb = ins_prob
+							vars_get2[s_idx].SPos1 = seed_info1.e_pos[p_idx]
+							vars_get2[s_idx].SPos2 = seed_info2.e_pos[p_idx]
+							vars_get2[s_idx].Strand1 = seed_info1.strand[p_idx]
+							vars_get2[s_idx].Strand2 = seed_info2.strand[p_idx]
+							vars_get2[s_idx].RInfo = read_info2
 						}
 					}
 				}
 			}
 		}
 		cand_num = append(cand_num, c_num)
-		if paired_prob < 1 {
+		if paired_prob < 1 { //in this case, it is likely the best candidates
 			break
 		}
-		loop_num++
 	}
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
 		PrintGetVariants("Final_var", paired_prob, align_prob1, align_prob2, vars_get1, vars_get2)
-		if len(vars_get1) > 0 {
-			for _, var_info := range vars_get1 {
-				if INPUT_INFO.Debug_mode {
-					var_info.MProb = map_qual
-				}
-				var_results <- var_info
-			}
+		for _, var_info := range vars_get1 {
+			var_info.MProb = map_qual
+			var_results <- var_info
 		}
-		if len(vars_get2) > 0 {
-			for _, var_info := range vars_get2 {
-				if INPUT_INFO.Debug_mode {
-					var_info.MProb = map_qual
-				}
-				var_results <- var_info
-			}
+		for _, var_info := range vars_get2 {
+			var_info.MProb = map_qual
+			var_results <- var_info
 		}
 		return
 	}
-	/*
-		//Cannot align any ends, consider as unaligned reads
-		var at Align_trace_info
-		if INPUT_INFO.Debug_mode {
-			at.read_info1 = read_info1
-			at.read_info2 = read_info2
-		}
-		NO_ALIGN_READ_INFO_CHAN <- at
-	*/
+	//Get unaligned paired-end reads
+	uai := UnAlignInfo{}
+	if INPUT_INFO.Debug_mode {
+		uai.read_info1 = read_info1
+		uai.read_info2 = read_info2
+	}
+	UNALIGN_INFO_CHAN <- uai
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -558,16 +533,16 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 	//PrintRefPosMap(l_ref_pos_map, r_ref_pos_map)
 
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
-		VC.BackwardDistance(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, edit_aln_info.Bw_Dist_D,
+		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_align_s_pos, edit_aln_info.Bw_Dist_D,
 			edit_aln_info.Bw_Dist_IS, edit_aln_info.Bw_Dist_IT, edit_aln_info.Bw_Trace_D, edit_aln_info.Bw_Trace_IS, edit_aln_info.Bw_Trace_IT, l_ref_pos_map)
 	r_Ham_dist, r_Edit_dist, r_bt_mat, r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type :=
-		VC.ForwardDistance(r_read_flank, r_qual_flank, r_ref_flank, r_align_s_pos, edit_aln_info.Fw_Dist_D,
+		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank, r_align_s_pos, edit_aln_info.Fw_Dist_D,
 			edit_aln_info.Fw_Dist_IS, edit_aln_info.Fw_Dist_IT, edit_aln_info.Fw_Trace_D, edit_aln_info.Fw_Trace_IS, edit_aln_info.Fw_Trace_IT, r_ref_pos_map)
 
-	prob := l_Ham_dist + r_Ham_dist + l_Edit_dist + r_Edit_dist
+	prob := l_Ham_dist + l_Edit_dist + r_Ham_dist + r_Edit_dist
 	if prob <= PARA_INFO.Prob_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual, l_type := VC.BackwardTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_align_s_pos,
+			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_align_s_pos,
 				l_bt_mat, edit_aln_info.Bw_Trace_D, edit_aln_info.Bw_Trace_IS, edit_aln_info.Bw_Trace_IT, l_ref_pos_map)
 			l_var_pos = append(l_var_pos, l_pos...)
 			l_var_base = append(l_var_base, l_base...)
@@ -576,7 +551,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		}
 		PrintMatchTraceInfo(m_pos, l_align_s_pos, prob, l_var_pos, read)
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual, r_type := VC.ForwardTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos,
+			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_align_s_pos,
 				r_bt_mat, edit_aln_info.Fw_Trace_D, edit_aln_info.Fw_Trace_IS, edit_aln_info.Fw_Trace_IT, r_ref_pos_map)
 			r_var_pos = append(r_var_pos, r_pos...)
 			r_var_base = append(r_var_base, r_base...)
@@ -721,7 +696,7 @@ func (VC *VarCall) OutputVarCalls() {
 	} else {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
 			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
-			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\t\n")
+			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\n")
 	}
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))

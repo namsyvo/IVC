@@ -132,7 +132,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindSeedsFromPairedEnds find all pairs of seeds which have proper chromosome distances.
+// FindSeedsPE finds all pairs of seeds which have proper chromosome distances.
 //---------------------------------------------------------------------------------------------------
 func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand, s_mode int) (*SeedInfo, *SeedInfo, bool) {
 
@@ -164,7 +164,7 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 		r_pos_r2_rc = INPUT_INFO.Start_pos
 	}
 	loop_num := 1
-	for loop_num <= PARA_INFO.Iter_num { //temp value, will be replaced later
+	for loop_num <= PARA_INFO.Iter_num {
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
 
