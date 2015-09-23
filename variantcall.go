@@ -355,7 +355,8 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	loop_has_cand := 0
 	for loop_num := 1; loop_num <= PARA_INFO.Iter_num; loop_num++ {
 		if loop_num == 1 {
-			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 0) //Search from benginning
+			//seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 0) //Search from benginning
+			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 1) //Random search
 		} else {
 			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 1) //Random search
 		}
@@ -692,7 +693,8 @@ func (VC *VarCall) OutputVarCalls() {
 
 	w := bufio.NewWriter(f)
 	if INPUT_INFO.Debug_mode == false {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tIVC_INFO\tVAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\n")
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
+			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\n")
 	} else {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
 			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
@@ -730,7 +732,10 @@ func (VC *VarCall) OutputVarCalls() {
 		line_aln = append(line_aln, ".")
 		//REF & ALT
 		if _, is_var = INDEX.VarProf[pos]; is_var {
-			if var_call == string(INDEX.VarProf[pos][0]) {
+			if var_call == string(INDEX.VarProf[pos][0]) { //Do not report known variants which are same with the reference
+				continue
+			}
+			if VC.VarRNum[var_pos][var_call] == 0 { //Do not report known variants at locations without aligned reads
 				continue
 			}
 			line_aln = append(line_aln, string(INDEX.VarProf[pos][0]))
