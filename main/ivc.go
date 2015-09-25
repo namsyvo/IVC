@@ -34,7 +34,7 @@ func main() {
 
 	if input_info.Proc_num == 0 {
 		input_info.Proc_num = runtime.NumCPU()
-		log.Printf("No input for number of threads, set to maximum number of current CPUs")
+		log.Printf("No input for number of threads, set to maximum number of CPUs of the current machine (=%d)", input_info.Proc_num)
 	}
 	if input_info.Debug_mode {
 		var err error

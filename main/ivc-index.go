@@ -7,7 +7,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/namsyvo/IVC"
 	"github.com/vtphan/fmi"
 	"log"
@@ -18,22 +17,19 @@ import (
 )
 
 func main() {
-
-	//Starting program----------------------------------------------------------//
-	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
-	fmt.Println("IVC-index: Indexing reference genomes and variant profiles.")
-	//--------------------------------------------------------------------------//
-
+	//Starting program------------------------------------------------------------------//
+	log.Printf("IVC - Integrated Variant Caller using next-generation sequencing data.")
+	log.Printf("IVC-index: Indexing reference genomes and variant profiles.")
+	//----------------------------------------------------------------------------------//
 	var genome_file = flag.String("G", "", "reference genome file")
 	var var_prof_file = flag.String("V", "", "variant profile file")
 	var idx_dir = flag.String("I", "", "index directory")
-	var debug_mode = flag.Bool("debug", false, "turn on debug mode.")
 	flag.Parse()
 
 	if _, err := os.Stat(*idx_dir); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.Mkdir(*idx_dir, 0777); err != nil {
-				fmt.Println("Could not create index directory, possibly due to a path error.")
+				log.Printf("Could not create index directory, possibly due to a path error.")
 				os.Exit(1)
 			}
 		} else {
@@ -42,7 +38,7 @@ func main() {
 	}
 
 	//Creating multigenome and variant profile index---------------------------//
-	fmt.Println("Creating multigenome and variant profile index...")
+	log.Printf("Creating multigenome and variant profile index...")
 	ivc.MEM_STATS = new(runtime.MemStats)
 	log.Printf("IVC-index: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 
@@ -73,16 +69,16 @@ func main() {
 	log.Printf("Time for creating multigenome and variant profile index:\t%s", gen_time)
 	ivc.PrintProcessMem("Memstats after creating multigenome and variant profile index")
 
-	fmt.Println("Multigenome length: ", multigenome_len)
-	fmt.Println("Variant profile index size: ", len(var_prof))
-	fmt.Println("Multigenome file: ", multigenome_file_name)
-	//fmt.Println("Reverse multigenome file: ", rev_multigenome_file_name)
-	fmt.Println("Variant profile index: ", var_prof_idx_file_name)
-	fmt.Println("Finish creating multigenome and variant profile index.")
+	log.Printf("Multigenome length: %d", multigenome_len)
+	log.Printf("Variant profile index size: %d", len(var_prof))
+	log.Printf("Multigenome file: %s", multigenome_file_name)
+	//log.Printf("Reverse multigenome file: %s", rev_multigenome_file_name)
+	log.Printf("Variant profile index: %s", var_prof_idx_file_name)
+	log.Printf("Finish creating multigenome and variant profile index.")
 	//--------------------------------------------------------------------------//
 
 	//Indexing multigenome------------------------------------------------------//
-	fmt.Println("Indexing multigenome...")
+	log.Printf("Indexing multigenome...")
 	var idx fmi.Index
 
 	//start_time = time.Now()
@@ -99,8 +95,8 @@ func main() {
 	log.Printf("Time for indexing reverse multigenome:\t%s", index_time)
 	ivc.PrintProcessMem("Memstats after indexing reverse multigenome")
 
-	//fmt.Println("Index directory for multigenome: ", multigenome_file+".index/")
-	fmt.Println("Index directory for reverse multigenome: ", rev_multigenome_file_name+".index/")
-	fmt.Println("Finish indexing multigenome.")
+	//log.Printf("Index directory for multigenome: %s", multigenome_file+".index/")
+	log.Printf("Index directory for reverse multigenome: %s", rev_multigenome_file_name+".index/")
+	log.Printf("Finish indexing multigenome.")
 
 }
