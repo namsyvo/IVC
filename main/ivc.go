@@ -13,7 +13,6 @@ import (
 	"path"
 	"runtime"
 	"runtime/pprof"
-	"time"
 )
 
 func main() {
@@ -23,9 +22,22 @@ func main() {
 	log.Printf("IVC-main: Calling variants based on alignment between reads and reference multi-genomes.")
 
 	input_info := ReadInputInfo()
-	ivc.MEM_STATS = new(runtime.MemStats)
-	var err error
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Rev_index_file=%s,"+
+		"Read_file_1=%s, Read_file_2=%s, Var_call_file=%s", input_info.Ref_file, input_info.Var_prof_file,
+		input_info.Index_file, input_info.Rev_index_file, input_info.Read_file_1, input_info.Read_file_2, input_info.Var_call_file)
+
+	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Proc_num=%d, Max_snum=%d, Max_psnum=%d, "+
+		"Min_slen=%d, Max_slen=%d, Dist_thres=%d, Prob_thres=%.5f, Iter_num=%d, Sub_cost=%.5f, Gap_open=%.5f, Gap_ext=%.5f, Debug_mode=%t",
+		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Max_snum, input_info.Max_psnum,
+		input_info.Min_slen, input_info.Max_slen, input_info.Dist_thres, input_info.Prob_thres, input_info.Iter_num,
+		input_info.Sub_cost, input_info.Gap_open, input_info.Gap_ext, input_info.Debug_mode)
+
+	if input_info.Proc_num == 0 {
+		input_info.Proc_num = runtime.NumCPU()
+		log.Printf("No input for number of threads, set to maximum number of current CPUs")
+	}
 	if input_info.Debug_mode {
+		var err error
 		ivc.CPU_FILE, err = os.Create(input_info.Var_call_file + ".cprof")
 		if err != nil {
 			log.Fatal(err)
@@ -33,13 +45,15 @@ func main() {
 		pprof.StartCPUProfile(ivc.CPU_FILE)
 		defer pprof.StopCPUProfile()
 
-		ivc.MEM_FILE, err = os.Create(input_info.Var_call_file + "mprof")
+		ivc.MEM_FILE, err = os.Create(input_info.Var_call_file + ".mprof")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer ivc.MEM_FILE.Close()
-		log.Printf("Debug mode:\tCpu_prof_file=%s, Mem_prof_file=%s", input_info.Var_call_file+".cprof", input_info.Var_call_file+"mprof")
+		log.Printf("Debug mode:\tCpu_prof_file=%s, Mem_prof_file=%s", input_info.Var_call_file+".cprof", input_info.Var_call_file+".mprof")
 	}
+
+	ivc.MEM_STATS = new(runtime.MemStats)
 
 	//Initializing indexes and parameters--------------------------------------//
 	variant_caller := ivc.NewVariantCaller(input_info)
@@ -113,19 +127,5 @@ func ReadInputInfo() *ivc.InputInfo {
 	input_info.Gap_ext = *gap_ext
 	input_info.Debug_mode = *debug_mode
 
-	if input_info.Proc_num == 0 {
-		input_info.Proc_num = runtime.NumCPU()
-		log.Printf("No input for number of threads, set to maximum number of current CPUs")
-	}
-	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Rev_index_file=%s,"+
-		"Read_file_1=%s, Read_file_2=%s, Var_call_file=%s, Cpu_prof_file=%s, Mem_prof_file=%s",
-		input_info.Ref_file, input_info.Var_prof_file, input_info.Index_file, input_info.Rev_index_file,
-		input_info.Read_file_1, input_info.Read_file_2, input_info.Var_call_file)
-
-	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Proc_num=%d, Max_snum=%d, Max_psnum=%d, "+
-		"Min_slen=%d, Max_slen=%d, Dist_thres=%d, Prob_thres=%.5f, Iter_num=%d, Sub_cost=%.5f, Gap_open=%.5f, Gap_ext=%.5f, Debug_mode=%t",
-		input_info.Search_mode, input_info.Start_pos, input_info.Search_step, input_info.Proc_num, input_info.Max_snum, input_info.Max_psnum,
-		input_info.Min_slen, input_info.Max_slen, input_info.Dist_thres, input_info.Prob_thres, input_info.Iter_num,
-		input_info.Sub_cost, input_info.Gap_open, input_info.Gap_ext, input_info.Debug_mode)
 	return input_info
 }

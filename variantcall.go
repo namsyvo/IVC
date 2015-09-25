@@ -280,7 +280,9 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 		}
 		if read_num%10000 == 0 {
 			PrintProcessMem("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
-			pprof.WriteHeapProfile(MEM_FILE)
+			if INPUT_INFO.Debug_mode {
+				pprof.WriteHeapProfile(MEM_FILE)
+			}
 		}
 	}
 	close(read_data)
