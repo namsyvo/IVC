@@ -7,8 +7,8 @@
 package ivc
 
 import (
-	//"fmt"
 	"github.com/vtphan/fmi" //to use FM index
+	"log"
 	"math/rand"
 )
 
@@ -31,6 +31,7 @@ func NewIndex() *Index {
 
 	I := new(Index)
 
+	log.Printf("Memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	I.Seq = LoadMultigenome(INPUT_INFO.Ref_file)
 	PrintMemStats("Memstats after loading multigenome")
 

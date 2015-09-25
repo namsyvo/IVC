@@ -7,7 +7,6 @@
 package ivc
 
 import (
-	//"fmt"
 	"math"
 )
 
@@ -137,7 +136,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	D[0][0] = 0.0
 	IS[0][0] = float64(math.MaxFloat32)
 	IT[0][0] = float64(math.MaxFloat32)
-	IS[1][0] = PARA_INFO.Gap_open_cost
+	IS[1][0] = INPUT_INFO.Gap_open
 	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
 
 	for i = 1; i <= m; i++ {
@@ -145,7 +144,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 		IT[i][0] = float64(math.MaxFloat32)
 	}
 	for i = 2; i <= m; i++ {
-		IS[i][0] = PARA_INFO.Gap_ext_cost
+		IS[i][0] = INPUT_INFO.Gap_ext
 		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
 	}
 
@@ -159,7 +158,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = PARA_INFO.Sub_cost // + Q2C[qual[i-1]]
+		mis_i = INPUT_INFO.Sub_cost // + Q2C[qual[i-1]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[j-1]] != '*' {
 				if read[i-1] == ref[j-1] {
@@ -178,17 +177,17 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 				}
 
-				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
+				IS[i][j] = D[i-1][j] + INPUT_INFO.Gap_open
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
-					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
+				if IS[i][j] > IS[i-1][j]+INPUT_INFO.Gap_ext {
+					IS[i][j] = IS[i-1][j] + INPUT_INFO.Gap_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 
-				IT[i][j] = D[i][j-1] + PARA_INFO.Gap_open_cost
+				IT[i][j] = D[i][j-1] + INPUT_INFO.Gap_open
 				BT_IT[i][j][0], BT_IT[i][j][1] = 2, 0
-				if IT[i][j] > IT[i][j-1]+PARA_INFO.Gap_ext_cost {
-					IT[i][j] = IT[i][j-1] + PARA_INFO.Gap_ext_cost
+				if IT[i][j] > IT[i][j-1]+INPUT_INFO.Gap_ext {
+					IT[i][j] = IT[i][j-1] + INPUT_INFO.Gap_ext
 					BT_IT[i][j][0], BT_IT[i][j][1] = 2, 2
 				}
 			} else {
@@ -528,10 +527,10 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 		IT[i][0] = float64(math.MaxFloat32)
 	}
 	IS[0][0] = float64(math.MaxFloat32)
-	IS[1][0] = PARA_INFO.Gap_open_cost
+	IS[1][0] = INPUT_INFO.Gap_open
 	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
 	for i = 2; i <= m; i++ {
-		IS[i][0] = PARA_INFO.Gap_ext_cost
+		IS[i][0] = INPUT_INFO.Gap_ext
 		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
 	}
 
@@ -546,7 +545,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = PARA_INFO.Sub_cost // + Q2C[qual[M-i]]
+		mis_i = INPUT_INFO.Sub_cost // + Q2C[qual[M-i]]
 		for j = 1; j <= n; j++ {
 			if INDEX.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
@@ -564,16 +563,16 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 					D[i][j] = D[i-1][j-1] + sub_i
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 0
 				}
-				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
+				IS[i][j] = D[i-1][j] + INPUT_INFO.Gap_open
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
-					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
+				if IS[i][j] > IS[i-1][j]+INPUT_INFO.Gap_ext {
+					IS[i][j] = IS[i-1][j] + INPUT_INFO.Gap_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
-				IT[i][j] = D[i][j-1] + PARA_INFO.Gap_open_cost
+				IT[i][j] = D[i][j-1] + INPUT_INFO.Gap_open
 				BT_IT[i][j][0], BT_IT[i][j][1] = 2, 0
-				if IT[i][j] > IT[i][j-1]+PARA_INFO.Gap_ext_cost {
-					IT[i][j] = IT[i][j-1] + PARA_INFO.Gap_ext_cost
+				if IT[i][j] > IT[i][j-1]+INPUT_INFO.Gap_ext {
+					IT[i][j] = IT[i][j-1] + INPUT_INFO.Gap_ext
 					BT_IT[i][j][0], BT_IT[i][j][1] = 2, 2
 				}
 			} else {
@@ -609,10 +608,10 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 				if selected_var_len != 0 {
 					BT_D[i][j][2] = selected_var_len
 				}
-				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open_cost
+				IS[i][j] = D[i-1][j] + INPUT_INFO.Gap_open
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext_cost {
-					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext_cost
+				if IS[i][j] > IS[i-1][j]+INPUT_INFO.Gap_ext {
+					IS[i][j] = IS[i-1][j] + INPUT_INFO.Gap_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 			}

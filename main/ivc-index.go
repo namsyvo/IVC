@@ -13,8 +13,8 @@ import (
 	"log"
 	"os"
 	"path"
-	"time"
 	"runtime"
+	"time"
 )
 
 func main() {
@@ -22,14 +22,12 @@ func main() {
 	//Starting program----------------------------------------------------------//
 	fmt.Println("IVC - Integrated Variant Caller using Next-generation sequencing data.")
 	fmt.Println("IVC-index: Indexing reference genomes and variant profiles.")
-	log.Printf("IVC-index: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
 	//--------------------------------------------------------------------------//
 
-	var genome_file = flag.String("g", "", "reference genome file")
-	var var_prof_file = flag.String("v", "", "variant profile file")
-	var idx_dir = flag.String("i", "", "index directory")
-	//var workers = flag.Int("w", 1, "number of workers")
-	//flag.BoolVar(&Debug, "debug", false, "Turn on debug mode.")
+	var genome_file = flag.String("G", "", "reference genome file")
+	var var_prof_file = flag.String("V", "", "variant profile file")
+	var idx_dir = flag.String("I", "", "index directory")
+	var debug_mode = flag.Bool("debug", false, "turn on debug mode.")
 	flag.Parse()
 
 	if _, err := os.Stat(*idx_dir); err != nil {
@@ -46,9 +44,11 @@ func main() {
 	//Creating multigenome and variant profile index---------------------------//
 	fmt.Println("Creating multigenome and variant profile index...")
 	ivc.MEM_STATS = new(runtime.MemStats)
+	log.Printf("IVC-index: memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
+
 	start_time := time.Now()
 	genome := ivc.ReadFASTA(*genome_file)
-	ivc.PrintProcessMem("Memstats after reading genome")
+	ivc.PrintProcessMem("Memstats after reading reference genome")
 	var_prof := ivc.ReadVCF(*var_prof_file)
 	ivc.PrintProcessMem("Memstats after reading variant profile")
 	multigenome := ivc.BuildMultigenome(var_prof, genome)

@@ -9,10 +9,11 @@ package ivc
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sort"
 	"strconv"
@@ -82,27 +83,48 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 	//Initialize global variables
 	INPUT_INFO = input_info
 	if _, e := os.Stat(INPUT_INFO.Read_file_1); e != nil {
-		fmt.Println("Error: Read_file_1 does not exists!", e)
+		log.Printf("Error: Read_file_1 does not exists! (err: %s)", e)
 		os.Exit(1)
 	}
 	if _, e := os.Stat(INPUT_INFO.Read_file_2); e != nil {
-		fmt.Println("Error: Read_file_2 does not exists!", e)
+		log.Printf("Error: Read_file_2 does not exists! (err: %s)", e)
 		os.Exit(1)
 	}
+	log.Printf("Initializing indexes and parameters...")
+	start_time := time.Now()
 	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
 	//700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
 	//0.01 is mutation rate (currently is estimated from dbSNP of human genome)
-	PARA_INFO = SetPara(100, 500, 700, 0.0015, 0.01, input_info.Dist_thres, input_info.Prob_thres, input_info.Iter_num)
+	PARA_INFO = SetPara(100, 500, 700, 0.0015, 0.01, INPUT_INFO.Dist_thres, INPUT_INFO.Prob_thres, INPUT_INFO.Iter_num)
+	runtime.GOMAXPROCS(INPUT_INFO.Proc_num)
 
 	//Initialize Index object for finding seeds
 	INDEX = NewIndex()
+
+	//"Local-global" variable which shared by all downstream functions from CallVariants function.
+	//May consider a better solution later.
+	Q2C = make(map[byte]float64)
+	Q2E = make(map[byte]float64)
+	Q2P = make(map[byte]float64)
+	L2E = make([]float64, 50)
+	var q byte
+	for i := 33; i < 74; i++ {
+		q = byte(i)
+		//Phred-encoding factor (33) need to be estimated from input data
+		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
+		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
+		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
+	}
+	for i := 1; i < 50; i++ {
+		L2E[i] = math.Pow(INDEL_ERR, float64(i))
+	}
 
 	//Initialize VarCall object for calling variants
 	VC := new(VarCall)
 	VC.VarProb = make(map[uint32]map[string]float64)
 	VC.VarType = make(map[uint32]map[string]int)
 	VC.VarRNum = make(map[uint32]map[string]int)
-	if input_info.Debug_mode {
+	if INPUT_INFO.Debug_mode {
 		VC.ChrDis = make(map[uint32]map[string][]int)
 		VC.ChrDiff = make(map[uint32]map[string][]int)
 		VC.MapProb = make(map[uint32]map[string][]float64)
@@ -144,7 +166,7 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 		}
 		VC.VarType[pos] = make(map[string]int)
 		VC.VarRNum[pos] = make(map[string]int)
-		if input_info.Debug_mode {
+		if INPUT_INFO.Debug_mode {
 			VC.ChrDis[pos] = make(map[string][]int)
 			VC.ChrDiff[pos] = make(map[string][]int)
 			VC.MapProb[pos] = make(map[string][]float64)
@@ -158,6 +180,10 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 			VC.ReadInfo[pos] = make(map[string][][]byte)
 		}
 	}
+	PrintProcessMem("Memstats after initializing the variant caller")
+	index_time := time.Since(start_time)
+	log.Printf("Time for initializing the variant caller:\t%s", index_time)
+	log.Printf("Finish initializing indexes and parameters.")
 	return VC
 }
 
@@ -167,42 +193,24 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 // This function will be called from main program.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) CallVariants() {
-
-	//"Local-global" variable which shared by all downstream functions in this go routine.
-	//May consider a better solution later.
-	Q2C = make(map[byte]float64)
-	Q2E = make(map[byte]float64)
-	Q2P = make(map[byte]float64)
-	L2E = make([]float64, 50)
-	var q byte
-	for i := 33; i < 74; i++ {
-		q = byte(i)
-		//Phred-encoding factor (33) need to be estimated from input data
-		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
-		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
-		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
-	}
-	for i := 1; i < 50; i++ {
-		L2E[i] = math.Pow(INDEL_ERR, float64(i))
-	}
-
+	log.Printf("Calling variants...")
+	start_time := time.Now()
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindVariants,
 	//when a FindSNPs goroutine finish copying a read to its own memory,
 	//it signals ReadReads goroutine to scan next reads.
 	read_signal := make(chan bool)
 
 	//Call a goroutine to read input reads
-	read_data := make(chan *ReadInfo, INPUT_INFO.Routine_num)
+	read_data := make(chan *ReadInfo, INPUT_INFO.Proc_num)
 	go VC.ReadReads(read_data, read_signal)
 
 	//Call goroutines to find Vars, pass shared variable to each goroutine
 	var_results := make(chan *VarInfo)
 	var wg sync.WaitGroup
-	for i := 0; i < INPUT_INFO.Routine_num; i++ {
+	for i := 0; i < INPUT_INFO.Proc_num; i++ {
 		wg.Add(1)
 		go VC.FindVariants(read_data, read_signal, var_results, &wg)
 	}
-
 	go GetNoAlignReadInfo()
 
 	go func() {
@@ -217,6 +225,10 @@ func (VC *VarCall) CallVariants() {
 		VC.UpdateVariantProb(var_info)
 	}
 	ProcessNoAlignReadInfo()
+	PrintProcessMem("Memstats after calling variants")
+	call_var_time := time.Since(start_time)
+	log.Printf("Time for calling variants:\t%s", call_var_time)
+	log.Printf("Finish calling variants.")
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -227,13 +239,13 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
 	f1, e1 := os.Open(fn1)
 	if e1 != nil {
-		fmt.Println("Error: Open read_file_1 "+fn1, e1)
+		log.Printf("Error: Open read_file_1 %s, (err: %s)", fn1, e1)
 		os.Exit(1)
 	}
 	defer f1.Close()
 	f2, e2 := os.Open(fn2)
 	if e2 != nil {
-		fmt.Println("Error: Open read_file_2 "+fn1, e2)
+		log.Printf("Error: Open read_file_2 %s, (err: %s)", fn1, e2)
 		os.Exit(1)
 	}
 	defer f2.Close()
@@ -267,11 +279,8 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 			read_signal <- true
 		}
 		if read_num%10000 == 0 {
-			PrintProcessMem("Memstats after distributing 10000 reads")
+			PrintProcessMem("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
 			pprof.WriteHeapProfile(MEM_FILE)
-		}
-		if read_num%100000 == 0 {
-			fmt.Println("Processed", read_num, "reads")
 		}
 	}
 	close(read_data)
@@ -653,14 +662,13 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 		p2 *= Q2E[q]
 	}
 	var p, p_b float64
-	var is_known_var bool
 	p_a := 0.0
 	p_ab := make(map[string]float64)
+	_, is_known_var := INDEX.VarProf[int(pos)]
 	for b, p_b = range VC.VarProb[pos] {
 		if b == a {
 			p_ab[b] = p1
 		} else {
-			_, is_known_var = INDEX.VarProf[int(pos)]
 			if !is_known_var && var_info.Type == 2 {
 				p_ab[b] = L2E[len(a)]
 			} else {
@@ -684,9 +692,11 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) OutputVarCalls() {
 
+	log.Printf("Outputing variant calls...")
+	start_time := time.Now()
 	f, e := os.Create(INPUT_INFO.Var_call_file)
 	if e != nil {
-		fmt.Println("Error: Create output file", e)
+		log.Printf("Error: Create output file, %s, (err: %s)", INPUT_INFO.Var_call_file, e)
 		os.Exit(1)
 	}
 	defer f.Close()
@@ -816,4 +826,9 @@ func (VC *VarCall) OutputVarCalls() {
 		}
 	}
 	w.Flush()
+	PrintProcessMem("Memstats after outputing variant calls")
+	output_var_time := time.Since(start_time)
+	log.Printf("Time for outputing variant calls:\t%s", output_var_time)
+	log.Printf("Finish outputing variant calls.")
+	log.Printf("Check results in the file: %s", INPUT_INFO.Var_call_file)
 }

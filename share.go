@@ -7,10 +7,8 @@ package ivc
 
 import (
 	"bytes"
-	//"fmt"
 	"log"
 	"math"
-	//"math/rand"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -48,7 +46,6 @@ type InputInfo struct {
 	Start_pos      int     //starting postion on reads for finding seeds
 	Search_step    int     //step for searching in deterministic mode
 	Proc_num       int     //maximum number of CPUs using by Go
-	Routine_num    int     //number of goroutines
 	Max_snum       int     //maximum number of seeds
 	Max_psnum      int     //maximum number of paired-seeds
 	Min_slen       int     //minimum length of seeds
@@ -56,8 +53,9 @@ type InputInfo struct {
 	Dist_thres     int     //threshold for distances between reads and multigenomes
 	Prob_thres     float64 //threshold for alignment prob between reads and multigenomes
 	Iter_num       int     //number of random iterations to find proper alignments
-	Cpu_prof_file  string  //file to write cpu profile
-	Mem_prof_file  string  //file to write mem profile
+	Sub_cost       float64 //cost of substitution for Hamming and Edit distance
+	Gap_open       float64 //cost of gap open for Edit distance
+	Gap_ext        float64 //cost of gap extension for Edit distance
 	Debug_mode     bool    //debug mode for output
 }
 
@@ -76,9 +74,6 @@ type ParaInfo struct {
 	Iter_num_factor int     //factor for number of iterations
 	Read_len        int     //read length, calculated from read files
 	Info_len        int     //maximum size of array to store read headers
-	Sub_cost        float64 //cost of substitution for Hamming and Edit distance
-	Gap_open_cost   float64 //cost of gap open for Edit distance
-	Gap_ext_cost    float64 //cost of gap extension for Edit distance
 	Seed_backup     int     //number of backup bases from seeds
 	Indel_backup    int     //number of backup bases from known indels
 	Ham_backup      int     //number of backup bases from Hamming alignment
@@ -123,16 +118,11 @@ func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, di
 		para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 	}
 
-	para_info.Sub_cost = 4.0
-	para_info.Gap_open_cost = 4.1
-	para_info.Gap_ext_cost = 1.0
-
 	log.Printf("Prog paras:\tDist_thres=%d, Prob_thres=%.5f, Iter_num=%d, Max_ins=%d, Max_err=%.5f, Err_var_factor=%d,"+
-		" Mut_rate=%.5f, Mut_var_factor=%d, Iter_num_factor=%d, Read_len=%d, Info_len=%d,"+
-		" Sub_cost=%.5f, Gap_open_cost=%.5f, Gap_ext_cost=%.5f, Seed_backup=%d, Indel_backup=%d, Ham_backup=%d",
+		" Mut_rate=%.5f, Mut_var_factor=%d, Iter_num_factor=%d, Read_len=%d, Info_len=%d, Seed_backup=%d, Indel_backup=%d, Ham_backup=%d",
 		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
-		para_info.Sub_cost, para_info.Gap_open_cost, para_info.Gap_ext_cost, para_info.Seed_backup, para_info.Indel_backup, para_info.Ham_backup)
+		para_info.Seed_backup, para_info.Indel_backup, para_info.Ham_backup)
 
 	return para_info
 }
