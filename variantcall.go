@@ -365,12 +365,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	paired_prob := math.MaxFloat64
 	loop_has_cand := 0
 	for loop_num := 1; loop_num <= PARA_INFO.Iter_num; loop_num++ {
-		if loop_num == 1 {
-			//seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 0) //Search from benginning
-			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 1) //Random search
-		} else {
-			seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen, 1) //Random search
-		}
+		seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen)
 		if !has_seeds {
 			cand_num = append(cand_num, 0)
 			continue
@@ -706,10 +701,10 @@ func (VC *VarCall) OutputVarCalls() {
 	w := bufio.NewWriter(f)
 	if INPUT_INFO.Debug_mode == false {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
-			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\n")
+			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\n")
 	} else {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
-			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tBASE_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
+			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
 			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\n")
 	}
 	var var_pos uint32
@@ -799,6 +794,11 @@ func (VC *VarCall) OutputVarCalls() {
 			line_aln = append(line_aln, "1000")
 		}
 		line_aln = append(line_aln, strconv.Itoa(VC.VarRNum[var_pos][var_call]))
+		read_depth := 0
+        for var_base, var_num = range VC.VarRNum[var_pos] {
+			read_depth += var_num
+        }
+        line_aln = append(line_aln, strconv.Itoa(read_depth))
 		str_aln = strings.Join(line_aln, "\t")
 		if INPUT_INFO.Debug_mode == false {
 			w.WriteString(str_aln + "\n")

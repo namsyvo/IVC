@@ -135,7 +135,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 //---------------------------------------------------------------------------------------------------
 // FindSeedsPE finds all pairs of seeds which have proper chromosome distances.
 //---------------------------------------------------------------------------------------------------
-func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand, s_mode int) (*SeedInfo, *SeedInfo, bool) {
+func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
 	var s_pos_r1_or, e_pos_r1_or, m_num_r1_or, s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc int
@@ -147,17 +147,10 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 	var r_pos_r1_or, r_pos_r1_rc, r_pos_r2_or, r_pos_r2_rc int
 	//Take an initial position to search
 	if INPUT_INFO.Search_mode == 1 {
-		if s_mode == 0 {
-			r_pos_r1_or = INPUT_INFO.Start_pos + 5
-			r_pos_r1_rc = INPUT_INFO.Start_pos + 5
-			r_pos_r2_or = INPUT_INFO.Start_pos + 5
-			r_pos_r2_rc = INPUT_INFO.Start_pos + 5
-		} else {
-			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - 5)
-			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - 5)
-			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - 5)
-			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - 5)
-		}
+		r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
+		r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
+		r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
+		r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
 	} else {
 		r_pos_r1_or = INPUT_INFO.Start_pos
 		r_pos_r1_rc = INPUT_INFO.Start_pos
@@ -249,10 +242,10 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 		}
 		//Take a new position to search
 		if INPUT_INFO.Search_mode == 1 { //random search
-			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - 5)
-			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - 5)
-			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - 5)
-			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - 5)
+			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
+			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
+			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
+			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
 		} else {
 			r_pos_r1_or = r_pos_r1_or + INPUT_INFO.Search_step
 			r_pos_r1_rc = r_pos_r1_rc + INPUT_INFO.Search_step
