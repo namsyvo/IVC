@@ -79,7 +79,6 @@ type VarCall struct {
 // This function will be called from the main program.
 //---------------------------------------------------------------------------------------------------
 func NewVariantCaller(input_info *InputInfo) *VarCall {
-
 	//Initialize global variables
 	INPUT_INFO = input_info
 	if _, e := os.Stat(INPUT_INFO.Read_file_1); e != nil {
@@ -90,13 +89,13 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 		log.Printf("Error: Read_file_2 does not exists! (err: %s)", e)
 		os.Exit(1)
 	}
+	runtime.GOMAXPROCS(INPUT_INFO.Proc_num)
 	log.Printf("Initializing indexes and parameters...")
 	start_time := time.Now()
 	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
 	//700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
 	//0.01 is mutation rate (currently is estimated from dbSNP of human genome)
 	PARA_INFO = SetPara(100, 500, 700, 0.0015, 0.01, INPUT_INFO.Dist_thres, INPUT_INFO.Prob_thres, INPUT_INFO.Iter_num)
-	runtime.GOMAXPROCS(INPUT_INFO.Proc_num)
 
 	//Initialize Index object for finding seeds
 	INDEX = NewIndex()
