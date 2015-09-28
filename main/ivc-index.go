@@ -76,9 +76,9 @@ func main() {
 	//Indexing multi-sequence------------------------------------------------------//
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Indexing multi-sequence...")
-	//var idx fmi.Index
-
 	start_time = time.Now()
+
+	var idx fmi.Index
 	idx = *fmi.New(rev_multi_seq_file_name)
 	idx.Save(rev_multi_seq_file_name)
 	index_time := time.Since(start_time)

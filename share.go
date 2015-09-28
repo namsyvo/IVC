@@ -136,7 +136,7 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 	//Setup input parameters if not specified
 	if input_para_info.Proc_num == 0 {
 		para_info.Proc_num = runtime.NumCPU()
-		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (=%d).", para_info.Proc_num)
+		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (%d).", para_info.Proc_num)
 	}
 	if input_para_info.Search_mode == 0 {
 		para_info.Search_mode = 1
@@ -144,40 +144,40 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 	} else if input_para_info.Search_mode == 1 {
 		if input_para_info.Start_pos == 0 {
 			para_info.Start_pos = 512
-			log.Printf("Deterministic search mode: no or invalid input for start postion on reads to find seeds, use default value (=%d).", para_info.Start_pos)
+			log.Printf("Deterministic search mode: no or invalid input for start postion on reads to find seeds, use default value (%d).", para_info.Start_pos)
 		}
 		if input_para_info.Search_step == 0 {
 			para_info.Search_step = 512
-			log.Printf("Deterministic search mode: no or invalid input for searching step, use default value (=%d).", para_info.Search_step)
+			log.Printf("Deterministic search mode: no or invalid input for searching step, use default value (%d).", para_info.Search_step)
 		}
 	}
 	if input_para_info.Max_snum == 0 {
 		para_info.Max_snum = 512
-		log.Printf("No or invalid input for maximum number of seeds, use default value (=%d).", para_info.Max_snum)
+		log.Printf("No or invalid input for maximum number of seeds, use default value (%d).", para_info.Max_snum)
 	}
 	if input_para_info.Max_psnum == 0 {
 		para_info.Max_psnum = 128
-		log.Printf("No or invalid input for maximum number of paired-seeds, use default value (=%d).", para_info.Max_psnum)
+		log.Printf("No or invalid input for maximum number of paired-seeds, use default value (%d).", para_info.Max_psnum)
 	}
 	if input_para_info.Min_slen == 0 {
 		para_info.Min_slen = 15
-		log.Printf("No or invalid input for minimum length of seeds, use default value (=%d).", para_info.Min_slen)
+		log.Printf("No or invalid input for minimum length of seeds, use default value (%d).", para_info.Min_slen)
 	}
 	if input_para_info.Max_slen == 0 {
 		para_info.Max_slen = 25
-		log.Printf("No or invalid input for maximum length of seeds, use default value (=%d).", para_info.Max_slen)
+		log.Printf("No or invalid input for maximum length of seeds, use default value (%d).", para_info.Max_slen)
 	}
 	if input_para_info.Sub_cost == 0 {
 		para_info.Sub_cost = 4
-		log.Printf("No or invalid input for substitution cost of alignment, use default value (=%.1f).", para_info.Sub_cost)
+		log.Printf("No or invalid input for substitution cost of alignment, use default value (%.1f).", para_info.Sub_cost)
 	}
 	if input_para_info.Gap_open == 0 {
 		para_info.Gap_open = 4.1
-		log.Printf("No or invalid input for gap open cost of alignment, use default value (=%.1f).", para_info.Gap_open)
+		log.Printf("No or invalid input for gap open cost of alignment, use default value (%.1f).", para_info.Gap_open)
 	}
 	if input_para_info.Gap_ext == 0 {
 		para_info.Gap_ext = 1
-		log.Printf("No or invalid input for gap extension cost of alignment, use default value (=%0.1f).", para_info.Gap_ext)
+		log.Printf("No or invalid input for gap extension cost of alignment, use default value (%.1f).", para_info.Gap_ext)
 	}
 
 	if input_para_info.Dist_thres == 0 {
@@ -191,18 +191,18 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 				int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
 		*/
 		para_info.Dist_thres = 36
-		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (=%d).", para_info.Dist_thres)
+		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%d).", para_info.Dist_thres)
 	}
 	if input_para_info.Prob_thres == 0 {
 		//err := float64(para_info.Err_rate)
 		//para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
 		para_info.Prob_thres = 36
-		log.Printf("No or invalid input for threshold of alignment probability, calculate based on input data (=%.5f).", para_info.Prob_thres)
+		log.Printf("No or invalid input for threshold of alignment probability, calculate based on input data (%.5f).", para_info.Prob_thres)
 	}
 	if input_para_info.Iter_num == 0 {
 		//para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
 		para_info.Iter_num = 12
-		log.Printf("No or invalid input for numbers of random iterations, calculate based on input data (=%d).", para_info.Iter_num)
+		log.Printf("No or invalid input for numbers of random iterations, calculate based on input data (%d).", para_info.Iter_num)
 	}
 
 	//Estimate parameters for the variant caller
