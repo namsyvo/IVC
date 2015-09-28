@@ -133,11 +133,23 @@ func Setup(input_para_info *ParaInfo) {
 func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 
 	para_info := input_para_info
-
 	//Setup input parameters if not specified
 	if input_para_info.Proc_num == 0 {
 		para_info.Proc_num = runtime.NumCPU()
 		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (=%d).", para_info.Proc_num)
+	}
+	if input_para_info.Search_mode == 0 {
+		para_info.Search_mode = 1
+		log.Printf("No or invalid input for searching mode, use default strategy (randomizaion).")
+	} else if input_para_info.Search_mode == 1 {
+		if input_para_info.Start_pos == 0 {
+			para_info.Start_pos = 512
+			log.Printf("Deterministic search mode: no or invalid input for start postion on reads to find seeds, use default value (=%d).", para_info.Start_pos)
+		}
+		if input_para_info.Search_step == 0 {
+			para_info.Search_step = 512
+			log.Printf("Deterministic search mode: no or invalid input for searching step, use default value (=%d).", para_info.Search_step)
+		}
 	}
 	if input_para_info.Max_snum == 0 {
 		para_info.Max_snum = 512

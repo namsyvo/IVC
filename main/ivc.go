@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-
 	//Starting program----------------------------------------------------------//
 	log.Printf("IVC - Integrated Variant Caller using next-generation sequencing data.")
 	log.Printf("IVC-main: Calling variants based on alignment between reads and reference multi-genomes.")
@@ -34,7 +33,6 @@ func main() {
 	//Output variant calls-----------------------------------------------------//
 	variant_caller.OutputVarCalls()
 	//-------------------------------------------------------------------------//
-
 	log.Printf("Finish whole variant calling process.")
 }
 
