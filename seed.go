@@ -1,95 +1,37 @@
 //--------------------------------------------------------------------------------------------------
-// IVC: seed.go - Finding seeds of alignment betwwen reads and multigenomes using FM index.
-// Searching is perfomed from a random position on reads.
+// IVC: seed.go - Finding seeds of alignment betwwen reads and multigenomes.
+// Searching is perfomed from a random position on reads forwardly using an FM-index of reverse multi-genome
 // Copyright 2015 Nam Sy Vo.
 //--------------------------------------------------------------------------------------------------
 
 package ivc
 
 import (
-	"github.com/vtphan/fmi" //to use FM index
-	"log"
 	"math/rand"
 )
-
-//--------------------------------------------------------------------------------------------------
-//Index represents info and index used for alignment process.
-//--------------------------------------------------------------------------------------------------
-type Index struct {
-	Seq        []byte            //store reference multigenomes
-	VarProf    map[int][][]byte  //hash table of SNP Profile (position, variants)
-	VarAF      map[int][]float32 //allele frequency of SNP Profile (position, af of variants)
-	SameLenVar map[int]int       //hash table to indicate if SNPs has same length
-	DelVar     map[int]int       //hash table to store length of deletions if SNPs are deletion
-	RevFMI     fmi.Index         //FM-index of reverse multigenomes
-}
-
-//--------------------------------------------------------------------------------------------------
-// NewIndex creates an instance of Index and seta up its variables.
-//--------------------------------------------------------------------------------------------------
-func NewIndex() *Index {
-
-	I := new(Index)
-
-	log.Printf("Memstats:\tmemstats.Alloc\tmemstats.TotalAlloc\tmemstats.Sys\tmemstats.HeapAlloc\tmemstats.HeapSys")
-	I.Seq = LoadMultigenome(INPUT_INFO.Ref_file)
-	PrintMemStats("Memstats after loading multigenome")
-
-	I.VarProf, I.VarAF = LoadVarProf(INPUT_INFO.Var_prof_file)
-	PrintMemStats("Memstats after loading variant profile")
-
-	I.SameLenVar = make(map[int]int)
-	I.DelVar = make(map[int]int)
-	var same_len_flag, del_flag bool
-	var var_len int
-	for var_pos, var_prof := range I.VarProf {
-		var_len = len(var_prof[0])
-		same_len_flag, del_flag = true, true
-		for _, val := range var_prof[1:] {
-			if var_len != len(val) {
-				same_len_flag = false
-			}
-			if var_len <= len(val) {
-				del_flag = false
-			}
-		}
-		if same_len_flag {
-			I.SameLenVar[var_pos] = var_len
-		}
-		if del_flag {
-			I.DelVar[var_pos] = var_len - 1
-		}
-	}
-	PrintMemStats("Memstats after creating auxiliary data structures for variant profile")
-
-	I.RevFMI = *fmi.Load(INPUT_INFO.Rev_index_file)
-	PrintMemStats("Memstats after loading index of reverse multigenome")
-
-	return I
-}
 
 //--------------------------------------------------------------------------------------------------
 // BackwardSearchFrom searches for exact matches between a pattern and the reference using FM-index,
 // It starts to search from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
-func (I *Index) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int) {
+func (MG *MultiGenome) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int) {
 	var sp, ep, offset uint32
 	var ok bool
 
 	c := pattern[start_pos]
-	sp, ok = I.RevFMI.C[c]
+	sp, ok = MG.RevFMI.C[c]
 	if !ok {
 		return 0, -1, -1
 	}
-	ep = I.RevFMI.EP[c]
+	ep = MG.RevFMI.EP[c]
 	var sp0, ep0 uint32
 	var i int
-	for i = start_pos - 1; i >= 0 && i >= start_pos-INPUT_INFO.Max_slen; i-- {
+	for i = start_pos - 1; i >= 0 && i >= start_pos-PARA_INFO.Max_slen; i-- {
 		c = pattern[i]
-		offset, ok = I.RevFMI.C[c]
+		offset, ok = MG.RevFMI.C[c]
 		if ok {
-			sp0 = offset + I.RevFMI.OCC[c][sp-1]
-			ep0 = offset + I.RevFMI.OCC[c][ep] - 1
+			sp0 = offset + MG.RevFMI.OCC[c][sp-1]
+			ep0 = offset + MG.RevFMI.OCC[c][ep] - 1
 			if sp0 <= ep0 {
 				sp = sp0
 				ep = ep0
@@ -109,21 +51,21 @@ func (I *Index) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int
 // It uses both backward search and forward search
 // Forward search is backward search on reverse of the reference.
 //--------------------------------------------------------------------------------------------------
-func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
+func (MG *MultiGenome) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
 
-	var rev_sp, rev_ep int = 0, INPUT_INFO.Max_snum
+	var rev_sp, rev_ep int = 0, PARA_INFO.Max_snum
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
 
 	rev_s_pos = len(read) - 1 - p
-	rev_sp, rev_ep, rev_e_pos = I.BackwardSearchFrom(rev_read, rev_s_pos)
+	rev_sp, rev_ep, rev_e_pos = MG.BackwardSearchFrom(rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
 		//convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
-		if rev_ep-rev_sp+1 <= INPUT_INFO.Max_snum && s_pos-e_pos >= INPUT_INFO.Min_slen {
+		if rev_ep-rev_sp+1 <= PARA_INFO.Max_snum && s_pos-e_pos >= PARA_INFO.Min_slen {
 			for idx = rev_sp; idx <= rev_ep; idx++ {
-				m_pos[idx-rev_sp] = len(I.Seq) - 1 - int(I.RevFMI.SA[idx]) - (s_pos - e_pos)
+				m_pos[idx-rev_sp] = len(MG.Seq) - 1 - int(MG.RevFMI.SA[idx]) - (s_pos - e_pos)
 			}
 			return s_pos, e_pos, rev_ep - rev_sp + 1, true
 		}
@@ -135,7 +77,7 @@ func (I *Index) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, 
 //---------------------------------------------------------------------------------------------------
 // FindSeedsPE finds all pairs of seeds which have proper chromosome distances.
 //---------------------------------------------------------------------------------------------------
-func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
+func (MG *MultiGenome) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
 	var s_pos_r1_or, e_pos_r1_or, m_num_r1_or, s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc int
@@ -146,16 +88,16 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 
 	var r_pos_r1_or, r_pos_r1_rc, r_pos_r2_or, r_pos_r2_rc int
 	//Take an initial position to search
-	if INPUT_INFO.Search_mode == 1 {
-		r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
-		r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
-		r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
-		r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
+	if PARA_INFO.Search_mode == 1 {
+		r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - PARA_INFO.Min_slen)
+		r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - PARA_INFO.Min_slen)
+		r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - PARA_INFO.Min_slen)
+		r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - PARA_INFO.Min_slen)
 	} else {
-		r_pos_r1_or = INPUT_INFO.Start_pos
-		r_pos_r1_rc = INPUT_INFO.Start_pos
-		r_pos_r2_or = INPUT_INFO.Start_pos
-		r_pos_r2_rc = INPUT_INFO.Start_pos
+		r_pos_r1_or = PARA_INFO.Start_pos
+		r_pos_r1_rc = PARA_INFO.Start_pos
+		r_pos_r2_or = PARA_INFO.Start_pos
+		r_pos_r2_rc = PARA_INFO.Start_pos
 	}
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num {
@@ -163,28 +105,28 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 		PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
 
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or =
-			I.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
+			MG.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
 		PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
 		if has_seeds_r1_or {
 			PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
 				e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
 		}
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc =
-			I.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, seed_pos[1])
+			MG.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, seed_pos[1])
 		PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
 		if has_seeds_r1_rc {
 			PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc:s_pos_r1_rc+1],
 				e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
 		}
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or =
-			I.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, seed_pos[2])
+			MG.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, seed_pos[2])
 		PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
 		if has_seeds_r2_or {
 			PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or:s_pos_r2_or+1],
 				e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
 		}
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc =
-			I.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, seed_pos[3])
+			MG.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, seed_pos[3])
 		PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
 		if has_seeds_r2_rc {
 			PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
@@ -237,20 +179,20 @@ func (I *Index) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *ran
 				}
 			}
 		}
-		if len(s_pos_r1) >= 1 && len(s_pos_r1) <= INPUT_INFO.Max_psnum {
+		if len(s_pos_r1) >= 1 && len(s_pos_r1) <= PARA_INFO.Max_psnum {
 			return &SeedInfo{s_pos_r1, e_pos_r1, m_pos_r1, strand_r1}, &SeedInfo{s_pos_r2, e_pos_r2, m_pos_r2, strand_r2}, true
 		}
 		//Take a new position to search
-		if INPUT_INFO.Search_mode == 1 { //random search
-			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
-			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - INPUT_INFO.Min_slen)
-			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
-			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - INPUT_INFO.Min_slen)
+		if PARA_INFO.Search_mode == 1 { //random search
+			r_pos_r1_or = rand_gen.Intn(len(read_info.Read1) - PARA_INFO.Min_slen)
+			r_pos_r1_rc = rand_gen.Intn(len(read_info.Read1) - PARA_INFO.Min_slen)
+			r_pos_r2_or = rand_gen.Intn(len(read_info.Read2) - PARA_INFO.Min_slen)
+			r_pos_r2_rc = rand_gen.Intn(len(read_info.Read2) - PARA_INFO.Min_slen)
 		} else {
-			r_pos_r1_or = r_pos_r1_or + INPUT_INFO.Search_step
-			r_pos_r1_rc = r_pos_r1_rc + INPUT_INFO.Search_step
-			r_pos_r2_or = r_pos_r2_or + INPUT_INFO.Search_step
-			r_pos_r2_rc = r_pos_r2_rc + INPUT_INFO.Search_step
+			r_pos_r1_or = r_pos_r1_or + PARA_INFO.Search_step
+			r_pos_r1_rc = r_pos_r1_rc + PARA_INFO.Search_step
+			r_pos_r2_or = r_pos_r2_or + PARA_INFO.Search_step
+			r_pos_r2_rc = r_pos_r2_rc + PARA_INFO.Search_step
 		}
 		loop_num++
 	}

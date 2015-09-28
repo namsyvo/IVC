@@ -45,12 +45,12 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 	for m > 0 && n > 0 {
-		if INDEX.Seq[ref_pos_map[n-1]-PARA_INFO.Indel_backup] == '*' {
-			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
+		if MULTI_GENOME.Seq[ref_pos_map[n-1]-PARA_INFO.Indel_backup] == '*' {
+			if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
 				break
 			}
 		}
-		if INDEX.Seq[ref_pos_map[n-1]] != '*' {
+		if MULTI_GENOME.Seq[ref_pos_map[n-1]] != '*' {
 			if read[m-1] != ref[n-1] {
 				backup_num := PARA_INFO.Ham_backup
 				if backup_num >= len(read)-m {
@@ -76,7 +76,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 			}
 			m--
 			n--
-		} else if var_len, is_same_len_var = INDEX.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
+		} else if var_len, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
 			var_prof, _ = VC.VarProb[uint32(ref_pos_map[n-1])]
 			min_p = math.MaxFloat64
 			for var_str, var_prob = range var_prof {
@@ -136,7 +136,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	D[0][0] = 0.0
 	IS[0][0] = float64(math.MaxFloat32)
 	IT[0][0] = float64(math.MaxFloat32)
-	IS[1][0] = INPUT_INFO.Gap_open
+	IS[1][0] = PARA_INFO.Gap_open
 	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
 
 	for i = 1; i <= m; i++ {
@@ -144,7 +144,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 		IT[i][0] = float64(math.MaxFloat32)
 	}
 	for i = 2; i <= m; i++ {
-		IS[i][0] = INPUT_INFO.Gap_ext
+		IS[i][0] = PARA_INFO.Gap_ext
 		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
 	}
 
@@ -158,9 +158,9 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = INPUT_INFO.Sub_cost // + Q2C[qual[i-1]]
+		mis_i = PARA_INFO.Sub_cost // + Q2C[qual[i-1]]
 		for j = 1; j <= n; j++ {
-			if INDEX.Seq[ref_pos_map[j-1]] != '*' {
+			if MULTI_GENOME.Seq[ref_pos_map[j-1]] != '*' {
 				if read[i-1] == ref[j-1] {
 					sub_i = 0.0
 				} else {
@@ -177,17 +177,17 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 2
 				}
 
-				IS[i][j] = D[i-1][j] + INPUT_INFO.Gap_open
+				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+INPUT_INFO.Gap_ext {
-					IS[i][j] = IS[i-1][j] + INPUT_INFO.Gap_ext
+				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext {
+					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 
-				IT[i][j] = D[i][j-1] + INPUT_INFO.Gap_open
+				IT[i][j] = D[i][j-1] + PARA_INFO.Gap_open
 				BT_IT[i][j][0], BT_IT[i][j][1] = 2, 0
-				if IT[i][j] > IT[i][j-1]+INPUT_INFO.Gap_ext {
-					IT[i][j] = IT[i][j-1] + INPUT_INFO.Gap_ext
+				if IT[i][j] > IT[i][j-1]+PARA_INFO.Gap_ext {
+					IT[i][j] = IT[i][j-1] + PARA_INFO.Gap_ext
 					BT_IT[i][j][0], BT_IT[i][j][1] = 2, 2
 				}
 			} else {
@@ -269,7 +269,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
 	for i > 0 || j > 0 {
-		if j == 0 || INDEX.Seq[ref_pos_map[j-1]] != '*' { //unknown VARIANT location
+		if j == 0 || MULTI_GENOME.Seq[ref_pos_map[j-1]] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[i-1] != ref[j-1] {
 					var_pos = append(var_pos, ref_pos_map[j-1])
@@ -307,9 +307,9 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 				copy(q, qual[i-var_len:i])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
-				if _, is_del = INDEX.DelVar[ref_pos_map[j-1]]; is_del {
+				if _, is_del = MULTI_GENOME.DelVar[ref_pos_map[j-1]]; is_del {
 					var_type = append(var_type, 2)
-				} else if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[j-1]]; is_same_len_var {
+				} else if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[j-1]]; is_same_len_var {
 					var_type = append(var_type, 0)
 				} else {
 					var_type = append(var_type, 1)
@@ -432,12 +432,12 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
-		if INDEX.Seq[ref_pos_map[N-n]+PARA_INFO.Indel_backup] == '*' {
-			if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
+		if MULTI_GENOME.Seq[ref_pos_map[N-n]+PARA_INFO.Indel_backup] == '*' {
+			if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
 				break
 			}
 		}
-		if INDEX.Seq[ref_pos_map[N-n]] != '*' {
+		if MULTI_GENOME.Seq[ref_pos_map[N-n]] != '*' {
 			if read[M-m] != ref[N-n] {
 				backup_num := 2 * PARA_INFO.Ham_backup
 				if backup_num >= M-m {
@@ -463,7 +463,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 			}
 			m--
 			n--
-		} else if var_len, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
+		} else if var_len, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
 			min_p = math.MaxFloat64
 			var_prof, _ = VC.VarProb[uint32(ref_pos_map[N-n])]
 			for var_str, var_prob = range var_prof {
@@ -527,10 +527,10 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 		IT[i][0] = float64(math.MaxFloat32)
 	}
 	IS[0][0] = float64(math.MaxFloat32)
-	IS[1][0] = INPUT_INFO.Gap_open
+	IS[1][0] = PARA_INFO.Gap_open
 	BT_IS[1][0][0], BT_IS[1][0][1] = 1, 1
 	for i = 2; i <= m; i++ {
-		IS[i][0] = INPUT_INFO.Gap_ext
+		IS[i][0] = PARA_INFO.Gap_ext
 		BT_IS[i][0][0], BT_IS[i][0][1] = 1, 1
 	}
 
@@ -545,9 +545,9 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 	var selected_var_len int
 	var prob_i, sub_i, mis_i float64
 	for i = 1; i <= m; i++ {
-		mis_i = INPUT_INFO.Sub_cost // + Q2C[qual[M-i]]
+		mis_i = PARA_INFO.Sub_cost // + Q2C[qual[M-i]]
 		for j = 1; j <= n; j++ {
-			if INDEX.Seq[ref_pos_map[N-j]] != '*' {
+			if MULTI_GENOME.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
 					sub_i = 0.0
 				} else {
@@ -563,16 +563,16 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 					D[i][j] = D[i-1][j-1] + sub_i
 					BT_D[i][j][0], BT_D[i][j][1] = 0, 0
 				}
-				IS[i][j] = D[i-1][j] + INPUT_INFO.Gap_open
+				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+INPUT_INFO.Gap_ext {
-					IS[i][j] = IS[i-1][j] + INPUT_INFO.Gap_ext
+				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext {
+					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
-				IT[i][j] = D[i][j-1] + INPUT_INFO.Gap_open
+				IT[i][j] = D[i][j-1] + PARA_INFO.Gap_open
 				BT_IT[i][j][0], BT_IT[i][j][1] = 2, 0
-				if IT[i][j] > IT[i][j-1]+INPUT_INFO.Gap_ext {
-					IT[i][j] = IT[i][j-1] + INPUT_INFO.Gap_ext
+				if IT[i][j] > IT[i][j-1]+PARA_INFO.Gap_ext {
+					IT[i][j] = IT[i][j-1] + PARA_INFO.Gap_ext
 					BT_IT[i][j][0], BT_IT[i][j][1] = 2, 2
 				}
 			} else {
@@ -608,10 +608,10 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 				if selected_var_len != 0 {
 					BT_D[i][j][2] = selected_var_len
 				}
-				IS[i][j] = D[i-1][j] + INPUT_INFO.Gap_open
+				IS[i][j] = D[i-1][j] + PARA_INFO.Gap_open
 				BT_IS[i][j][0], BT_IS[i][j][1] = 1, 0
-				if IS[i][j] > IS[i-1][j]+INPUT_INFO.Gap_ext {
-					IS[i][j] = IS[i-1][j] + INPUT_INFO.Gap_ext
+				if IS[i][j] > IS[i-1][j]+PARA_INFO.Gap_ext {
+					IS[i][j] = IS[i-1][j] + PARA_INFO.Gap_ext
 					BT_IS[i][j][0], BT_IS[i][j][1] = 1, 1
 				}
 			}
@@ -661,7 +661,7 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
 	for i > 0 || j > 0 {
-		if j == 0 || INDEX.Seq[ref_pos_map[N-j]] != '*' { //unknown VARIANT location
+		if j == 0 || MULTI_GENOME.Seq[ref_pos_map[N-j]] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[M-i] != ref[N-j] {
 					var_pos = append(var_pos, ref_pos_map[N-j])
@@ -700,9 +700,9 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 					copy(q, qual[M-i:M-(i-var_len)])
 					var_base = append(var_base, v)
 					var_qual = append(var_qual, q)
-					if _, is_del = INDEX.DelVar[ref_pos_map[N-j]]; is_del {
+					if _, is_del = MULTI_GENOME.DelVar[ref_pos_map[N-j]]; is_del {
 						var_type = append(var_type, 2)
-					} else if _, is_same_len_var = INDEX.SameLenVar[ref_pos_map[N-j]]; is_same_len_var {
+					} else if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[N-j]]; is_same_len_var {
 						var_type = append(var_type, 0)
 					} else {
 						var_type = append(var_type, 1)

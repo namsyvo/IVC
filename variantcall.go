@@ -13,20 +13,12 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"runtime"
 	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-)
-
-var (
-	Q2C map[byte]float64 //Pre-calculated alignment cost which is based on Phred-based quality
-	Q2E map[byte]float64 //Pre-calculated error rate which is corresponding to Phred-based quality
-	Q2P map[byte]float64 //Pre-calculated probability which is corresponding to Phred-based quality
-	L2E []float64        //Pre-calculated indel error which is corresponding to length of indels
 )
 
 //---------------------------------------------------------------------------------------------------
@@ -78,34 +70,20 @@ type VarCall struct {
 // NewVariantCaller creates an instance of VarCall and sets up its variables.
 // This function will be called from the main program.
 //---------------------------------------------------------------------------------------------------
-func NewVariantCaller(input_info *InputInfo) *VarCall {
-	//Initialize global variables
-	INPUT_INFO = input_info
-	if _, e := os.Stat(INPUT_INFO.Read_file_1); e != nil {
-		log.Printf("Error: Read_file_1 does not exists! (err: %s)", e)
-		os.Exit(1)
-	}
-	if _, e := os.Stat(INPUT_INFO.Read_file_2); e != nil {
-		log.Printf("Error: Read_file_2 does not exists! (err: %s)", e)
-		os.Exit(1)
-	}
-	runtime.GOMAXPROCS(INPUT_INFO.Proc_num)
-	log.Printf("Initializing indexes and parameters...")
+func NewVariantCaller() *VarCall {
+	log.Printf("----------------------------------------------------------------------------------------")
+	log.Printf("Initializing the variant caller...")
 	start_time := time.Now()
-	//SetPara: 100 is maximum length of reads, 500 is maximum length of info line of reads,
-	//700 is maximum insert size of paired-end simulated reads, 0.0015 is maximum sequencing error rate
-	//0.01 is mutation rate (currently is estimated from dbSNP of human genome)
-	PARA_INFO = SetPara(100, 500, 700, 0.0015, 0.01, INPUT_INFO.Dist_thres, INPUT_INFO.Prob_thres, INPUT_INFO.Iter_num)
 
-	//Initialize Index object for finding seeds
-	INDEX = NewIndex()
+	//Initialize multi-genome
+	MULTI_GENOME = NewMultiGenome()
 
-	//"Local-global" variable which shared by all downstream functions from CallVariants function.
+	//Initialize "local-global" variable which shared by all downstream functions from CallVariants function.
 	//May consider a better solution later.
 	Q2C = make(map[byte]float64)
 	Q2E = make(map[byte]float64)
 	Q2P = make(map[byte]float64)
-	L2E = make([]float64, 50)
+	L2E = make([]float64, PARA_INFO.Read_len) //maximum length of called indels
 	var q byte
 	for i := 33; i < 74; i++ {
 		q = byte(i)
@@ -114,7 +92,7 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
 		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
 	}
-	for i := 1; i < 50; i++ {
+	for i := 1; i < PARA_INFO.Read_len; i++ {
 		L2E[i] = math.Pow(INDEL_ERR, float64(i))
 	}
 
@@ -123,7 +101,7 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 	VC.VarProb = make(map[uint32]map[string]float64)
 	VC.VarType = make(map[uint32]map[string]int)
 	VC.VarRNum = make(map[uint32]map[string]int)
-	if INPUT_INFO.Debug_mode {
+	if PARA_INFO.Debug_mode {
 		VC.ChrDis = make(map[uint32]map[string][]int)
 		VC.ChrDiff = make(map[uint32]map[string][]int)
 		VC.MapProb = make(map[uint32]map[string][]float64)
@@ -139,33 +117,34 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 	var pos uint32
 	var var_bases []byte
 	var i int
-	for var_pos, var_prof := range INDEX.VarProf {
+	STD_BASES := []string{"A", "C", "G", "T"}
+	for var_pos, var_prof := range MULTI_GENOME.Variants {
 		pos = uint32(var_pos)
 		VC.VarProb[pos] = make(map[string]float64)
 		//At this point, assume that all variants are biallelic
 		if len(var_prof[0]) == 1 && len(var_prof[1]) == 1 {
 			for i, var_bases = range var_prof {
-				VC.VarProb[pos][string(var_bases)] = float64(INDEX.VarAF[var_pos][i]) - NEW_SNP_RATE
+				VC.VarProb[pos][string(var_bases)] = float64(MULTI_GENOME.VarAF[var_pos][i]) - NEW_SNP_RATE
 				if VC.VarProb[pos][string(var_bases)] < NEW_SNP_RATE {
 					VC.VarProb[pos][string(var_bases)] = NEW_SNP_RATE
 				}
 			}
 		} else {
 			for i, var_bases = range var_prof {
-				VC.VarProb[pos][string(var_bases)] = float64(INDEX.VarAF[var_pos][i]) - 1.5*NEW_SNP_RATE
+				VC.VarProb[pos][string(var_bases)] = float64(MULTI_GENOME.VarAF[var_pos][i]) - 1.5*NEW_SNP_RATE
 				if VC.VarProb[pos][string(var_bases)] < NEW_SNP_RATE {
 					VC.VarProb[pos][string(var_bases)] = NEW_SNP_RATE
 				}
 			}
 		}
-		for _, b := range STD_BASES {
-			if _, ok := VC.VarProb[pos][string(b)]; !ok {
-				VC.VarProb[pos][string(b)] = NEW_SNP_RATE
+		for _, b := range STD_BASES { //standard bases (without N) of DNA sequences
+			if _, ok := VC.VarProb[pos][b]; !ok {
+				VC.VarProb[pos][b] = NEW_SNP_RATE
 			}
 		}
 		VC.VarType[pos] = make(map[string]int)
 		VC.VarRNum[pos] = make(map[string]int)
-		if INPUT_INFO.Debug_mode {
+		if PARA_INFO.Debug_mode {
 			VC.ChrDis[pos] = make(map[string][]int)
 			VC.ChrDiff[pos] = make(map[string][]int)
 			VC.MapProb[pos] = make(map[string][]float64)
@@ -179,10 +158,10 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 			VC.ReadInfo[pos] = make(map[string][][]byte)
 		}
 	}
-	PrintProcessMem("Memstats after initializing the variant caller")
 	index_time := time.Since(start_time)
+	PrintProcessMem("Memstats after initializing the variant caller")
 	log.Printf("Time for initializing the variant caller:\t%s", index_time)
-	log.Printf("Finish initializing indexes and parameters.")
+	log.Printf("Finish initializing the variant caller.")
 	return VC
 }
 
@@ -192,7 +171,10 @@ func NewVariantCaller(input_info *InputInfo) *VarCall {
 // This function will be called from main program.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) CallVariants() {
+	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Calling variants...")
+	log.Printf("Memstats:\tMemstats.Alloc\tMemstats.TotalAlloc\tMemstats.Sys\tMemstats.HeapAlloc\tMemstats.HeapSys")
+
 	start_time := time.Now()
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindVariants,
 	//when a FindSNPs goroutine finish copying a read to its own memory,
@@ -200,13 +182,13 @@ func (VC *VarCall) CallVariants() {
 	read_signal := make(chan bool)
 
 	//Call a goroutine to read input reads
-	read_data := make(chan *ReadInfo, INPUT_INFO.Proc_num)
+	read_data := make(chan *ReadInfo, PARA_INFO.Proc_num)
 	go VC.ReadReads(read_data, read_signal)
 
 	//Call goroutines to find Vars, pass shared variable to each goroutine
 	var_results := make(chan *VarInfo)
 	var wg sync.WaitGroup
-	for i := 0; i < INPUT_INFO.Proc_num; i++ {
+	for i := 0; i < PARA_INFO.Proc_num; i++ {
 		wg.Add(1)
 		go VC.FindVariants(read_data, read_signal, var_results, &wg)
 	}
@@ -235,7 +217,7 @@ func (VC *VarCall) CallVariants() {
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 
-	fn1, fn2 := INPUT_INFO.Read_file_1, INPUT_INFO.Read_file_2
+	fn1, fn2 := PARA_INFO.Read_file_1, PARA_INFO.Read_file_2
 	f1, e1 := os.Open(fn1)
 	if e1 != nil {
 		log.Printf("Error: Open read_file_1 %s, (err: %s)", fn1, e1)
@@ -279,7 +261,7 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 		}
 		if read_num%10000 == 0 {
 			PrintProcessMem("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
-			if INPUT_INFO.Debug_mode {
+			if PARA_INFO.Debug_mode {
 				pprof.WriteHeapProfile(MEM_FILE)
 			}
 		}
@@ -300,7 +282,7 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 	edit_aln_info := InitEditAlnInfo(2 * PARA_INFO.Read_len)
 	seed_pos := make([][]int, 4)
 	for i := 0; i < 4; i++ {
-		seed_pos[i] = make([]int, INPUT_INFO.Max_snum)
+		seed_pos[i] = make([]int, PARA_INFO.Max_snum)
 	}
 	rand_gen := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for read := range read_data {
@@ -364,7 +346,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	paired_prob := math.MaxFloat64
 	loop_has_cand := 0
 	for loop_num := 1; loop_num <= PARA_INFO.Iter_num; loop_num++ {
-		seed_info1, seed_info2, has_seeds = INDEX.FindSeedsPE(read_info, seed_pos, rand_gen)
+		seed_info1, seed_info2, has_seeds = MULTI_GENOME.FindSeedsPE(read_info, seed_pos, rand_gen)
 		if !has_seeds {
 			cand_num = append(cand_num, 0)
 			continue
@@ -405,7 +387,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					loop_has_cand = loop_num
 					for s_idx = 0; s_idx < len(vars1); s_idx++ {
 						vars_get1[s_idx] = vars1[s_idx]
-						if INPUT_INFO.Debug_mode {
+						if PARA_INFO.Debug_mode {
 							//Update vars_get1 with other info
 							vars_get1[s_idx].CDis = l_align_pos1 - l_align_pos2
 							vars_get1[s_idx].CDiff = l_align_pos1 - int(true_pos1)
@@ -420,7 +402,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 					}
 					for s_idx = 0; s_idx < len(vars2); s_idx++ {
 						vars_get2[s_idx] = vars2[s_idx]
-						if INPUT_INFO.Debug_mode {
+						if PARA_INFO.Debug_mode {
 							//Update vars_get2 with other info
 							vars_get2[s_idx].CDis = l_align_pos1 - l_align_pos2
 							vars_get2[s_idx].CDiff = l_align_pos2 - int(true_pos2)
@@ -456,7 +438,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	}
 	//Get unaligned paired-end reads
 	uai := UnAlignInfo{}
-	if INPUT_INFO.Debug_mode {
+	if PARA_INFO.Debug_mode {
 		uai.read_info1 = read_info1
 		uai.read_info2 = read_info2
 	}
@@ -483,8 +465,8 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 	i = l_align_e_pos
 	j = 0 //to check length of l_ref_flank
 	for j < l_read_flank_len+PARA_INFO.Indel_backup && i >= 0 {
-		if _, is_var = INDEX.VarProf[i]; is_var {
-			if del_len, is_del = INDEX.DelVar[i]; is_del {
+		if _, is_var = MULTI_GENOME.Variants[i]; is_var {
+			if del_len, is_del = MULTI_GENOME.DelVar[i]; is_del {
 				if del_len < j && del_len < len(l_ref_flank) {
 					l_ref_flank = l_ref_flank[:len(l_ref_flank)-del_len]
 					l_ref_pos_map = l_ref_pos_map[:len(l_ref_pos_map)-del_len]
@@ -495,7 +477,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			}
 		}
 		l_ref_pos_map = append(l_ref_pos_map, i)
-		l_ref_flank = append(l_ref_flank, INDEX.Seq[i])
+		l_ref_flank = append(l_ref_flank, MULTI_GENOME.Seq[i])
 		j++
 		i--
 	}
@@ -518,12 +500,12 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 	r_align_s_pos := m_pos + seed_len - PARA_INFO.Seed_backup
 	i = r_align_s_pos
 	j = 0 //to check length of r_ref_flank
-	for j < r_read_flank_len+PARA_INFO.Indel_backup && i < len(INDEX.Seq) {
+	for j < r_read_flank_len+PARA_INFO.Indel_backup && i < len(MULTI_GENOME.Seq) {
 		r_ref_pos_map = append(r_ref_pos_map, i)
-		r_ref_flank = append(r_ref_flank, INDEX.Seq[i])
-		if _, is_var = INDEX.VarProf[i]; is_var {
-			if del_len, is_del = INDEX.DelVar[i]; is_del {
-				if del_len < r_read_flank_len-j && i+del_len < len(INDEX.Seq) {
+		r_ref_flank = append(r_ref_flank, MULTI_GENOME.Seq[i])
+		if _, is_var = MULTI_GENOME.Variants[i]; is_var {
+			if del_len, is_del = MULTI_GENOME.DelVar[i]; is_del {
+				if del_len < r_read_flank_len-j && i+del_len < len(MULTI_GENOME.Seq) {
 					i += del_len
 				} else {
 					r_ref_flank = r_ref_flank[:len(r_ref_flank)-1]
@@ -594,15 +576,15 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 	if _, var_prof_exist := VC.VarProb[pos]; !var_prof_exist {
 		VC.VarProb[pos] = make(map[string]float64)
 		if t == 0 {
-			VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - NEW_SNP_RATE
+			VC.VarProb[pos][string(MULTI_GENOME.Seq[int(pos)])] = 1 - NEW_SNP_RATE
 			VC.VarProb[pos][a] = NEW_SNP_RATE
 		} else {
-			VC.VarProb[pos][string(INDEX.Seq[int(pos)])] = 1 - NEW_INDEL_RATE
+			VC.VarProb[pos][string(MULTI_GENOME.Seq[int(pos)])] = 1 - NEW_INDEL_RATE
 			VC.VarProb[pos][a] = NEW_INDEL_RATE
 		}
 		VC.VarType[pos] = make(map[string]int)
 		VC.VarRNum[pos] = make(map[string]int)
-		if INPUT_INFO.Debug_mode {
+		if PARA_INFO.Debug_mode {
 			VC.ChrDis[pos] = make(map[string][]int)
 			VC.ChrDiff[pos] = make(map[string][]int)
 			VC.MapProb[pos] = make(map[string][]float64)
@@ -635,7 +617,7 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 	}
 	VC.VarType[pos][a] = t
 	VC.VarRNum[pos][a] += 1
-	if INPUT_INFO.Debug_mode {
+	if PARA_INFO.Debug_mode {
 		VC.ChrDis[pos][a] = append(VC.ChrDis[pos][a], var_info.CDis)
 		VC.ChrDiff[pos][a] = append(VC.ChrDiff[pos][a], var_info.CDiff)
 		VC.MapProb[pos][a] = append(VC.MapProb[pos][a], var_info.MProb)
@@ -660,7 +642,7 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 	var p, p_b float64
 	p_a := 0.0
 	p_ab := make(map[string]float64)
-	_, is_known_var := INDEX.VarProf[int(pos)]
+	_, is_known_var := MULTI_GENOME.Variants[int(pos)]
 	for b, p_b = range VC.VarProb[pos] {
 		if b == a {
 			p_ab[b] = p1
@@ -687,18 +669,18 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 // all variant calls to file in VCF format.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) OutputVarCalls() {
-
+	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Outputing variant calls...")
 	start_time := time.Now()
-	f, e := os.Create(INPUT_INFO.Var_call_file)
+	f, e := os.Create(PARA_INFO.Var_call_file)
 	if e != nil {
-		log.Printf("Error: Create output file, %s, (err: %s)", INPUT_INFO.Var_call_file, e)
+		log.Printf("Error: Create output file, %s, (err: %s)", PARA_INFO.Var_call_file, e)
 		os.Exit(1)
 	}
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
-	if INPUT_INFO.Debug_mode == false {
+	if PARA_INFO.Debug_mode == false {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
 			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\n")
 	} else {
@@ -737,29 +719,29 @@ func (VC *VarCall) OutputVarCalls() {
 		//ID
 		line_aln = append(line_aln, ".")
 		//REF & ALT
-		if _, is_var = INDEX.VarProf[pos]; is_var {
-			if var_call == string(INDEX.VarProf[pos][0]) { //Do not report known variants which are same with the reference
+		if _, is_var = MULTI_GENOME.Variants[pos]; is_var {
+			if var_call == string(MULTI_GENOME.Variants[pos][0]) { //Do not report known variants which are same with the reference
 				continue
 			}
 			if VC.VarRNum[var_pos][var_call] == 0 { //Do not report known variants at locations without aligned reads
 				continue
 			}
-			line_aln = append(line_aln, string(INDEX.VarProf[pos][0]))
+			line_aln = append(line_aln, string(MULTI_GENOME.Variants[pos][0]))
 			line_aln = append(line_aln, var_call)
 		} else {
 			if VC.VarType[var_pos][var_call] >= 0 {
 				if VC.VarType[var_pos][var_call] == 2 { //DEL
 					line_aln = append(line_aln, var_call)
-					line_aln = append(line_aln, string(INDEX.Seq[pos]))
+					line_aln = append(line_aln, string(MULTI_GENOME.Seq[pos]))
 				} else if VC.VarType[var_pos][var_call] == 1 { //INS
-					line_aln = append(line_aln, string(INDEX.Seq[pos]))
+					line_aln = append(line_aln, string(MULTI_GENOME.Seq[pos]))
 					line_aln = append(line_aln, var_call)
 				} else { //SUB
 					//Ignore variants that are identical with ref
-					if var_call == string(INDEX.Seq[pos]) {
+					if var_call == string(MULTI_GENOME.Seq[pos]) {
 						continue
 					}
-					line_aln = append(line_aln, string(INDEX.Seq[pos]))
+					line_aln = append(line_aln, string(MULTI_GENOME.Seq[pos]))
 					line_aln = append(line_aln, var_call)
 				}
 			} else {
@@ -794,12 +776,12 @@ func (VC *VarCall) OutputVarCalls() {
 		}
 		line_aln = append(line_aln, strconv.Itoa(VC.VarRNum[var_pos][var_call]))
 		read_depth := 0
-        for var_base, var_num = range VC.VarRNum[var_pos] {
+		for var_base, var_num = range VC.VarRNum[var_pos] {
 			read_depth += var_num
-        }
-        line_aln = append(line_aln, strconv.Itoa(read_depth))
+		}
+		line_aln = append(line_aln, strconv.Itoa(read_depth))
 		str_aln = strings.Join(line_aln, "\t")
-		if INPUT_INFO.Debug_mode == false {
+		if PARA_INFO.Debug_mode == false {
 			w.WriteString(str_aln + "\n")
 		} else {
 			line_base = make([]string, 0)
@@ -827,9 +809,10 @@ func (VC *VarCall) OutputVarCalls() {
 		}
 	}
 	w.Flush()
-	PrintProcessMem("Memstats after outputing variant calls")
 	output_var_time := time.Since(start_time)
+	PrintProcessMem("Memstats after outputing variant calls")
 	log.Printf("Time for outputing variant calls:\t%s", output_var_time)
 	log.Printf("Finish outputing variant calls.")
-	log.Printf("Check results in the file: %s", INPUT_INFO.Var_call_file)
+	log.Printf("------------------------------------------------------")
+	log.Printf("Check results in the file: %s", PARA_INFO.Var_call_file)
 }

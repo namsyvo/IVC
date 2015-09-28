@@ -49,8 +49,7 @@ func PrintProcessMem(mesg string) {
 
 func PrintMemStats(mesg string) {
 	runtime.ReadMemStats(MEM_STATS)
-	log.Printf(mesg+"\t%d\t%d\t%d\t%d\t%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f",
-		MEM_STATS.Alloc, MEM_STATS.TotalAlloc, MEM_STATS.Sys, MEM_STATS.HeapAlloc, MEM_STATS.HeapSys,
+	log.Printf(mesg+"\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f",
 		float64(MEM_STATS.Alloc)/(math.Pow(1024, 3)), float64(MEM_STATS.TotalAlloc)/(math.Pow(1024, 3)),
 		float64(MEM_STATS.Sys)/(math.Pow(1024, 3)), float64(MEM_STATS.HeapAlloc)/(math.Pow(1024, 3)),
 		float64(MEM_STATS.HeapSys)/(math.Pow(1024, 3)))
@@ -270,7 +269,7 @@ func GetNoAlignReadInfo() {
 func ProcessNoAlignReadInfo() {
 	if PRINT_UNALIGN_INFO {
 		fmt.Println("Processing noaligned read info...")
-		file, _ := os.Create(INPUT_INFO.Var_call_file + ".unalign")
+		file, _ := os.Create(PARA_INFO.Var_call_file + ".unalign")
 		defer file.Close()
 		for _, uai := range UNALIGN_INFO_ARR {
 			file.WriteString(string(uai.read_info1) + "\t" + string(uai.read_info2) + "\n")

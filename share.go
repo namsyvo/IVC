@@ -8,121 +8,230 @@ package ivc
 import (
 	"bytes"
 	"log"
-	"math"
+	"os"
+	"runtime"
+	"runtime/pprof"
 )
 
 //--------------------------------------------------------------------------------------------------
-// Global constants and variables
+// Global constants
 //--------------------------------------------------------------------------------------------------
 var (
-	STD_BASES      = []byte{'A', 'C', 'G', 'T'} //Standard bases of DNA sequences
-	NEW_SNP_RATE   = 0.00001                    //Value for probability of new alleles
-	NEW_INDEL_RATE = 0.000001                   //Value for probability of new indels
-	INDEL_ERR      = 0.0000001                  //Value for probability of indel error
+	NEW_SNP_RATE   = 0.00001   //probability of new alleles
+	NEW_INDEL_RATE = 0.000001  //probability of new indels
+	INDEL_ERR      = 0.0000001 //probability of indel error
 )
 
 //--------------------------------------------------------------------------------------------------
-// Global variables for read alignment and Var calling processes.
+// Global variables for whole variant calling process.
 //--------------------------------------------------------------------------------------------------
 var (
-	INPUT_INFO *InputInfo //Input information
-	PARA_INFO  *ParaInfo  //Parameters information
-	INDEX      *Index     //Index for alignment
+	PARA_INFO    *ParaInfo    //program parameters
+	MULTI_GENOME *MultiGenome //multi-genome instance
 )
 
 //--------------------------------------------------------------------------------------------------
-// Input information
+// Global variables for calculating variant quality.
 //--------------------------------------------------------------------------------------------------
-type InputInfo struct {
-	//File names for:
-	Ref_file       string  //reference multigenome
-	Var_prof_file  string  //variant profile
-	Index_file     string  //index of original reference genomes
-	Rev_index_file string  //index of reverse reference genomes
-	Read_file_1    string  //first end of read
-	Read_file_2    string  //second end of read
-	Var_call_file  string  //store Var call
-	Search_mode    int     //searching mode for finding seeds
-	Start_pos      int     //starting postion on reads for finding seeds
-	Search_step    int     //step for searching in deterministic mode
-	Proc_num       int     //maximum number of CPUs using by Go
-	Max_snum       int     //maximum number of seeds
-	Max_psnum      int     //maximum number of paired-seeds
-	Min_slen       int     //minimum length of seeds
-	Max_slen       int     //maximum length of seeds
-	Dist_thres     int     //threshold for distances between reads and multigenomes
-	Prob_thres     float64 //threshold for alignment prob between reads and multigenomes
-	Iter_num       int     //number of random iterations to find proper alignments
-	Sub_cost       float64 //cost of substitution for Hamming and Edit distance
-	Gap_open       float64 //cost of gap open for Edit distance
-	Gap_ext        float64 //cost of gap extension for Edit distance
-	Debug_mode     bool    //debug mode for output
-}
+var (
+	Q2C map[byte]float64 //pre-calculated alignment cost which is based on Phred-based quality.
+	Q2E map[byte]float64 //pre-calculated error rate which is corresponding to Phred-based quality.
+	Q2P map[byte]float64 //pre-calculated probability which is corresponding to Phred-based quality.
+	L2E []float64        //pre-calculated indel error which is corresponding to length of indels.
+)
 
 //--------------------------------------------------------------------------------------------------
-// Parameter used in alignment algorithm
+// Parameter information
 //--------------------------------------------------------------------------------------------------
 type ParaInfo struct {
-	Dist_thres      int     //threshold for distances between reads and multigenomes
-	Prob_thres      float64 //threshold for probabilities of correct alignment
-	Iter_num        int     //number of random iterations to find proper alignments
+	//Input file names:
+	Ref_file       string //reference multigenome
+	Var_prof_file  string //variant profile
+	Index_file     string //index of original reference genomes
+	Rev_index_file string //index of reverse reference genomes
+	Read_file_1    string //first end of read
+	Read_file_2    string //second end of read
+	Var_call_file  string //store Var call
+
+	//Input paras:
+	Search_mode int     //searching mode for finding seeds
+	Start_pos   int     //starting postion on reads for finding seeds
+	Search_step int     //step for searching in deterministic mode
+	Proc_num    int     //maximum number of CPUs using by Go
+	Max_snum    int     //maximum number of seeds
+	Max_psnum   int     //maximum number of paired-seeds
+	Min_slen    int     //minimum length of seeds
+	Max_slen    int     //maximum length of seeds
+	Dist_thres  int     //threshold for distances between reads and multigenomes
+	Prob_thres  float64 //threshold for alignment prob between reads and multigenomes
+	Iter_num    int     //number of random iterations to find proper alignments
+	Sub_cost    float64 //cost of substitution for Hamming and Edit distance
+	Gap_open    float64 //cost of gap open for Edit distance
+	Gap_ext     float64 //cost of gap extension for Edit distance
+	Debug_mode  bool    //debug mode for output
+
+	//Estimated paras:
+	Read_len        int     //read length, calculated from read files
+	Info_len        int     //maximum size of array to store read headers
 	Max_ins         int     //maximum insert size of two aligned ends
 	Err_rate        float32 //average sequencing error rate, estmated from reads with real reads
 	Err_var_factor  int     //factor for standard variation of sequencing error rate
 	Mut_rate        float32 //average mutation rate, estmated from reference genome
 	Mut_var_factor  int     //factor for standard variation of mutation rate
 	Iter_num_factor int     //factor for number of iterations
-	Read_len        int     //read length, calculated from read files
-	Info_len        int     //maximum size of array to store read headers
 	Seed_backup     int     //number of backup bases from seeds
-	Indel_backup    int     //number of backup bases from known indels
 	Ham_backup      int     //number of backup bases from Hamming alignment
+	Indel_backup    int     //number of backup bases from known indels
 }
 
 //--------------------------------------------------------------------------------------------------
-// SetPara sets values of parameters for alignment process
+// Read input information and set up parameters
 //--------------------------------------------------------------------------------------------------
-func SetPara(read_len, info_len int, max_ins int, err_rate, mut_rate float32, dist_thres int, prob_thres float64, iter_num int) *ParaInfo {
-	para_info := new(ParaInfo)
-	para_info.Seed_backup = 6
-	para_info.Indel_backup = 30
-	para_info.Ham_backup = 15
+func Setup(input_para_info *ParaInfo) {
+
+	log.Printf("----------------------------------------------------------------------------------------")
+	log.Printf("Checking input information and seting up parameters...")
+
+	//Check input files
+	if _, e := os.Stat(input_para_info.Read_file_1); e != nil {
+		log.Printf("Error: Read_file_1 does not exists! (err: %s)", e)
+		os.Exit(1)
+	}
+	if _, e := os.Stat(input_para_info.Read_file_2); e != nil {
+		log.Printf("Error: Read_file_2 does not exists! (err: %s)", e)
+		os.Exit(1)
+	}
+
+	MEM_STATS = new(runtime.MemStats)
+
+	PARA_INFO = SetupPara(input_para_info)
+	runtime.GOMAXPROCS(PARA_INFO.Proc_num)
+
+	if input_para_info.Debug_mode {
+		var err error
+		CPU_FILE, err = os.Create(input_para_info.Var_call_file + ".cprof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(CPU_FILE)
+		defer pprof.StopCPUProfile()
+
+		MEM_FILE, err = os.Create(input_para_info.Var_call_file + ".mprof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer MEM_FILE.Close()
+		log.Printf("Debug mode:\tCpu_prof_file: %s, Mem_prof_file: %s", input_para_info.Var_call_file+".cprof", input_para_info.Var_call_file+".mprof")
+	}
+
+	log.Printf("Finish checking input information and seting up parameters.")
+}
+
+//--------------------------------------------------------------------------------------------------
+// SetupPara setups values of parameters for alignment process
+//--------------------------------------------------------------------------------------------------
+func SetupPara(input_para_info *ParaInfo) *ParaInfo {
+
+	para_info := input_para_info
+
+	//Setup input parameters if not specified
+	if input_para_info.Proc_num == 0 {
+		para_info.Proc_num = runtime.NumCPU()
+		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (=%d).", para_info.Proc_num)
+	}
+	if input_para_info.Max_snum == 0 {
+		para_info.Max_snum = 512
+		log.Printf("No or invalid input for maximum number of seeds, use default value (=%d).", para_info.Max_snum)
+	}
+	if input_para_info.Max_psnum == 0 {
+		para_info.Max_psnum = 128
+		log.Printf("No or invalid input for maximum number of paired-seeds, use default value (=%d).", para_info.Max_psnum)
+	}
+	if input_para_info.Min_slen == 0 {
+		para_info.Min_slen = 15
+		log.Printf("No or invalid input for minimum length of seeds, use default value (=%d).", para_info.Min_slen)
+	}
+	if input_para_info.Max_slen == 0 {
+		para_info.Max_slen = 25
+		log.Printf("No or invalid input for maximum length of seeds, use default value (=%d).", para_info.Max_slen)
+	}
+	if input_para_info.Sub_cost == 0 {
+		para_info.Sub_cost = 4
+		log.Printf("No or invalid input for substitution cost of alignment, use default value (=%.1f).", para_info.Sub_cost)
+	}
+	if input_para_info.Gap_open == 0 {
+		para_info.Gap_open = 4.1
+		log.Printf("No or invalid input for gap open cost of alignment, use default value (=%.1f).", para_info.Gap_open)
+	}
+	if input_para_info.Gap_ext == 0 {
+		para_info.Gap_ext = 1
+		log.Printf("No or invalid input for gap extension cost of alignment, use default value (=%0.1f).", para_info.Gap_ext)
+	}
+
+	if input_para_info.Dist_thres == 0 {
+		/*
+			err := float64(para_info.Err_rate)
+			rlen := float64(para_info.Read_len)
+			mut := float64(para_info.Mut_rate)
+			k1 := float64(para_info.Err_var_factor)
+			k2 := float64(para_info.Mut_var_factor)
+			para_info.Dist_thres = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) +
+				int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
+		*/
+		para_info.Dist_thres = 36
+		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (=%d).", para_info.Dist_thres)
+	}
+	if input_para_info.Prob_thres == 0 {
+		//err := float64(para_info.Err_rate)
+		//para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
+		para_info.Prob_thres = 36
+		log.Printf("No or invalid input for threshold of alignment probability, calculate based on input data (=%.5f).", para_info.Prob_thres)
+	}
+	if input_para_info.Iter_num == 0 {
+		//para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
+		para_info.Iter_num = 12
+		log.Printf("No or invalid input for numbers of random iterations, calculate based on input data (=%d).", para_info.Iter_num)
+	}
+
+	//Estimate parameters for the variant caller
+
+	//100 is length of testing reads, 500 is maximum length of info line of reads,
+	//will be set up based on input reads
+	para_info.Read_len = 100
+	para_info.Info_len = 500
+
+	//700 is maximum insert size of paired-end testing reads
+	//will be estimated based on input reads
+	para_info.Max_ins = 700
+
+	//0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
+	//will be replaced by based on input reads
+	para_info.Err_rate = 0.0015
+	para_info.Mut_rate = 0.01
+
 	para_info.Err_var_factor = 4
 	para_info.Mut_var_factor = 2
+
 	para_info.Iter_num_factor = 2
-	para_info.Max_ins = max_ins   //based on simulated data, will be estimated from reads with real data
-	para_info.Err_rate = err_rate //will be replaced by error rate estimated from input reads
-	para_info.Mut_rate = mut_rate //will be replaced by error rate estimated from input reads
-	para_info.Read_len = read_len //will be replaced by read length taken from input reads
-	para_info.Info_len = info_len //will be replaced by maximum info length estimated from input reads
 
-	err := float64(para_info.Err_rate)
-	if dist_thres != 0 {
-		para_info.Dist_thres = dist_thres
-	} else {
-		rlen := float64(para_info.Read_len)
-		mut := float64(para_info.Mut_rate)
-		k1 := float64(para_info.Err_var_factor)
-		k2 := float64(para_info.Mut_var_factor)
-		para_info.Dist_thres = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) +
-			int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
-	}
-	if prob_thres != 0 {
-		para_info.Prob_thres = prob_thres
-	} else {
-		para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
-	}
-	if iter_num != 0 {
-		para_info.Iter_num = iter_num
-	} else {
-		para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
-	}
+	para_info.Seed_backup = 6
+	para_info.Ham_backup = 15
+	para_info.Indel_backup = 30
 
-	log.Printf("Prog paras:\tDist_thres=%d, Prob_thres=%.5f, Iter_num=%d, Max_ins=%d, Max_err=%.5f, Err_var_factor=%d,"+
-		" Mut_rate=%.5f, Mut_var_factor=%d, Iter_num_factor=%d, Read_len=%d, Info_len=%d, Seed_backup=%d, Indel_backup=%d, Ham_backup=%d",
-		para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num, para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Rev_index_file=%s,"+
+		"Read_file_1=%s, Read_file_2=%s, Var_call_file=%s", para_info.Ref_file, para_info.Var_prof_file,
+		para_info.Index_file, para_info.Rev_index_file, para_info.Read_file_1, para_info.Read_file_2, para_info.Var_call_file)
+
+	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Proc_num=%d, Max_snum=%d, Max_psnum=%d, "+
+		"Min_slen=%d, Max_slen=%d, Dist_thres=%d, Prob_thres=%.5f, Iter_num=%d, Sub_cost=%.1f, Gap_open=%.1f, Gap_ext=%.1f, Debug_mode=%t",
+		para_info.Search_mode, para_info.Start_pos, para_info.Search_step, para_info.Proc_num, para_info.Max_snum, para_info.Max_psnum,
+		para_info.Min_slen, para_info.Max_slen, para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num,
+		para_info.Sub_cost, para_info.Gap_open, para_info.Gap_ext, para_info.Debug_mode)
+
+	log.Printf("Prog paras:\tMax_ins=%d, Max_err=%.5f, Err_var_factor=%d, Mut_rate=%.5f, Mut_var_factor=%d, Iter_num_factor=%d, "+
+		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
 		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
-		para_info.Seed_backup, para_info.Indel_backup, para_info.Ham_backup)
+		para_info.Seed_backup, para_info.Ham_backup, para_info.Indel_backup)
 
 	return para_info
 }
@@ -156,20 +265,6 @@ func InitReadInfo(read_len, info_len int) *ReadInfo {
 }
 
 //--------------------------------------------------------------------------------------------------
-// PrintReads prints read information
-//--------------------------------------------------------------------------------------------------
-/*
-func (read_info *ReadInfo) PrintReads() {
-	fmt.Println("read1: ", string(read_info.Read1))
-	fmt.Println("read2: ", string(read_info.Read2))
-	fmt.Println("qual1: ", string(read_info.Qual1))
-	fmt.Println("qual1: ", string(read_info.Qual2))
-	fmt.Println("info1: ", string(read_info.Info1))
-	fmt.Println("info2: ", string(read_info.Info2))
-}
-*/
-
-//--------------------------------------------------------------------------------------------------
 // RevComp computes reverse, reverse complement, and complement of a read.
 //--------------------------------------------------------------------------------------------------
 func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
@@ -201,7 +296,7 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 }
 
 //---------------------------------------------------------------------------------------------------
-// SeedInfo represents info of seeds between reads and the multigenome.
+// Information of seeds between reads and the multigenome.
 //---------------------------------------------------------------------------------------------------
 type SeedInfo struct {
 	s_pos  []int  //staring position of seeds on reads.
@@ -253,7 +348,7 @@ func InitEditAlnMat(arr_len int) ([][]float64, [][][]int) {
 }
 
 //---------------------------------------------------------------------------------------------------
-// UnAlnInfo represents info of unaligned reads.
+// Information of unaligned reads.
 //---------------------------------------------------------------------------------------------------
 type UnAlnInfo struct {
 	read_info1, read_info2 []byte //unalgined read info.
@@ -284,7 +379,6 @@ func SplitN(s, sep []byte, n int) ([][]byte, int) {
 	return t, sep_num
 }
 
-/*
 //--------------------------------------------------------------------------------------------------
 // IndexN returns index of a pattern in a slice of bytes.
 //--------------------------------------------------------------------------------------------------
@@ -326,4 +420,3 @@ func IntervalHasVariants(A []int, i, j int) bool {
 	}
 	return i <= j && L < len(A) && i <= A[L] && j >= A[L]
 }
-*/
