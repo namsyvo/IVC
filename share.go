@@ -19,7 +19,7 @@ import (
 var (
 	NEW_SNP_RATE   = 0.00001   //probability of new alleles
 	NEW_INDEL_RATE = 0.000001  //probability of new indels
-	INDEL_ERR      = 0.0000001 //probability of indel error
+	INDEL_ERR_RATE = 0.0000001 //probability of indel error
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -34,10 +34,10 @@ var (
 // Global variables for calculating variant quality.
 //--------------------------------------------------------------------------------------------------
 var (
-	Q2C map[byte]float64 //pre-calculated alignment cost which is based on Phred-based quality.
-	Q2E map[byte]float64 //pre-calculated error rate which is corresponding to Phred-based quality.
-	Q2P map[byte]float64 //pre-calculated probability which is corresponding to Phred-based quality.
-	L2E []float64        //pre-calculated indel error which is corresponding to length of indels.
+	Q2C map[byte]float64 //pre-calculated alignment cost  based on Phred-based quality.
+	Q2E map[byte]float64 //pre-calculated error probability based on Phred-based quality.
+	Q2P map[byte]float64 //pre-calculated not-error probability based on Phred-based quality.
+	L2E []float64        //pre-calculated indel error corresponding to length of indels.
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -57,17 +57,16 @@ type ParaInfo struct {
 	Search_mode int     //searching mode for finding seeds
 	Start_pos   int     //starting postion on reads for finding seeds
 	Search_step int     //step for searching in deterministic mode
-	Proc_num    int     //maximum number of CPUs using by Go
 	Max_snum    int     //maximum number of seeds
 	Max_psnum   int     //maximum number of paired-seeds
 	Min_slen    int     //minimum length of seeds
 	Max_slen    int     //maximum length of seeds
-	Dist_thres  int     //threshold for distances between reads and multigenomes
-	Prob_thres  float64 //threshold for alignment prob between reads and multigenomes
+	Dist_thres  float64 //threshold for distances between reads and multigenomes
 	Iter_num    int     //number of random iterations to find proper alignments
 	Sub_cost    float64 //cost of substitution for Hamming and Edit distance
 	Gap_open    float64 //cost of gap open for Edit distance
 	Gap_ext     float64 //cost of gap extension for Edit distance
+	Proc_num    int     //maximum number of CPUs using by Go
 	Debug_mode  bool    //debug mode for output
 
 	//Estimated paras:
@@ -133,11 +132,31 @@ func Setup(input_para_info *ParaInfo) {
 func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 
 	para_info := input_para_info
+
+	//Estimate parameters for the variant caller
+	//100 is length of testing reads, 500 is maximum length of info line of reads,
+	//will be set up based on input reads
+	para_info.Read_len = 100
+	para_info.Info_len = 500
+
+	//700 is maximum insert size of paired-end testing reads
+	//will be estimated based on input reads
+	para_info.Max_ins = 700
+
+	//0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
+	//will be replaced by based on input reads
+	para_info.Err_rate = 0.0015
+	para_info.Mut_rate = 0.01
+
+	para_info.Err_var_factor = 4
+	para_info.Mut_var_factor = 2
+	para_info.Iter_num_factor = 2
+
+	para_info.Seed_backup = 6
+	para_info.Ham_backup = 15
+	para_info.Indel_backup = 30
+
 	//Setup input parameters if not specified
-	if input_para_info.Proc_num == 0 {
-		para_info.Proc_num = runtime.NumCPU()
-		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (%d).", para_info.Proc_num)
-	}
 	if input_para_info.Search_mode == 0 {
 		para_info.Search_mode = 1
 		log.Printf("No or invalid input for searching mode, use default strategy (randomizaion).")
@@ -187,17 +206,11 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 			mut := float64(para_info.Mut_rate)
 			k1 := float64(para_info.Err_var_factor)
 			k2 := float64(para_info.Mut_var_factor)
-			para_info.Dist_thres = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) +
-				int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
+			var_dist = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) + int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
+		    para_info.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
 		*/
 		para_info.Dist_thres = 36
-		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%d).", para_info.Dist_thres)
-	}
-	if input_para_info.Prob_thres == 0 {
-		//err := float64(para_info.Err_rate)
-		//para_info.Prob_thres = -float64(para_info.Dist_thres)*math.Log10(1-err) - float64(para_info.Dist_thres)*math.Log10(NEW_INDEL_RATE)
-		para_info.Prob_thres = 36
-		log.Printf("No or invalid input for threshold of alignment probability, calculate based on input data (%.5f).", para_info.Prob_thres)
+		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%.1f).", para_info.Dist_thres)
 	}
 	if input_para_info.Iter_num == 0 {
 		//para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
@@ -205,44 +218,22 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 		log.Printf("No or invalid input for numbers of random iterations, calculate based on input data (%d).", para_info.Iter_num)
 	}
 
-	//Estimate parameters for the variant caller
+	if input_para_info.Proc_num == 0 {
+		para_info.Proc_num = runtime.NumCPU()
+		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (%d).", para_info.Proc_num)
+	}
 
-	//100 is length of testing reads, 500 is maximum length of info line of reads,
-	//will be set up based on input reads
-	para_info.Read_len = 100
-	para_info.Info_len = 500
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Read_file_1=%s, Read_file_2=%s, Var_call_file=%s", 
+		para_info.Ref_file, para_info.Var_prof_file, para_info.Rev_index_file, para_info.Read_file_1, para_info.Read_file_2, para_info.Var_call_file)
 
-	//700 is maximum insert size of paired-end testing reads
-	//will be estimated based on input reads
-	para_info.Max_ins = 700
+	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Max_snum=%d, Max_psnum=%d, "+
+		"Min_slen=%d, Max_slen=%d, Dist_thres=%.1f, Iter_num=%d, Sub_cost=%.1f, Gap_open=%.1f, Gap_ext=%.1f, Proc_num=%d, Debug_mode=%t",
+		para_info.Search_mode, para_info.Start_pos, para_info.Search_step, para_info.Max_snum, para_info.Max_psnum, para_info.Min_slen, para_info.Max_slen,
+		para_info.Dist_thres, para_info.Iter_num, para_info.Sub_cost, para_info.Gap_open, para_info.Gap_ext, para_info.Proc_num, para_info.Debug_mode)
 
-	//0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
-	//will be replaced by based on input reads
-	para_info.Err_rate = 0.0015
-	para_info.Mut_rate = 0.01
-
-	para_info.Err_var_factor = 4
-	para_info.Mut_var_factor = 2
-
-	para_info.Iter_num_factor = 2
-
-	para_info.Seed_backup = 6
-	para_info.Ham_backup = 15
-	para_info.Indel_backup = 30
-
-	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Rev_index_file=%s,"+
-		"Read_file_1=%s, Read_file_2=%s, Var_call_file=%s", para_info.Ref_file, para_info.Var_prof_file,
-		para_info.Index_file, para_info.Rev_index_file, para_info.Read_file_1, para_info.Read_file_2, para_info.Var_call_file)
-
-	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Proc_num=%d, Max_snum=%d, Max_psnum=%d, "+
-		"Min_slen=%d, Max_slen=%d, Dist_thres=%d, Prob_thres=%.5f, Iter_num=%d, Sub_cost=%.1f, Gap_open=%.1f, Gap_ext=%.1f, Debug_mode=%t",
-		para_info.Search_mode, para_info.Start_pos, para_info.Search_step, para_info.Proc_num, para_info.Max_snum, para_info.Max_psnum,
-		para_info.Min_slen, para_info.Max_slen, para_info.Dist_thres, para_info.Prob_thres, para_info.Iter_num,
-		para_info.Sub_cost, para_info.Gap_open, para_info.Gap_ext, para_info.Debug_mode)
-
-	log.Printf("Prog paras:\tMax_ins=%d, Max_err=%.5f, Err_var_factor=%d, Mut_rate=%.5f, Mut_var_factor=%d, Iter_num_factor=%d, "+
-		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para_info.Max_ins, para_info.Err_rate, para_info.Err_var_factor,
-		para_info.Mut_rate, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
+	log.Printf("Prog paras:\tMax_ins=%d, Max_err=%.5f, Mut_rate=%.5f, Err_var_factor=%d, Mut_var_factor=%d, Iter_num_factor=%d, "+
+		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para_info.Max_ins, para_info.Err_rate, para_info.Mut_rate, 
+		para_info.Err_var_factor, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
 		para_info.Seed_backup, para_info.Ham_backup, para_info.Indel_backup)
 
 	return para_info
@@ -321,10 +312,10 @@ type SeedInfo struct {
 // Alignment information, served as shared variables between functions for alignment process
 //--------------------------------------------------------------------------------------------------
 type EditAlnInfo struct {
-	Bw_Dist_D, Bw_Dist_IS, Bw_Dist_IT    [][]float64 // Distance matrix for backward alignment
-	Bw_Trace_D, Bw_Trace_IS, Bw_Trace_IT [][][]int   // Backtrace matrix for backward alignment
-	Fw_Dist_D, Fw_Dist_IS, Fw_Dist_IT    [][]float64 // Distance matrix for forward alignment
-	Fw_Trace_D, Fw_Trace_IS, Fw_Trace_IT [][][]int   // Backtrace matrix for forward alignment
+	l_Dist_D, l_Dist_IS, l_Dist_IT    [][]float64 // Distance matrix for backward alignment
+	l_Trace_D, l_Trace_IS, l_Trace_IT [][][]int   // Backtrace matrix for backward alignment
+	r_Dist_D, r_Dist_IS, r_Dist_IT    [][]float64 // Distance matrix for forward alignment
+	r_Trace_D, r_Trace_IS, r_Trace_IT [][][]int   // Backtrace matrix for forward alignment
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -332,12 +323,12 @@ type EditAlnInfo struct {
 //--------------------------------------------------------------------------------------------------
 func InitEditAlnInfo(arr_len int) *EditAlnInfo {
 	aln_info := new(EditAlnInfo)
-	aln_info.Bw_Dist_D, aln_info.Bw_Trace_D = InitEditAlnMat(arr_len)
-	aln_info.Bw_Dist_IS, aln_info.Bw_Trace_IS = InitEditAlnMat(arr_len)
-	aln_info.Bw_Dist_IT, aln_info.Bw_Trace_IT = InitEditAlnMat(arr_len)
-	aln_info.Fw_Dist_D, aln_info.Fw_Trace_D = InitEditAlnMat(arr_len)
-	aln_info.Fw_Dist_IS, aln_info.Fw_Trace_IS = InitEditAlnMat(arr_len)
-	aln_info.Fw_Dist_IT, aln_info.Fw_Trace_IT = InitEditAlnMat(arr_len)
+	aln_info.l_Dist_D, aln_info.l_Trace_D = InitEditAlnMat(arr_len)
+	aln_info.l_Dist_IS, aln_info.l_Trace_IS = InitEditAlnMat(arr_len)
+	aln_info.l_Dist_IT, aln_info.l_Trace_IT = InitEditAlnMat(arr_len)
+	aln_info.r_Dist_D, aln_info.r_Trace_D = InitEditAlnMat(arr_len)
+	aln_info.r_Dist_IS, aln_info.r_Trace_IS = InitEditAlnMat(arr_len)
+	aln_info.r_Dist_IT, aln_info.r_Trace_IT = InitEditAlnMat(arr_len)
 	return aln_info
 }
 

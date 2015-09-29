@@ -40,7 +40,7 @@ func main() {
 	//Creating multi_seq and variant profile index---------------------------//
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Creating multi-sequence and variant profile index...")
-	log.Printf("Memstats:\tMemstats.Alloc\tMemstats.TotalAlloc\tMemstats.Sys\tMemstats.HeapAlloc\tMemstats.HeapSys")
+	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 	ivc.MEM_STATS = new(runtime.MemStats)
 
 	start_time := time.Now()

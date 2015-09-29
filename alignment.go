@@ -1,6 +1,6 @@
 //-------------------------------------------------------------------------------------------------
 // IVC: alignment.go - Calculating alignment between reads and multigenomes.
-// Alignment is performed in both backward and forward directions.
+// Alignment is performed for left and right extensions of seeds on reads and multigenomes.
 // Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	var p, min_p, var_prob float64
 	var var_prof map[string]float64
 
-	align_prob := 0.0
+	aln_dist := 0.0
 	m, n := len(read), len(ref)
 
 	PrintEditDisInput("LeftAlign input: read, qual, ref", read, qual, ref)
@@ -88,7 +88,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 				}
 			}
 			if min_p < math.MaxFloat64 {
-				align_prob = align_prob + min_p
+				aln_dist = aln_dist + min_p
 				var_pos = append(var_pos, ref_pos_map[n-1])
 				v, q := make([]byte, var_len), make([]byte, var_len)
 				copy(v, read[m-var_len:m])
@@ -104,17 +104,17 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 		} else {
 			break
 		}
-		if align_prob > PARA_INFO.Prob_thres {
-			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+		if aln_dist > PARA_INFO.Dist_thres {
+			return PARA_INFO.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 		}
 	}
-	PrintDisInfo("LeftAlignHam dis", m, n, align_prob)
+	PrintDisInfo("LeftAlnHam dis", m, n, aln_dist)
 
 	if m == 0 || n == 0 {
-		return align_prob, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("LeftAlignEdit: read, qual, ref", read[:m], qual[:m], ref[:n])
+	PrintEditDisInput("LeftAlnEdit: read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -225,17 +225,17 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 			}
 		}
 	}
-	PrintDisInfo("LeftAlignEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("LeftAlignEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("LeftAlignEditDist, IT dis", m, n, IT[m][n])
+	PrintDisInfo("LeftAlnEditDist, D dis", m, n, D[m][n])
+	PrintDisInfo("LeftAlnEditDist, IS dis", m, n, IS[m][n])
+	PrintDisInfo("LeftAlnEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("LeftAlignEditDist, D mat", D, m, n, read[:m], ref[:n])
-	PrintEditDisMat("LeftAlignEditDist, IS mat", IS, m, n, read[:m], ref[:n])
-	PrintEditDisMat("LeftAlignEditDist, IT mat", IT, m, n, read[:m], ref[:n])
+	PrintEditDisMat("LeftAlnEditDist, D mat", D, m, n, read[:m], ref[:n])
+	PrintEditDisMat("LeftAlnEditDist, IS mat", IS, m, n, read[:m], ref[:n])
+	PrintEditDisMat("LeftAlnEditDist, IT mat", IT, m, n, read[:m], ref[:n])
 
-	PrintEditTraceMat("LeftAlignEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("LeftAlignEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("LeftAlignEditDist, IT trace mat", BT_IT, m, n)
+	PrintEditTraceMat("LeftAlnEditDist, D trace mat", BT_D, m, n)
+	PrintEditTraceMat("LeftAlnEditDist, IS trace mat", BT_IS, m, n)
+	PrintEditTraceMat("LeftAlnEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -248,7 +248,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 		bt_mat = 2
 	}
 
-	return align_prob, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type
+	return aln_dist, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -263,9 +263,9 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
 
-	PrintEditDisInput("LeftAlignEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
+	PrintEditDisInput("LeftAlnEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
 
-	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
+	aln_read, aln_qual, aln_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
 	for i > 0 || j > 0 {
@@ -277,23 +277,23 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 					var_qual = append(var_qual, []byte{qual[i-1]})
 					var_type = append(var_type, 0)
 				}
-				aligned_read = append(aligned_read, read[i-1])
-				aligned_qual = append(aligned_qual, qual[i-1])
-				aligned_ref = append(aligned_ref, ref[j-1])
+				aln_read = append(aln_read, read[i-1])
+				aln_qual = append(aln_qual, qual[i-1])
+				aln_ref = append(aln_ref, ref[j-1])
 				//GetEditTrace("0", i, j, read[i-1], ref[j-1])
 				bt_mat = BT_D[i][j][1]
 				i, j = i-1, j-1
 			} else if bt_mat == 1 {
-				aligned_read = append(aligned_read, read[i-1])
-				aligned_qual = append(aligned_qual, qual[i-1])
-				aligned_ref = append(aligned_ref, '-')
+				aln_read = append(aln_read, read[i-1])
+				aln_qual = append(aln_qual, qual[i-1])
+				aln_ref = append(aln_ref, '-')
 				//GetEditTrace("1", i, j, read[i-1], '-')
 				bt_mat = BT_IS[i][j][1]
 				i, j = i-1, j
 			} else if bt_mat == 2 {
-				aligned_read = append(aligned_read, '-')
-				aligned_qual = append(aligned_qual, '-')
-				aligned_ref = append(aligned_ref, ref[j-1])
+				aln_read = append(aln_read, '-')
+				aln_qual = append(aln_qual, '-')
+				aln_ref = append(aln_ref, ref[j-1])
 				//GetEditTrace("2", i, j, '-', ref[j-1])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
@@ -315,20 +315,20 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 					var_type = append(var_type, 1)
 				}
 				for k = 0; k < var_len-1; k++ {
-					aligned_read = append(aligned_read, read[i-1-k])
-					aligned_qual = append(aligned_qual, qual[i-1-k])
-					aligned_ref = append(aligned_ref, '+')
+					aln_read = append(aln_read, read[i-1-k])
+					aln_qual = append(aln_qual, qual[i-1-k])
+					aln_ref = append(aln_ref, '+')
 				}
-				aligned_read = append(aligned_read, read[i-var_len])
-				aligned_qual = append(aligned_qual, qual[i-var_len])
-				aligned_ref = append(aligned_ref, ref[j-1])
+				aln_read = append(aln_read, read[i-var_len])
+				aln_qual = append(aln_qual, qual[i-var_len])
+				aln_ref = append(aln_ref, ref[j-1])
 				//GetEditTraceKnownLoc("3", i, j, read[i-var_len:i], ref[j-1])
 				bt_mat = BT_D[i][j][1]
 				i, j = i-var_len, j-1
 			} else {
-				aligned_read = append(aligned_read, '-')
-				aligned_qual = append(aligned_qual, '-')
-				aligned_ref = append(aligned_ref, ref[j-1])
+				aln_read = append(aln_read, '-')
+				aln_qual = append(aln_qual, '-')
+				aln_ref = append(aln_ref, ref[j-1])
 				//GetEditTraceKnownLoc("4", i, j, []byte{'-'}, ref[j-1])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
@@ -337,38 +337,38 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 	}
 
 	//Put the alignment in original direction
-	for i, j = 0, len(aligned_read)-1; i < j; i, j = i+1, j-1 {
-		aligned_read[i], aligned_read[j] = aligned_read[j], aligned_read[i]
-		aligned_qual[i], aligned_qual[j] = aligned_qual[j], aligned_qual[i]
-		aligned_ref[i], aligned_ref[j] = aligned_ref[j], aligned_ref[i]
+	for i, j = 0, len(aln_read)-1; i < j; i, j = i+1, j-1 {
+		aln_read[i], aln_read[j] = aln_read[j], aln_read[i]
+		aln_qual[i], aln_qual[j] = aln_qual[j], aln_qual[i]
+		aln_ref[i], aln_ref[j] = aln_ref[j], aln_ref[i]
 	}
-	PrintEditAlignInfo("LeftAlignEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
+	PrintEditAlignInfo("LeftAlnEditTraceBack, aligned read/qual/ref", aln_read, aln_qual, aln_ref)
 
 	//Get Vars
 	ref_ori_pos := 0
 	read_ori_pos := 0
 	i = 0
-	for i < len(aligned_ref) {
-		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
+	for i < len(aln_ref) {
+		if aln_read[i] == '-' && aln_ref[i] != '-' {
 			ref_ori_pos++
 			i++
-		} else if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+		} else if aln_read[i] != '-' && aln_ref[i] == '-' {
 			read_ori_pos++
 			i++
 		} else {
 			break
 		}
 	}
-	for i < len(aligned_ref) {
-		if aligned_read[i] != '-' && aligned_ref[i] == '-' { //Insertions
+	for i < len(aln_ref) {
+		if aln_read[i] != '-' && aln_ref[i] == '-' { //Insertions
 			v, q := make([]byte, 0), make([]byte, 0)
-			v = append(v, aligned_read[i-1])
-			q = append(q, aligned_qual[i-1])
-			for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
-				v = append(v, aligned_read[j])
-				q = append(q, aligned_qual[j])
+			v = append(v, aln_read[i-1])
+			q = append(q, aln_qual[i-1])
+			for j = i; j < len(aln_ref) && aln_ref[j] == '-'; j++ {
+				v = append(v, aln_read[j])
+				q = append(q, aln_qual[j])
 			}
-			if j < len(aligned_ref)-1 && read_ori_pos > 1 {
+			if j < len(aln_ref)-1 && read_ori_pos > 1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -376,14 +376,14 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 			}
 			read_ori_pos += j - i
 			i = j
-		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Deletions
+		} else if aln_read[i] == '-' && aln_ref[i] != '-' { //Deletions
 			v, q := make([]byte, 0), make([]byte, 0)
-			v = append(v, aligned_ref[i-1])
-			q = append(q, aligned_qual[i-1]) //A temporary solution, need to get quality in a proper way in this case!!!
-			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
-				v = append(v, aligned_ref[j])
+			v = append(v, aln_ref[i-1])
+			q = append(q, aln_qual[i-1]) //A temporary solution, need to get quality in a proper way in this case!!!
+			for j = i; j < len(aln_read) && aln_read[j] == '-'; j++ {
+				v = append(v, aln_ref[j])
 			}
-			if j < len(aligned_read)-1 && read_ori_pos < m-1 {
+			if j < len(aln_read)-1 && read_ori_pos < m-1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -391,15 +391,15 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 			}
 			ref_ori_pos += j - i
 			i = j
-		} else if aligned_ref[i] == '+' {
+		} else if aln_ref[i] == '+' {
 			read_ori_pos++
 			i++
 		} else {
-			if aligned_read[i] == aligned_ref[i] && i+1 < len(aligned_read) && aligned_read[i+1] != '-' && aligned_ref[i+1] != '-' {
+			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 					var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
-					var_base = append(var_base, []byte{aligned_read[i]})
-					var_qual = append(var_qual, []byte{aligned_qual[i]})
+					var_base = append(var_base, []byte{aln_read[i]})
+					var_qual = append(var_qual, []byte{aln_qual[i]})
 					var_type = append(var_type, 0)
 				}
 			}
@@ -408,7 +408,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 			i++
 		}
 	}
-	PrintVarInfo("LeftAlignEditTraceBack, variant info", var_pos, var_base, var_qual)
+	PrintVarInfo("LeftAlnitTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }
 
@@ -428,7 +428,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 	var var_base, var_qual [][]byte
 
 	PrintEditDisInput("RightAlign input: read, qual, ref", read, qual, ref)
-	align_prob := 0.0
+	aln_dist := 0.0
 	M, N := len(read), len(ref)
 	m, n := M, N
 	for m > 0 && n > 0 {
@@ -475,7 +475,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 				}
 			}
 			if min_p < math.MaxFloat64 {
-				align_prob = align_prob + min_p
+				aln_dist = aln_dist + min_p
 				var_pos = append(var_pos, ref_pos_map[N-n])
 				v, q := make([]byte, var_len), make([]byte, var_len)
 				copy(v, read[M-m:M-(m-var_len)])
@@ -491,18 +491,18 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 		} else {
 			break
 		}
-		if align_prob > PARA_INFO.Prob_thres {
-			return PARA_INFO.Prob_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+		if aln_dist > PARA_INFO.Dist_thres {
+			return PARA_INFO.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 		}
 	}
 
-	PrintDisInfo("RightAlignHam dis", m, n, align_prob)
+	PrintDisInfo("RightAlnHam dis", m, n, aln_dist)
 
 	if m == 0 || n == 0 {
-		return align_prob, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("RightAlignEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
+	PrintEditDisInput("RightAlnEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -617,17 +617,17 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 			}
 		}
 	}
-	PrintDisInfo("RightAlignEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("RightAlignEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("RightAlignEditDist, IT dis", m, n, IT[m][n])
+	PrintDisInfo("RightAlnEditDist, D dis", m, n, D[m][n])
+	PrintDisInfo("RightAlnEditDist, IS dis", m, n, IS[m][n])
+	PrintDisInfo("RightAlnEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("RightAlignEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("RightAlignEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("RightAlignEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
+	PrintEditDisMat("RightAlnEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
+	PrintEditDisMat("RightAlnEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
+	PrintEditDisMat("RightAlnEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
 
-	PrintEditTraceMat("RightAlignEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("RightAlignEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("RightAlignEditDist, IT trace mat", BT_IT, m, n)
+	PrintEditTraceMat("RightAlnEditDist, D trace mat", BT_D, m, n)
+	PrintEditTraceMat("RightAlnEditDist, IS trace mat", BT_IS, m, n)
+	PrintEditTraceMat("RightAlnEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -639,7 +639,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 		min_dist = IT[m][n]
 		bt_mat = 2
 	}
-	return align_prob, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type
+	return aln_dist, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -649,14 +649,14 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
 	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	PrintEditDisInput("RightAlignEditTraceBack, read, qual, ref", read, qual, ref)
+	PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", read, qual, ref)
 
 	var var_len int
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
 
-	aligned_read, aligned_qual, aligned_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
+	aln_read, aln_qual, aln_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	M, N := len(read), len(ref)
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
@@ -669,23 +669,23 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 					var_qual = append(var_qual, []byte{qual[M-i]})
 					var_type = append(var_type, 0)
 				}
-				aligned_read = append(aligned_read, read[M-i])
-				aligned_qual = append(aligned_qual, qual[M-i])
-				aligned_ref = append(aligned_ref, ref[N-j])
+				aln_read = append(aln_read, read[M-i])
+				aln_qual = append(aln_qual, qual[M-i])
+				aln_ref = append(aln_ref, ref[N-j])
 				//GetEditTrace("0", M-i, N-j, read[M-i], ref[N-j])
 				bt_mat = BT_D[i][j][1]
 				i, j = i-1, j-1
 			} else if bt_mat == 1 {
-				aligned_read = append(aligned_read, read[M-i])
-				aligned_qual = append(aligned_qual, qual[M-i])
-				aligned_ref = append(aligned_ref, '-')
+				aln_read = append(aln_read, read[M-i])
+				aln_qual = append(aln_qual, qual[M-i])
+				aln_ref = append(aln_ref, '-')
 				//GetEditTrace("1", M-i, N-j, read[M-i], '-')
 				bt_mat = BT_IS[i][j][1]
 				i, j = i-1, j
 			} else if bt_mat == 2 {
-				aligned_read = append(aligned_read, '-')
-				aligned_qual = append(aligned_qual, '-')
-				aligned_ref = append(aligned_ref, ref[N-j])
+				aln_read = append(aln_read, '-')
+				aln_qual = append(aln_qual, '-')
+				aln_ref = append(aln_ref, ref[N-j])
 				//GetEditTrace("2", M-i, N-j, '-', ref[N-j])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
@@ -707,36 +707,36 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 					} else {
 						var_type = append(var_type, 1)
 					}
-					aligned_read = append(aligned_read, read[M-i])
-					aligned_qual = append(aligned_qual, qual[M-i])
-					aligned_ref = append(aligned_ref, ref[N-j])
+					aln_read = append(aln_read, read[M-i])
+					aln_qual = append(aln_qual, qual[M-i])
+					aln_ref = append(aln_ref, ref[N-j])
 					for k = 1; k < var_len; k++ {
-						aligned_read = append(aligned_read, read[M-i+k])
-						aligned_qual = append(aligned_qual, qual[M-i+k])
-						aligned_ref = append(aligned_ref, '+')
+						aln_read = append(aln_read, read[M-i+k])
+						aln_qual = append(aln_qual, qual[M-i+k])
+						aln_ref = append(aln_ref, '+')
 					}
 					//GetEditTraceKnownLoc("3", M-i, N-j, read[M-i:M-i+var_len], ref[N-j])
 					bt_mat = BT_D[i][j][1]
 					i, j = i-var_len, j-1
 				} else {
-					aligned_read = append(aligned_read, '-')
-					aligned_qual = append(aligned_qual, '-')
-					aligned_ref = append(aligned_ref, ref[N-j])
+					aln_read = append(aln_read, '-')
+					aln_qual = append(aln_qual, '-')
+					aln_ref = append(aln_ref, ref[N-j])
 					//GetEditTrace("4", M-i, N-j, '-', ref[N-j])
 					bt_mat = BT_IT[i][j][1]
 					i, j = i, j-1
 				}
 			} else if bt_mat == 1 {
-				aligned_read = append(aligned_read, read[M-i])
-				aligned_qual = append(aligned_qual, qual[M-i])
-				aligned_ref = append(aligned_ref, '-')
+				aln_read = append(aln_read, read[M-i])
+				aln_qual = append(aln_qual, qual[M-i])
+				aln_ref = append(aln_ref, '-')
 				//GetEditTrace("1", M-i, N-j, read[M-i], '-')
 				bt_mat = BT_IS[i][j][1]
 				i, j = i-1, j
 			} else {
-				aligned_read = append(aligned_read, '-')
-				aligned_qual = append(aligned_qual, '-')
-				aligned_ref = append(aligned_ref, ref[N-j])
+				aln_read = append(aln_read, '-')
+				aln_qual = append(aln_qual, '-')
+				aln_ref = append(aln_ref, ref[N-j])
 				//GetEditTrace("4", M-i, N-j, '-', ref[N-j])
 				bt_mat = BT_IT[i][j][1]
 				i, j = i, j-1
@@ -744,33 +744,33 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 		}
 	}
 
-	PrintEditAlignInfo("RightAlignEditTraceBack, aligned read/qual/ref", aligned_read, aligned_qual, aligned_ref)
+	PrintEditAlignInfo("RightAlnEditTraceBack, aligned read/qual/ref", aln_read, aln_qual, aln_ref)
 
 	//Get Vars
 	ref_ori_pos := N - n
 	read_ori_pos := M - m
 	i = 0
-	for i < len(aligned_ref) {
-		if aligned_read[i] == '-' && aligned_ref[i] != '-' {
+	for i < len(aln_ref) {
+		if aln_read[i] == '-' && aln_ref[i] != '-' {
 			ref_ori_pos++
 			i++
-		} else if aligned_read[i] != '-' && aligned_ref[i] == '-' {
+		} else if aln_read[i] != '-' && aln_ref[i] == '-' {
 			read_ori_pos++
 			i++
 		} else {
 			break
 		}
 	}
-	for i < len(aligned_ref) {
-		if aligned_read[i] != '-' && aligned_ref[i] == '-' { //Insertions
+	for i < len(aln_ref) {
+		if aln_read[i] != '-' && aln_ref[i] == '-' { //Insertions
 			v, q := make([]byte, 0), make([]byte, 0)
-			v = append(v, aligned_read[i-1])
-			q = append(q, aligned_qual[i-1])
-			for j = i; j < len(aligned_ref) && aligned_ref[j] == '-'; j++ {
-				v = append(v, aligned_read[j])
-				q = append(q, aligned_qual[j])
+			v = append(v, aln_read[i-1])
+			q = append(q, aln_qual[i-1])
+			for j = i; j < len(aln_ref) && aln_ref[j] == '-'; j++ {
+				v = append(v, aln_read[j])
+				q = append(q, aln_qual[j])
 			}
-			if j < len(aligned_ref)-1 && read_ori_pos+j-i < M-1 && read_ori_pos > M-m+1 {
+			if j < len(aln_ref)-1 && read_ori_pos+j-i < M-1 && read_ori_pos > M-m+1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -778,15 +778,15 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 			}
 			read_ori_pos += j - i
 			i = j
-		} else if aligned_read[i] == '-' && aligned_ref[i] != '-' { //Deletions
+		} else if aln_read[i] == '-' && aln_ref[i] != '-' { //Deletions
 			v, q := make([]byte, 0), make([]byte, 0)
-			v = append(v, aligned_ref[i-1])
+			v = append(v, aln_ref[i-1])
 			//A temporary solution, need to get quality in a proper way in this case!!!
-			q = append(q, aligned_qual[i-1])
-			for j = i; j < len(aligned_read) && aligned_read[j] == '-'; j++ {
-				v = append(v, aligned_ref[j])
+			q = append(q, aln_qual[i-1])
+			for j = i; j < len(aln_read) && aln_read[j] == '-'; j++ {
+				v = append(v, aln_ref[j])
 			}
-			if j < len(aligned_read)-1 && read_ori_pos < M-1 && read_ori_pos > M-m+1 {
+			if j < len(aln_read)-1 && read_ori_pos < M-1 && read_ori_pos > M-m+1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -794,15 +794,15 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 			}
 			ref_ori_pos += j - i
 			i = j
-		} else if aligned_ref[i] == '+' {
+		} else if aln_ref[i] == '+' {
 			read_ori_pos++
 			i++
 		} else {
-			if aligned_read[i] == aligned_ref[i] && i+1 < len(aligned_read) && aligned_read[i+1] != '-' && aligned_ref[i+1] != '-' {
+			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 					var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
-					var_base = append(var_base, []byte{aligned_read[i]})
-					var_qual = append(var_qual, []byte{aligned_qual[i]})
+					var_base = append(var_base, []byte{aln_read[i]})
+					var_qual = append(var_qual, []byte{aln_qual[i]})
 					var_type = append(var_type, 0)
 				}
 			}
@@ -811,6 +811,6 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 			i++
 		}
 	}
-	PrintVarInfo("RightAlignEditTraceBack, variant info", var_pos, var_base, var_qual)
+	PrintVarInfo("RightAlnEditTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }

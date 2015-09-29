@@ -46,17 +46,16 @@ func ReadParaInfo() *ivc.ParaInfo {
 	var search_mode = flag.Int("mode", 0, "searching mode for finding seeds (1: random, 2: deterministic)")
 	var start_pos = flag.Int("start", 0, "starting position on reads for finding seeds")
 	var search_step = flag.Int("step", 0, "step for searching in deterministic mode")
-	var proc_num = flag.Int("t", 0, "maximum number of CPUs")
 	var max_snum = flag.Int("maxs", 0, "maximum number of seeds")
 	var max_psnum = flag.Int("maxp", 0, "maximum number of paired-seeds")
 	var min_slen = flag.Int("lmin", 0, "minimum length of seeds")
 	var max_slen = flag.Int("lmax", 0, "maximum length of seeds")
-	var dist_thres = flag.Int("d", 0, "threshold of alignment distances")
-	var prob_thres = flag.Float64("p", 0, "threshold of alignment probabilities")
+	var dist_thres = flag.Float64("d", 0, "threshold of alignment distances")
 	var iter_num = flag.Int("r", 0, "maximum number of iterations")
 	var sub_cost = flag.Float64("s", 0, "substitution cost")
 	var gap_open = flag.Float64("o", 0, "gap open cost")
 	var gap_ext = flag.Float64("e", 0, "gap extension cost")
+	var proc_num = flag.Int("t", 0, "maximum number of CPUs")
 	var debug_mode = flag.Bool("debug", false, "turn on debug mode.")
 	flag.Parse()
 
@@ -77,17 +76,16 @@ func ReadParaInfo() *ivc.ParaInfo {
 	para_info.Search_mode = *search_mode
 	para_info.Start_pos = *start_pos
 	para_info.Search_step = *search_step
-	para_info.Proc_num = *proc_num
 	para_info.Max_snum = *max_snum
 	para_info.Max_psnum = *max_psnum
 	para_info.Min_slen = *min_slen
 	para_info.Max_slen = *max_slen
 	para_info.Dist_thres = *dist_thres
-	para_info.Prob_thres = *prob_thres
 	para_info.Iter_num = *iter_num
 	para_info.Sub_cost = *sub_cost
 	para_info.Gap_open = *gap_open
 	para_info.Gap_ext = *gap_ext
+	para_info.Proc_num = *proc_num
 	para_info.Debug_mode = *debug_mode
 
 	return para_info

@@ -35,7 +35,7 @@ type MultiGenome struct {
 // MultiGenome creates a multi-genome instance and set up its content.
 //--------------------------------------------------------------------------------------------------
 func NewMultiGenome() *MultiGenome {
-	log.Printf("Memstats:\tMemstats.Alloc\tMemstats.TotalAlloc\tMemstats.Sys\tMemstats.HeapAlloc\tMemstats.HeapSys")
+	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 
 	M := new(MultiGenome)
 	M.Seq = LoadMultiSeq(PARA_INFO.Ref_file)
