@@ -1,5 +1,6 @@
 //---------------------------------------------------------------------------------------------------
-// IVC: share.go - Shared variables and functions.
+// IVC: share.go
+// Shared variables and functions for IVC modules.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 

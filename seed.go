@@ -1,6 +1,7 @@
 //--------------------------------------------------------------------------------------------------
-// IVC: seed.go - Finding seeds of alignment betwwen reads and multigenomes.
-// Searching is perfomed from a random position on reads forwardly using an FM-index of reverse multi-genome
+// IVC: seed.go
+// Finding seeds for alignment betwwen reads and multigenomes.
+// Searching is perfomed from a random position on reads forwardly using an FM-index of reverse multigenomes.
 // Copyright 2015 Nam Sy Vo.
 //--------------------------------------------------------------------------------------------------
 

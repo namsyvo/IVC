@@ -1,6 +1,8 @@
 //---------------------------------------------------------------------------------------------------
-// IVC: variantcall.go - Calling genomic variants based on alignment between reads and the reference multigenome.
-// Variants and probability of correct variant calls is determined using Bayesian update.
+// IVC: variantcall.go
+// Calling genomic variants based on alignment between reads and multigenomes.
+// Known variant information (if available) is taken into account when performing alignment.
+// Variants and probability of variant calls to be corect is determined using Bayesian update.
 // Copyright 2015 Nam Sy Vo.
 //---------------------------------------------------------------------------------------------------
 
@@ -23,7 +25,7 @@ import (
 
 //---------------------------------------------------------------------------------------------------
 // VarInfo represents variants obtained during alignment phase.
-// It serves as temporary variable during variant calling phase.
+// It serves as temporary variable during variant calling process.
 //---------------------------------------------------------------------------------------------------
 type VarInfo struct {
 	Pos     uint32  //Postion of variant (on the reference)
@@ -43,8 +45,8 @@ type VarInfo struct {
 }
 
 //---------------------------------------------------------------------------------------------------
-// VarCall represents info of aligned reads and bases at the variant call positions on reference multigenome.
-// This struct also has functions defined on it for calling variants.
+// VarCall represents variant calls and related info at all variant locations on multigenomes.
+// This struct also defines functions for calling variants.
 //---------------------------------------------------------------------------------------------------
 type VarCall struct {
 	//VarProb stores all possible variants at each position and their confident probablilities.
@@ -52,14 +54,14 @@ type VarCall struct {
 	//Posterior probabilities will be updated during alignment phase based on incomming aligned bases
 	VarProb   map[uint32]map[string]float64   //Probability of the variant call
 	VarType   map[uint32]map[string]int       //Type of variants (0: sub, 1: ins, 2: del; other types will be considered in future)
-	VarRNum   map[uint32]map[string]int       //Numer of reads (bases) aligned to the variant call postion
-	ChrDis    map[uint32]map[string][]int     //Chromosomal distance between two aligned ends
+	VarRNum   map[uint32]map[string]int       //Numer of aligned reads corresponding to each variant
+	ChrDis    map[uint32]map[string][]int     //Chromosomal distance between two aligned read-ends
 	ChrDiff   map[uint32]map[string][]int     //Chromosomal distance betwwen the aligned postion and true postion (for simulated data)
-	MapProb   map[uint32]map[string][]float64 //Probability of mapping read corectly (mapping quality)
-	AlnProb   map[uint32]map[string][]float64 //Probability of aligning read correctly (alignment quality)
+	MapProb   map[uint32]map[string][]float64 //Probability of mapping read to be corect (mapping quality)
+	AlnProb   map[uint32]map[string][]float64 //Probability of aligning read to be correct (alignment quality)
 	ChrProb   map[uint32]map[string][]float64 //Probability of insert size to be correct (for pair-end reads)
-	StartPos1 map[uint32]map[string][]int     //Start position of alignment of the first end
-	StartPos2 map[uint32]map[string][]int     //Start position of alignment of the second end
+	StartPos1 map[uint32]map[string][]int     //Start position (on read) of alignment of the first end
+	StartPos2 map[uint32]map[string][]int     //Start position (on read) of alignment of the second end
 	Strand1   map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if read has same strand with ref, "false" otherwise)
 	Strand2   map[uint32]map[string][]bool    //Strand indicator of the second end ("true" if read has same strand with ref, "false" otherwise)
 	VarBQual  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
@@ -166,8 +168,7 @@ func NewVariantCaller() *VarCall {
 }
 
 //---------------------------------------------------------------------------------------------------
-// CallVariants initializes share variables, channels, reads input reads, finds all possible variants,
-// and updates variant information in VarCall.
+// CallVariants finds variants and updates variant information in VarCall.
 // This function will be called from main program.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) CallVariants() {
@@ -270,7 +271,7 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindVariants takes data from data channel, find all possible Vars and put them into results channel.
+// FindVariants takes data from data channel, find variants and put them into results channel.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool, var_results chan *VarInfo,
 	wg *sync.WaitGroup) {
@@ -446,10 +447,8 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindVariantsFromExtension determines variants based on alignment between reads and multi-genomes.
-// Extend read and ref from exact matches (found from searching with FM-index).
-// Perform backward alignment (for left extension of read and ref) and forward alignment (for right extension)
-// between read and multigenome to determine aligned bases as candidates for variant calls.
+// ExtendSeeds performs alignment between extensions from seeds on reads and multigenomes
+// and determines variants from the alignment of both left and right extensions.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info *EditAlnInfo) ([]*VarInfo, int, int, float64) {
 
@@ -564,8 +563,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 }
 
 //---------------------------------------------------------------------------------------------------
-// UpdateVariantProb updates probablilities of variants at the location.
-//	Input: a variant of type VarInfo.
+// UpdateVariantProb updates probablilities of variants at a variant location using Bayesian update.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 	pos := var_info.Pos
@@ -664,8 +662,7 @@ func (VC *VarCall) UpdateVariantProb(var_info *VarInfo) {
 }
 
 //---------------------------------------------------------------------------------------------------
-// OutputVarCalls determines variant calls, convert their probabilities to Phred scores, and writes
-// all variant calls to file in VCF format.
+// OutputVarCalls determines variant calls and writes them to file in VCF format.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) OutputVarCalls() {
 	log.Printf("----------------------------------------------------------------------------------------")

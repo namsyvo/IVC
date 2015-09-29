@@ -1,6 +1,7 @@
 //-------------------------------------------------------------------------------------------------
-// IVC: multigenome.go - Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
-// Multigenome includes a multi-sequence (include standard bases and *) and a variant profile for variant locations.
+// IVC: multigenome.go
+// Building multigenome by combining SNPs and INDELs from dbSNPs with the reference genome.
+// Multigenome includes a multi-sequence (include standard bases and *) and a variant profile.
 // Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
 
@@ -66,7 +67,7 @@ func NewMultiGenome() *MultiGenome {
 			M.DelVar[var_pos] = var_len - 1
 		}
 	}
-	PrintMemStats("Memstats after creating auxiliary data structures for multi-genome")
+	PrintMemStats("Memstats after creating auxiliary data structures")
 
 	M.RevFMI = *fmi.Load(PARA_INFO.Rev_index_file)
 	PrintMemStats("Memstats after loading index of reverse multi-sequence")

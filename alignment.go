@@ -1,5 +1,6 @@
 //-------------------------------------------------------------------------------------------------
-// IVC: alignment.go - Calculating alignment between reads and multigenomes.
+// IVC: alignment.go
+// Calculating alignment between reads and multigenomes, take into account known variants.
 // Alignment is performed for left and right extensions of seeds on reads and multigenomes.
 // Copyright 2015 Nam Sy Vo.
 //-------------------------------------------------------------------------------------------------
