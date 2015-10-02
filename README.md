@@ -21,7 +21,7 @@ go get github.com/vtphan/fmi
 go get github.com/namsyvo/IVC
 ```
 After these steps, fmi source code and IVC source code should be in the directories $GOPATH/github.com/vtphan/fmi and $GOPATH/github.com/namsyvo/IVC, respectively.  
-Then go to the IVC directory:
+Then go to the IVC directory, from which IVC can be run as a Go program:
 ```
 cd $GOPATH/src/github.com/namsyvo/IVC
 ```
@@ -31,20 +31,20 @@ cd $GOPATH/src/github.com/namsyvo/IVC
 
 ### 3.1 Example command
 IVC comes with a test dataset which includes the following directories:  
-test_data/refs: includes a reference genome and the corresponding dbsnp (NC_007194.1: Aspergillus fumigatus Af293 chromosome 1, whole genome shotgun sequence).  
-test_data/reads: includes two test reads files for above reference.
+test_data/refs: includes a reference genome and a corresponding variant profile (NC_007194.1: Aspergillus fumigatus Af293 chromosome 1, whole genome shotgun sequence).  
+test_data/reads: includes a set of paired-end reads with 10.000 simulated reads.
 
 3.1.1. Creating and indexing reference genomes with variant profile:
 ```
 mkdir test_data/index
-go run main/index.go -g test_data/refs/chr1.fasta -s test_data/refs/vcf_chr_1.vcf -i test_data/index
+go run main/index.go -R test_data/refs/chr1.fasta -V test_data/refs/vcf_chr_1.vcf -I test_data/index
 ```
 
 3.1.2. Calling Variants from reads and the reference
 
 ```
 mkdir test_data/results
-go run main/ivc.go -g test_data/refs/chr1.fasta -v test_data/refs/vcf_chr_1.vcf -i test_data/index -1 test_data/reads/test_reads_1.fq -2 test_data/reads/test_reads_2.fq -o test_data/results/test_called_snps.vcf
+go run main/ivc.go -R test_data/refs/chr1.fasta -V test_data/refs/vcf_chr_1.vcf -I test_data/index/chr1/ -1 test_data/reads/chr1/reads_1.fq -2 test_data/reads/chr1/reads_2.fq -O test_data/results/chr1/called_variants.vcf
 ```
 
 ### 3.2 Commands and options
@@ -53,9 +53,9 @@ go run main/ivc.go -g test_data/refs/chr1.fasta -v test_data/refs/vcf_chr_1.vcf 
 
 Required:
 
-	-g: reference genome (FASTA format).  
-	-v: variant profile, like dbSNP (VCF format).  
-	-i: directory for storing index.  
+	-R: reference genome (FASTA format).  
+	-V: known variant profile (VCF format).  
+	-I: directory for storing index.  
 
 Options:
 
@@ -64,27 +64,29 @@ Options:
 
 Required:
 
-	-g: reference genome (FASTA format).  
-	-v: variant profile, like dbSNP (VCF format).  
-	-i: directory for storing index.  
+	-R: reference genome (FASTA format).  
+	-V: known variant profile (VCF format).  
+	-I: directory for storing index.  
 	-1: the read file (for single-end reads) (FASTQ format).  
 	-2: the second end file (for pair-end reads) (FASTQ format).  
-	-o: variant call result file (in VCF format).  
+	-O: variant call result file (in VCF format).  
 
 Options:  
 
-	-m: searching mode for finding seeds (1: random, 2: deterministic; default: 1).  
-	-p: starting position on reads for finding seeds (integer, default: 0).  
-	-j: step for searching in deterministic mode (integer, default: 5).  
-	-w: maximum number of CPUs using by Go (integer, default: number of CPU of running computer).  
-	-t: number of used goroutines (integer, default: number of CPU of running computer).  
-	-n: maximum number of seeds for each end (default: 1024).  
-	-l: minimum length of seeds for each end (default: 10).  
-	-h: maximum length of seeds for each end (default: length of input reads).  
-	-k: maximum number of paired-seeds which are considers as proper seeds for paired-end reads (default: 1024).  
-	-d: threshold of alignment distances (default: determined by the program).  
-	-r: maximum number of iterations (default: determined by the program).  
-
+	-mode: searching mode for finding seeds (1: random (default), 2: deterministic).  
+	-start: starting position on reads for finding seeds (integer, default: 0).  
+	-step: step for searching in deterministic mode (integer, default: 5).  
+	-maxs: maximum number of seeds for single-end reads (default: 1024).  
+	-maxp: maximum number of paired-seeds for paired-end reads (default: 128).  
+	-lmin: minimum length of seeds for each end (default: 15).  
+	-lmax: maximum length of seeds for each end (default: 25).  
+	-d: threshold of alignment distances (float, default: determined by the program).  
+	-r: maximum number of iterations for random searching (int, default: determined by the program).  
+	-s: substitution cost (float, default: 4). 
+	-o: gap open cost (float, default: 4.1). 
+	-e: gap extension cost (float, default: 4.1). 
+	-t: maximum number of CPUs to run (integer, default: number of CPU of running computer).  
+	-debug: debug mode (boolean, default: false)
 
 
 ### 3.3 Parameter calculation

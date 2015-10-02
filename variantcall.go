@@ -519,16 +519,16 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 	PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
 
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
-		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_aln_s_pos, edit_aln_info.l_Dist_D, edit_aln_info.l_Dist_IS, 
-		edit_aln_info.l_Dist_IT, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, l_ref_pos_map)
+		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_aln_s_pos, edit_aln_info.l_Dist_D, edit_aln_info.l_Dist_IS,
+			edit_aln_info.l_Dist_IT, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, l_ref_pos_map)
 	r_Ham_dist, r_Edit_dist, r_bt_mat, r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type :=
-		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank, r_aln_s_pos, edit_aln_info.r_Dist_D, edit_aln_info.r_Dist_IS, 
-		edit_aln_info.r_Dist_IT, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
+		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank, r_aln_s_pos, edit_aln_info.r_Dist_D, edit_aln_info.r_Dist_IS,
+			edit_aln_info.r_Dist_IT, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
 
 	aln_dist := l_Ham_dist + l_Edit_dist + r_Ham_dist + r_Edit_dist
 	if aln_dist <= PARA_INFO.Dist_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, 
+			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n,
 				l_aln_s_pos, l_bt_mat, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, l_ref_pos_map)
 			l_var_pos = append(l_var_pos, l_pos...)
 			l_var_base = append(l_var_base, l_base...)
@@ -537,7 +537,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		}
 		PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, 
+			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n,
 				r_aln_s_pos, r_bt_mat, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
 			r_var_pos = append(r_var_pos, r_pos...)
 			r_var_base = append(r_var_base, r_base...)
