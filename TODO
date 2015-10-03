@@ -1,8 +1,9 @@
-(1) For 0.7.3 version: Further decrease FP, increase TP, reduce runtime & mem
-    + Consider mapping quality.
-    + Filter unreliable indels at beginning and end of reads.
-    + Try better scoring scheme.
-    + Reduce runtime and memory usage.
+(1) For 0.7.4 version: prepare to release the first public version.
+    + Fix a possible bug related to accessing ref_pos_map in alignment.go in LeftAlign and RightAlign functions.
+    + Adjust quality of variants in output based on the best evaluation.
+    + Refine output (add info to missing columns in VCF format).
+    + Add functions to allow IVC working with single-end reads.
+    + Filter indels at beginning and end of reads more carefully.
 
 (2) Integrate indexing and SNP calling phases:
     (a) Create or load the index:
