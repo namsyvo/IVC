@@ -397,11 +397,13 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 			i++
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
-				if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
-					var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
-					var_base = append(var_base, []byte{aln_read[i]})
-					var_qual = append(var_qual, []byte{aln_qual[i]})
-					var_type = append(var_type, 0)
+				if ref_pos_map != nil {
+					if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
+						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
+						var_base = append(var_base, []byte{aln_read[i]})
+						var_qual = append(var_qual, []byte{aln_qual[i]})
+						var_type = append(var_type, 0)
+					}
 				}
 			}
 			ref_ori_pos++
@@ -800,11 +802,13 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 			i++
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
-				if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
-					var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
-					var_base = append(var_base, []byte{aln_read[i]})
-					var_qual = append(var_qual, []byte{aln_qual[i]})
-					var_type = append(var_type, 0)
+				if ref_pos_map != nil {
+					if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
+						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
+						var_base = append(var_base, []byte{aln_read[i]})
+						var_qual = append(var_qual, []byte{aln_qual[i]})
+						var_type = append(var_type, 0)
+					}
 				}
 			}
 			ref_ori_pos++

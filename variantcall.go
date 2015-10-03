@@ -420,7 +420,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 			}
 		}
 		cand_num = append(cand_num, c_num)
-		if paired_dist < 1 { //in this case, it is likely the best candidates
+		if paired_dist < PARA_INFO.Gap_open+PARA_INFO.Gap_ext { //in this case, it is likely the correct candidates
 			break
 		}
 	}
