@@ -1,3 +1,14 @@
+## 0.7.4 <Oct 4, 2015> <unknown-del>
+Major changes:
+- Modify Bayesian formula to call long unknown deletions.
+- Still do right-of-seed-extend even if known deletions are longer than read-flank.
+- Change score parameters of affine gap alignment algorithm.
+- Improve runtime and memory usage.
+Minor changes:
+- Clean a lot of code, rename a lot of variables and functions, fix some bugs.
+- Add more info of aligned reads ang called variants to output.
+- Put some internal parameters as input parameters.
+
 ## 0.7.3 <Aug 19, 2015> <long-indel>
 Major changes:
 - Allow calling very long indels.
@@ -18,9 +29,9 @@ Major changes:
     + Use slice instead of map when possible.
     + Some other runtime and memory optimization.
 Minor changes:
-- Re-organize code, clean code
-- Do not consider base quality for matches and gaps, consider base quality for mismatches and known variants
-- Get longer extended-ref for alignment
+- Re-organize code, clean code.
+- Do not consider base quality for matches and gaps, consider base quality for mismatches and known variants.
+- Get longer extended-ref for alignment.
 
 ## 0.7.1 <May 24, 2015> <aff-gap>
 Major changes:
