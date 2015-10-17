@@ -316,26 +316,34 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
 	rand_gen *rand.Rand, var_results chan *VarInfo) {
-	//---------------------------------------------------------------------
-	//get info for simulated reads, with specific format of testing dataset
-	//need to be re-implemented for general data
+
+	//-----------------------------------------------------------------------------------------------
+	//in case of simulated reads, get info with specific format of testing dataset
 	read_info1_tokens := bytes.Split(read_info.Info1, []byte{'_'})
-	var true_pos1, true_pos2 int64
-	var read_info1, read_info2 []byte
-	if read_info1_tokens[0][1] != 'r' {
-		true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
-		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64)
-		read_info1, read_info2 = make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
-		copy(read_info1, read_info.Info1)
-		copy(read_info2, read_info.Info2)
-	} else {
-		true_pos1, _ = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64)
-		true_pos2, _ = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64)
-		read_info1, read_info2 = make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
-		copy(read_info1, read_info.Info1)
-		copy(read_info2, read_info.Info2)
+	true_pos1, true_pos2 := 0, 0
+	var tmp int64
+	var err error
+	if read_info1_tokens[0][1] != 'r' && len(read_info1_tokens) >= 4 {
+		if tmp, err = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64); err != nil {
+			true_pos1 = int(tmp)
+		}
+		if tmp, err = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64); err != nil {
+			true_pos2 = int(tmp)
+		}
+	} else if len(read_info1_tokens) >= 3 {
+		if tmp, err = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64); err != nil {
+			true_pos1 = int(tmp)
+		}
+		if tmp, err = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64); err != nil {
+			true_pos2 = int(tmp)
+		}
 	}
-	//---------------------------------------------------------------------
+	//-------------------------------------------------------------------------------------------------
+
+	read_info1, read_info2 := make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
+	copy(read_info1, read_info.Info1)
+	copy(read_info2, read_info.Info2)
+
 	var vars1, vars2, vars_get1, vars_get2 []*VarInfo
 	var l_aln_pos1, l_aln_pos2 int
 	var seed_info1, seed_info2 *SeedInfo
@@ -382,7 +390,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 				ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_aln_pos1-l_aln_pos2))-400.0, 2.0) / (2 * 50 * 50)))
 				if paired_dist > aln_dist1+aln_dist2 {
 					paired_dist = aln_dist1 + aln_dist2
-					PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
+					//PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
 					vars_get1 = make([]*VarInfo, len(vars1)) //need to reset vars_get1 here
 					vars_get2 = make([]*VarInfo, len(vars2)) //need to reset vars_get2 here
 					loop_has_cand = loop_num
@@ -391,7 +399,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 						if PARA_INFO.Debug_mode {
 							//Update vars_get1 with other info
 							vars_get1[s_idx].CDis = l_aln_pos1 - l_aln_pos2
-							vars_get1[s_idx].CDiff = l_aln_pos1 - int(true_pos1)
+							vars_get1[s_idx].CDiff = l_aln_pos1 - true_pos1
 							vars_get1[s_idx].AProb = aln_dist1
 							vars_get1[s_idx].IProb = ins_prob
 							vars_get1[s_idx].SPos1 = seed_info1.e_pos[p_idx]
@@ -406,7 +414,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 						if PARA_INFO.Debug_mode {
 							//Update vars_get2 with other info
 							vars_get2[s_idx].CDis = l_aln_pos1 - l_aln_pos2
-							vars_get2[s_idx].CDiff = l_aln_pos2 - int(true_pos2)
+							vars_get2[s_idx].CDiff = l_aln_pos2 - true_pos2
 							vars_get2[s_idx].AProb = aln_dist2
 							vars_get2[s_idx].IProb = ins_prob
 							vars_get2[s_idx].SPos1 = seed_info1.e_pos[p_idx]
@@ -426,7 +434,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	}
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
-		PrintGetVariants("Final_var", paired_dist, aln_dist1, aln_dist2, vars_get1, vars_get2)
+		//PrintGetVariants("Final_var", paired_dist, aln_dist1, aln_dist2, vars_get1, vars_get2)
 		for _, var_info := range vars_get1 {
 			var_info.MProb = map_qual
 			var_results <- var_info
@@ -516,7 +524,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		j++
 		i++
 	}
-	PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
+	//PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
 
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
 		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_aln_s_pos, edit_aln_info.l_Dist_D, edit_aln_info.l_Dist_IS,
@@ -535,7 +543,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			l_var_qual = append(l_var_qual, l_qual...)
 			l_var_type = append(l_var_type, l_type...)
 		}
-		PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
+		//PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
 		if r_m > 0 && r_n > 0 {
 			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n,
 				r_aln_s_pos, r_bt_mat, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
@@ -544,7 +552,7 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			r_var_qual = append(r_var_qual, r_qual...)
 			r_var_type = append(r_var_type, r_type...)
 		}
-		PrintMatchTraceInfo(m_pos, r_aln_s_pos, aln_dist, r_var_pos, read)
+		//PrintMatchTraceInfo(m_pos, r_aln_s_pos, aln_dist, r_var_pos, read)
 		var k int
 		var vars_arr []*VarInfo
 		for k = 0; k < len(l_var_pos); k++ {

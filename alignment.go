@@ -35,7 +35,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 
 	var var_len int
 	var var_str string
-	var is_same_len_var, is_prof_new_var bool
+	var is_var, is_same_len_var bool
 	var p, min_p, var_prob float64
 	var var_prof map[string]float64
 
@@ -45,6 +45,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	PrintEditDisInput("LeftAlign input: read, qual, ref", read, qual, ref)
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
+	var_pos_trace := make(map[int]bool)
 	for m > 0 && n > 0 {
 		if MULTI_GENOME.Seq[ref_pos_map[n-1]-PARA_INFO.Indel_backup] == '*' {
 			if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
@@ -58,7 +59,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 					backup_num = len(read) - m
 				}
 				for i := 0; i < backup_num; i++ {
-					if _, is_prof_new_var = VC.VarType[uint32(ref_pos_map[n+i])]; is_prof_new_var {
+					if _, is_var = var_pos_trace[n+i]; is_var {
 						var_pos = var_pos[:len(var_pos)-1]
 						var_base = var_base[:len(var_base)-1]
 						var_qual = var_qual[:len(var_qual)-1]
@@ -69,7 +70,8 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 				n += backup_num
 				break
 			}
-			if _, is_prof_new_var = VC.VarType[uint32(ref_pos_map[n-1])]; is_prof_new_var {
+			if _, is_var = VC.VarType[uint32(ref_pos_map[n-1])]; is_var {
+				var_pos_trace[n-1] = true
 				var_pos = append(var_pos, ref_pos_map[n-1])
 				var_base = append(var_base, []byte{read[m-1]})
 				var_qual = append(var_qual, []byte{qual[m-1]})
@@ -90,6 +92,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 			}
 			if min_p < math.MaxFloat64 {
 				aln_dist = aln_dist + min_p
+				var_pos_trace[n-1] = true
 				var_pos = append(var_pos, ref_pos_map[n-1])
 				v, q := make([]byte, var_len), make([]byte, var_len)
 				copy(v, read[m-var_len:m])
@@ -109,13 +112,13 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 			return PARA_INFO.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 		}
 	}
-	PrintDisInfo("LeftAlnHam dis", m, n, aln_dist)
+	//PrintDisInfo("LeftAlnHam dis", m, n, aln_dist)
 
 	if m == 0 || n == 0 {
 		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("LeftAlnEdit: read, qual, ref", read[:m], qual[:m], ref[:n])
+	//PrintEditDisInput("LeftAlnEdit: read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -226,17 +229,17 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 			}
 		}
 	}
-	PrintDisInfo("LeftAlnEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("LeftAlnEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("LeftAlnEditDist, IT dis", m, n, IT[m][n])
+	//PrintDisInfo("LeftAlnEditDist, D dis", m, n, D[m][n])
+	//PrintDisInfo("LeftAlnEditDist, IS dis", m, n, IS[m][n])
+	//PrintDisInfo("LeftAlnEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("LeftAlnEditDist, D mat", D, m, n, read[:m], ref[:n])
-	PrintEditDisMat("LeftAlnEditDist, IS mat", IS, m, n, read[:m], ref[:n])
-	PrintEditDisMat("LeftAlnEditDist, IT mat", IT, m, n, read[:m], ref[:n])
+	//PrintEditDisMat("LeftAlnEditDist, D mat", D, m, n, read[:m], ref[:n])
+	//PrintEditDisMat("LeftAlnEditDist, IS mat", IS, m, n, read[:m], ref[:n])
+	//PrintEditDisMat("LeftAlnEditDist, IT mat", IT, m, n, read[:m], ref[:n])
 
-	PrintEditTraceMat("LeftAlnEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("LeftAlnEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("LeftAlnEditDist, IT trace mat", BT_IT, m, n)
+	//PrintEditTraceMat("LeftAlnEditDist, D trace mat", BT_D, m, n)
+	//PrintEditTraceMat("LeftAlnEditDist, IS trace mat", BT_IS, m, n)
+	//PrintEditTraceMat("LeftAlnEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -264,7 +267,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
 
-	PrintEditDisInput("LeftAlnEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
+	//PrintEditDisInput("LeftAlnEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
 
 	aln_read, aln_qual, aln_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	bt_mat := BT_Mat
@@ -343,7 +346,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 		aln_qual[i], aln_qual[j] = aln_qual[j], aln_qual[i]
 		aln_ref[i], aln_ref[j] = aln_ref[j], aln_ref[i]
 	}
-	PrintEditAlignInfo("LeftAlnEditTraceBack, aligned read/qual/ref", aln_read, aln_qual, aln_ref)
+	//PrintEditAlignInfo("LeftAlnEditTraceBack, aligned read/qual/ref", aln_read, aln_qual, aln_ref)
 
 	//Get Vars
 	ref_ori_pos := 0
@@ -411,7 +414,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 			i++
 		}
 	}
-	PrintVarInfo("LeftAlnitTraceBack, variant info", var_pos, var_base, var_qual)
+	//PrintVarInfo("LeftAlnitTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }
 
@@ -424,16 +427,17 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 
 	var var_len int
 	var var_prof map[string]float64
-	var is_same_len_var bool
+	var is_var, is_same_len_var bool
 	var var_str string
 	var p, min_p, var_prob float64
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 
-	PrintEditDisInput("RightAlign input: read, qual, ref", read, qual, ref)
+	//PrintEditDisInput("RightAlign input: read, qual, ref", read, qual, ref)
 	aln_dist := 0.0
 	M, N := len(read), len(ref)
 	m, n := M, N
+	var_pos_trace := make(map[int]bool)
 	for m > 0 && n > 0 {
 		if MULTI_GENOME.Seq[ref_pos_map[N-n]+PARA_INFO.Indel_backup] == '*' {
 			if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
@@ -447,7 +451,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 					backup_num = M - m
 				}
 				for i := 0; i < backup_num; i++ {
-					if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[N-(n+i+1)])]; is_prof_new_var {
+					if _, is_var = var_pos_trace[N-(n+i+1)]; is_var {
 						var_pos = var_pos[:len(var_pos)-1]
 						var_base = var_base[:len(var_base)-1]
 						var_qual = var_qual[:len(var_qual)-1]
@@ -458,7 +462,8 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 				n += backup_num
 				break
 			}
-			if _, is_prof_new_var := VC.VarType[uint32(ref_pos_map[N-n])]; is_prof_new_var {
+			if _, is_var = VC.VarType[uint32(ref_pos_map[N-n])]; is_var {
+				var_pos_trace[N-n] = true
 				var_pos = append(var_pos, ref_pos_map[N-n])
 				var_base = append(var_base, []byte{read[M-m]})
 				var_qual = append(var_qual, []byte{qual[M-m]})
@@ -479,6 +484,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 			}
 			if min_p < math.MaxFloat64 {
 				aln_dist = aln_dist + min_p
+				var_pos_trace[N-n] = true
 				var_pos = append(var_pos, ref_pos_map[N-n])
 				v, q := make([]byte, var_len), make([]byte, var_len)
 				copy(v, read[M-m:M-(m-var_len)])
@@ -499,13 +505,13 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 		}
 	}
 
-	PrintDisInfo("RightAlnHam dis", m, n, aln_dist)
+	//PrintDisInfo("RightAlnHam dis", m, n, aln_dist)
 
 	if m == 0 || n == 0 {
 		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 
-	PrintEditDisInput("RightAlnEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
+	//PrintEditDisInput("RightAlnEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
 
 	/*
 		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
@@ -620,17 +626,17 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 			}
 		}
 	}
-	PrintDisInfo("RightAlnEditDist, D dis", m, n, D[m][n])
-	PrintDisInfo("RightAlnEditDist, IS dis", m, n, IS[m][n])
-	PrintDisInfo("RightAlnEditDist, IT dis", m, n, IT[m][n])
+	//PrintDisInfo("RightAlnEditDist, D dis", m, n, D[m][n])
+	//PrintDisInfo("RightAlnEditDist, IS dis", m, n, IS[m][n])
+	//PrintDisInfo("RightAlnEditDist, IT dis", m, n, IT[m][n])
 
-	PrintEditDisMat("RightAlnEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("RightAlnEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
-	PrintEditDisMat("RightAlnEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
+	//PrintEditDisMat("RightAlnEditDist, D mat", D, m, n, read[M-m:M], ref[N-n:N])
+	//PrintEditDisMat("RightAlnEditDist, IS mat", IS, m, n, read[M-m:M], ref[N-n:N])
+	//PrintEditDisMat("RightAlnEditDist, IT mat", IT, m, n, read[M-m:M], ref[N-n:N])
 
-	PrintEditTraceMat("RightAlnEditDist, D trace mat", BT_D, m, n)
-	PrintEditTraceMat("RightAlnEditDist, IS trace mat", BT_IS, m, n)
-	PrintEditTraceMat("RightAlnEditDist, IT trace mat", BT_IT, m, n)
+	//PrintEditTraceMat("RightAlnEditDist, D trace mat", BT_D, m, n)
+	//PrintEditTraceMat("RightAlnEditDist, IS trace mat", BT_IS, m, n)
+	//PrintEditTraceMat("RightAlnEditDist, IT trace mat", BT_IT, m, n)
 
 	min_dist := D[m][n]
 	bt_mat := 0
@@ -652,7 +658,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
 	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
-	PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", read, qual, ref)
+	//PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", read, qual, ref)
 
 	var var_len int
 	var var_pos, var_type []int
@@ -747,7 +753,7 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 		}
 	}
 
-	PrintEditAlignInfo("RightAlnEditTraceBack, aligned read/qual/ref", aln_read, aln_qual, aln_ref)
+	//PrintEditAlignInfo("RightAlnEditTraceBack, aligned read/qual/ref", aln_read, aln_qual, aln_ref)
 
 	//Get Vars
 	ref_ori_pos := N - n
@@ -816,6 +822,6 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 			i++
 		}
 	}
-	PrintVarInfo("RightAlnEditTraceBack, variant info", var_pos, var_base, var_qual)
+	//PrintVarInfo("RightAlnEditTraceBack, variant info", var_pos, var_base, var_qual)
 	return var_pos, var_base, var_qual, var_type
 }
