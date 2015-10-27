@@ -7,17 +7,11 @@
 package ivc
 
 import (
-	//"bufio"
-	//"bytes"
 	"fmt"
 	"log"
 	"math"
 	"os"
 	"runtime"
-	//"sort"
-	//"strconv"
-	//"strings"
-	//"time"
 )
 
 //Global variable for turnning on/off info profiling
