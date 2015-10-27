@@ -22,7 +22,7 @@ func main() {
 	log.Printf("IVC - Integrated Variant Caller using next-generation sequencing data.")
 	log.Printf("IVC-index: Indexing reference genomes and variant profiles.")
 	//----------------------------------------------------------------------------------//
-	var genome_file = flag.String("G", "", "reference genome file")
+	var genome_file = flag.String("R", "", "reference genome file")
 	var var_prof_file = flag.String("V", "", "variant profile file")
 	var idx_dir = flag.String("I", "", "index directory")
 	flag.Parse()
