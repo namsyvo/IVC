@@ -37,14 +37,14 @@ test_data/reads: includes a set of paired-end reads with 10.000 simulated reads.
 3.1.1. Creating and indexing reference genomes with variant profile:
 ```
 mkdir test_data/index
-go run main/index.go -R test_data/refs/chr1.fasta -V test_data/refs/vcf_chr_1.vcf -I test_data/index
+go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
 ```
 
 3.1.2. Calling Variants from reads and the reference
 
 ```
 mkdir test_data/results
-go run main/ivc.go -R test_data/refs/chr1.fasta -V test_data/refs/vcf_chr_1.vcf -I test_data/index/chr1/ -1 test_data/reads/chr1/reads_1.fq -2 test_data/reads/chr1/reads_2.fq -O test_data/results/chr1/called_variants.vcf
+go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes/ -1 test_data/reads/chr1_reads_1.fq -2 test_data/reads/chr1_reads_2.fq -O test_data/results/chr1_variant_calls.vcf
 ```
 
 ### 3.2 Commands and options
@@ -73,19 +73,19 @@ Required:
 
 Options:  
 
+	-d: threshold of alignment distances (float, default: determined by the program).  
+	-t: maximum number of CPUs to run (integer, default: number of CPU of running computer).  
+	-r: maximum number of iterations for random searching (int, default: determined by the program).  
+	-s: substitution cost (float, default: 4). 
+	-o: gap open cost (float, default: 4.1). 
+	-e: gap extension cost (float, default: 1.0). 
 	-mode: searching mode for finding seeds (1: random (default), 2: deterministic).  
 	-start: starting position on reads for finding seeds (integer, default: 0).  
 	-step: step for searching in deterministic mode (integer, default: 5).  
 	-maxs: maximum number of seeds for single-end reads (default: 1024).  
 	-maxp: maximum number of paired-seeds for paired-end reads (default: 128).  
 	-lmin: minimum length of seeds for each end (default: 15).  
-	-lmax: maximum length of seeds for each end (default: 25).  
-	-d: threshold of alignment distances (float, default: determined by the program).  
-	-r: maximum number of iterations for random searching (int, default: determined by the program).  
-	-s: substitution cost (float, default: 4). 
-	-o: gap open cost (float, default: 4.1). 
-	-e: gap extension cost (float, default: 4.1). 
-	-t: maximum number of CPUs to run (integer, default: number of CPU of running computer).  
+	-lmax: maximum length of seeds for each end (default: 30).  
 	-debug: debug mode (boolean, default: false)
 
 
