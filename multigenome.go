@@ -250,7 +250,7 @@ func ReadVCF(file_name string) map[int]VarProf {
 			continue
 		} else {
 			var_prof_elem := VarProf{}
-			sub_line, _ := SplitN(line, []byte("\t"), 9)
+			sub_line := bytes.SplitN(line, []byte("\t"), 9)
 			pos, _ = strconv.Atoi(string(sub_line[1]))
 			var_prof_elem.Variant = append(var_prof_elem.Variant, sub_line[3])
 			var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 0)
