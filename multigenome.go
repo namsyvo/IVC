@@ -11,8 +11,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/vtphan/fmi" //to use FM index
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -24,12 +22,13 @@ import (
 //MultiGenome represents multi-genome.
 //--------------------------------------------------------------------------------------------------
 type MultiGenome struct {
+	Header     []byte            //store header of the input reference genome.
 	Seq        []byte            //store "starred" sequence of the standard reference genome.
 	Variants   map[int][][]byte  //store variants (position, variants).
 	VarAF      map[int][]float32 //store allele frequency of variants (position, allele frequency).
 	SameLenVar map[int]int       //indicate if variants has same length (SNPs or MNPs).
 	DelVar     map[int]int       //store length of deletions if variants are deletion.
-	RevFMI     fmi.Index         //FM-index of reverse multigenomes (to do forward search).
+	RevFMI     FMIndex         //FM-index of reverse multigenomes (to do forward search).
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -39,7 +38,7 @@ func NewMultiGenome() *MultiGenome {
 	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 
 	M := new(MultiGenome)
-	M.Seq = LoadMultiSeq(PARA_INFO.Ref_file)
+	M.Header, M.Seq = LoadMultiSeq(PARA_INFO.Ref_file)
 	PrintMemStats("Memstats after loading multi-sequence")
 
 	M.Variants, M.VarAF = LoadVarProf(PARA_INFO.Var_prof_file)
@@ -69,7 +68,7 @@ func NewMultiGenome() *MultiGenome {
 	}
 	PrintMemStats("Memstats after creating auxiliary data structures")
 
-	M.RevFMI = *fmi.Load(PARA_INFO.Rev_index_file)
+	M.RevFMI = *Load(PARA_INFO.Rev_index_file)
 	PrintMemStats("Memstats after loading index of reverse multi-sequence")
 
 	return M
@@ -83,8 +82,8 @@ type VarProf struct {
 //-------------------------------------------------------------------------------------------------
 // BuildMultiGenome builds multi-sequence from a standard reference genome and a variant profile.
 //-------------------------------------------------------------------------------------------------
-func BuildMultiGenome(genome_file, var_prof_file string) ([]byte, map[int]VarProf) {
-	genome := ReadFASTA(genome_file)
+func BuildMultiGenome(genome_file, var_prof_file string) ([]byte, []byte, map[int]VarProf) {
+	header, genome := ReadFASTA(genome_file)
 	PrintProcessMem("Memstats after reading reference genome")
 	var_prof := ReadVCF(var_prof_file)
 	PrintProcessMem("Memstats after reading variant profile")
@@ -93,32 +92,41 @@ func BuildMultiGenome(genome_file, var_prof_file string) ([]byte, map[int]VarPro
 	for key, _ := range var_prof {
 		multi_seq[key] = '*'
 	}
-	return multi_seq, var_prof
+	return header, multi_seq, var_prof
 }
 
 //-------------------------------------------------------------------------------------------------
 // LoadMultiSeq loads multi-sequence from file.
 //-------------------------------------------------------------------------------------------------
-func LoadMultiSeq(file_name string) []byte {
-	bs, err := ioutil.ReadFile(file_name)
-	if err != nil {
-		fmt.Println("Error: Read multigenome file", err)
-		os.Exit(1)
-	}
-	return bs
+func LoadMultiSeq(file_name string) ([]byte, []byte) {
+    f, err := os.Open(file_name)
+    if err != nil {
+		fmt.Println("Error: Open ref file", err)
+        os.Exit(1)
+    }
+    defer f.Close()
+    r := bufio.NewReader(f)
+    line, _ := r.ReadBytes('\n')
+	header := line[:len(line)-1]
+    seq, err := r.ReadBytes('\n')
+	return header, seq
 }
 
 //-------------------------------------------------------------------------------------------------
 // SaveMultiSeq saves multi-sequence to file.
 //-------------------------------------------------------------------------------------------------
-func SaveMultiSeq(file_name string, multi_seq []byte) {
+func SaveMultiSeq(file_name string, header, multi_seq []byte) {
 	file, err := os.Create(file_name)
 	if err != nil {
-		fmt.Println("Error: Create multi-sequence file", err)
+		fmt.Println("Error: Create ref file", err)
 		os.Exit(1)
 	}
 	defer file.Close()
-	file.Write(multi_seq)
+	w := bufio.NewWriter(file)
+	w.Write(header)
+	w.WriteString("\n")
+	w.Write(multi_seq)
+	w.Flush()
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -134,9 +142,9 @@ func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
 		os.Exit(1)
 	}
 	defer f.Close()
-	br := bufio.NewReader(f)
+	r := bufio.NewReader(f)
 	for {
-		line, err := br.ReadString('\n')
+		line, err := r.ReadString('\n')
 		if err != nil {
 			break
 		}
@@ -179,48 +187,57 @@ func SaveVarProf(file_name string, var_prof map[int]VarProf) {
 		var_pos = append(var_pos, pos)
 	}
 	sort.Sort(sort.IntSlice(var_pos))
+	w := bufio.NewWriter(file)
 	for _, pos := range var_pos {
-		_, err = file.WriteString(strconv.Itoa(pos) + "\t")
+		_, err = w.WriteString(strconv.Itoa(pos) + "\t")
 		for idx, val := range var_prof[pos].Variant {
-			_, err = file.WriteString(string(val) + "\t" +
+			_, err = w.WriteString(string(val) + "\t" +
 				strconv.FormatFloat(float64(var_prof[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
+			if err != nil {
+				fmt.Println("Error in writing to variant profile index file", err)
+				break
+			}
 		}
-		_, err = file.WriteString("\n")
+		_, err = w.WriteString("\n")
 		if err != nil {
+			fmt.Println("Error in writing to variant profile index file", err)
 			break
 		}
 	}
+	w.Flush()
 }
 
 //--------------------------------------------------------------------------------------------------
 // ReadFASTA reads reference genome from FASTA files.
 //--------------------------------------------------------------------------------------------------
-func ReadFASTA(sequence_file string) []byte {
+func ReadFASTA(sequence_file string) ([]byte, []byte) {
 	f, err := os.Open(sequence_file)
 	if err != nil {
 		fmt.Println("Error: Open FASTA file", err)
 		os.Exit(1)
 	}
 	defer f.Close()
-	br := bufio.NewReader(f)
+	w := bufio.NewReader(f)
 	byte_array := bytes.Buffer{}
 
 	var isPrefix bool
-	_, isPrefix, err = br.ReadLine()
+	var line []byte
+	line, isPrefix, err = w.ReadLine()
 	if err != nil || isPrefix {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-	var line []byte
+	header := make([]byte, len(line))
+	copy(header, line)
 	for {
-		line, isPrefix, err = br.ReadLine()
+		line, isPrefix, err = w.ReadLine()
 		if err != nil || isPrefix {
 			break
 		} else {
 			byte_array.Write(line)
 		}
 	}
-	return []byte(byte_array.String())
+	return header, []byte(byte_array.String())
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -238,11 +255,11 @@ func ReadVCF(file_name string) map[int]VarProf {
 	var line, sub_info []byte
 	var alt, info, sub_info_part [][]byte
 	var pos int
-	var p float32
+	var af []float32
 
-	data := bufio.NewReader(f)
+	r := bufio.NewReader(f)
 	for {
-		line, err = data.ReadBytes('\n')
+		line, err = r.ReadBytes('\n')
 		if err != nil {
 			break
 		}
@@ -256,19 +273,33 @@ func ReadVCF(file_name string) map[int]VarProf {
 			var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 0)
 			alt = bytes.Split(sub_line[4], []byte(","))
 			info = bytes.Split(sub_line[7], []byte(";"))
+			af = make([]float32, 0)
 			for _, sub_info = range info {
 				sub_info_part = bytes.Split(sub_info, []byte("="))
 				if bytes.Equal(sub_info_part[0], []byte("AF")) {
-					tmp_p, _ := strconv.ParseFloat(string(sub_info_part[1]), 32)
-					p = float32(tmp_p)
+					for _, tmp_af := range bytes.Split(sub_info_part[1], []byte(",")) {
+						tmp_p, _ := strconv.ParseFloat(string(tmp_af), 32)
+						af = append(af, float32(tmp_p))
+					}
 					break
 				}
 			}
-			for i := 0; i < len(alt); i++ {
-				var_prof_elem.Variant = append(var_prof_elem.Variant, alt[i])
-				var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, p)
+			if len(af) == len(alt) {
+				alt_prob := float32(0)
+				for i := 0; i < len(alt); i++ {
+					var_prof_elem.Variant = append(var_prof_elem.Variant, alt[i])
+					var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, af[i])
+					alt_prob += af[i]
+				}
+				var_prof_elem.AleFreq[0] = 1 - alt_prob
+			} else {
+				var_num := 1 + len(alt)
+				for i := 0; i < len(alt); i++ {
+					var_prof_elem.Variant = append(var_prof_elem.Variant, alt[i])
+					var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 1/float32(var_num))
+				}
+				var_prof_elem.AleFreq[0] = 1 / float32(var_num)
 			}
-			var_prof_elem.AleFreq[0] = 1 - p
 			var_prof[pos-1] = var_prof_elem
 		}
 	}
