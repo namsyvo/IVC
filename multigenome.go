@@ -28,7 +28,7 @@ type MultiGenome struct {
 	VarAF      map[int][]float32 //store allele frequency of variants (position, allele frequency).
 	SameLenVar map[int]int       //indicate if variants has same length (SNPs or MNPs).
 	DelVar     map[int]int       //store length of deletions if variants are deletion.
-	RevFMI     FMIndex         //FM-index of reverse multigenomes (to do forward search).
+	RevFMI     FMIndex           //FM-index of reverse multigenomes (to do forward search).
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -99,17 +99,16 @@ func BuildMultiGenome(genome_file, var_prof_file string) ([]byte, []byte, map[in
 // LoadMultiSeq loads multi-sequence from file.
 //-------------------------------------------------------------------------------------------------
 func LoadMultiSeq(file_name string) ([]byte, []byte) {
-    f, err := os.Open(file_name)
-    if err != nil {
+	f, err := os.Open(file_name)
+	if err != nil {
 		fmt.Println("Error: Open ref file", err)
-        os.Exit(1)
-    }
-    defer f.Close()
-    r := bufio.NewReader(f)
-    line, _ := r.ReadBytes('\n')
-	header := line[:len(line)-1]
-    seq, err := r.ReadBytes('\n')
-	return header, seq
+		os.Exit(1)
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	header, _ := r.ReadBytes('\n')
+	seq, _ := r.ReadBytes('\n')
+	return bytes.Trim(header, "\n\r"), bytes.Trim(seq, "\n\r\t ")
 }
 
 //-------------------------------------------------------------------------------------------------

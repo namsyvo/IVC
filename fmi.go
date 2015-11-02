@@ -1,18 +1,17 @@
 /*
- Copyright 2013 Vinhthuy Phan
  FM-index
+ Copyright 2013 Vinhthuy Phan
 */
 package ivc
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"sort"
-	"encoding/binary"
 	"bufio"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"os"
 	"path"
+	"sort"
 	"sync"
 )
 
@@ -22,32 +21,31 @@ import (
 
 var SEQ []byte
 
-type FMIndex struct{
-	SA []uint32 						// suffix array
-	C map[byte]uint32  				// count table
-	OCC map[byte][]uint32 			// occurence table
+type FMIndex struct {
+	SA  []uint32          // suffix array
+	C   map[byte]uint32   // count table
+	OCC map[byte][]uint32 // occurence table
 
-	END_POS uint32 					// position of "$" in the text
-	SYMBOLS []int  					// sorted symbols
-	EP map[byte]uint32 				// ending row/position of each symbol
+	END_POS uint32          // position of "$" in the text
+	SYMBOLS []int           // sorted symbols
+	EP      map[byte]uint32 // ending row/position of each symbol
 
-	LEN uint32
-	Freq map[byte]uint32          // Frequency of each symbol
+	LEN  uint32
+	Freq map[byte]uint32 // Frequency of each symbol
 }
-//
 
 //-----------------------------------------------------------------------------
 
 func check_for_error(e error) {
-    if e != nil {
-        panic(e)
-    }
+	if e != nil {
+		panic(e)
+	}
 }
 
 //-----------------------------------------------------------------------------
 // Build FM index given the file storing the text.
 
-func NewFMIndex (file string) *FMIndex {
+func NewFMIndex(file string) *FMIndex {
 	I := new(FMIndex)
 	ReadSequence(file)
 	I.build_suffix_array()
@@ -59,69 +57,69 @@ func NewFMIndex (file string) *FMIndex {
 
 type Symb_OCC struct {
 	Symb int
-	OCC []uint32
+	OCC  []uint32
 }
 
 //-----------------------------------------------------------------------------
 // Load FM index
 // Usage:  idx := Load(index_file)
-func Load (dir string) *FMIndex {
+func Load(dir string) *FMIndex {
 
-   _load_slice := func(filename string, length uint32) []uint32 {
-      f, err := os.Open(filename)
-      check_for_error(err)
-      defer f.Close()
+	_load_slice := func(filename string, length uint32) []uint32 {
+		f, err := os.Open(filename)
+		check_for_error(err)
+		defer f.Close()
 
-      v := make([]uint32, length)
-      scanner := bufio.NewScanner(f)
-      scanner.Split(bufio.ScanBytes)
-      for i:=0; scanner.Scan(); i++ {
-         // convert 4 consecutive bytes to a uint32 number
-         v[i] = uint32(scanner.Bytes()[0])
-         scanner.Scan()
-         v[i] += uint32(scanner.Bytes()[0])<<8
-         scanner.Scan()
-         v[i] += uint32(scanner.Bytes()[0])<<16
-         scanner.Scan()
-         v[i] += uint32(scanner.Bytes()[0])<<24
-      }
-      // r := bufio.NewReader(f)
-      // binary.Read(r, binary.LittleEndian, v)
-      return v
-   }
+		v := make([]uint32, length)
+		scanner := bufio.NewScanner(f)
+		scanner.Split(bufio.ScanBytes)
+		for i := 0; scanner.Scan(); i++ {
+			// convert 4 consecutive bytes to a uint32 number
+			v[i] = uint32(scanner.Bytes()[0])
+			scanner.Scan()
+			v[i] += uint32(scanner.Bytes()[0]) << 8
+			scanner.Scan()
+			v[i] += uint32(scanner.Bytes()[0]) << 16
+			scanner.Scan()
+			v[i] += uint32(scanner.Bytes()[0]) << 24
+		}
+		// r := bufio.NewReader(f)
+		// binary.Read(r, binary.LittleEndian, v)
+		return v
+	}
 
 	I := new(FMIndex)
 
-   // First, load "others"
-   f, err := os.Open( path.Join(dir, "others"))
-   check_for_error(err)
-   defer f.Close()
+	// First, load "others"
+	f, err := os.Open(path.Join(dir, "others"))
+	check_for_error(err)
+	defer f.Close()
 
-   var symb byte
-   var freq, c, ep uint32
-   scanner := bufio.NewScanner(f)
-   scanner.Scan()
-   fmt.Sscanf(scanner.Text(), "%d%d\n", &I.LEN, &I.END_POS)
+	var symb byte
+	var freq, c, ep uint32
+	scanner := bufio.NewScanner(f)
+	scanner.Scan()
+	fmt.Sscanf(scanner.Text(), "%d%d\n", &I.LEN, &I.END_POS)
 
-   I.Freq = make(map[byte]uint32)
-   I.C = make(map[byte]uint32)
-   I.EP = make(map[byte]uint32)
-   for scanner.Scan() {
-      fmt.Sscanf(scanner.Text(), "%c%d%d%d", &symb, &freq, &c, &ep)
-      I.SYMBOLS = append(I.SYMBOLS, int(symb))
-      I.Freq[symb], I.C[symb], I.EP[symb] = freq, c, ep
-   }
+	I.Freq = make(map[byte]uint32)
+	I.C = make(map[byte]uint32)
+	I.EP = make(map[byte]uint32)
+	for scanner.Scan() {
+		fmt.Sscanf(scanner.Text(), "%c%d%d%d", &symb, &freq, &c, &ep)
+		I.SYMBOLS = append(I.SYMBOLS, int(symb))
+		I.Freq[symb], I.C[symb], I.EP[symb] = freq, c, ep
+	}
 
-   // Second, load Suffix array and OCC
+	// Second, load Suffix array and OCC
 	I.OCC = make(map[byte][]uint32)
 	var wg sync.WaitGroup
 	wg.Add(5)
 	go func() {
 		defer wg.Done()
-      I.SA = _load_slice(path.Join(dir, "sa"), I.LEN)
+		I.SA = _load_slice(path.Join(dir, "sa"), I.LEN)
 	}()
 	Symb_OCC_chan := make(chan Symb_OCC)
-	for _,symb := range I.SYMBOLS[0 : 4] {
+	for _, symb := range I.SYMBOLS[0:4] {
 		go func(symb int) {
 			defer wg.Done()
 			Symb_OCC_chan <- Symb_OCC{symb, _load_slice(path.Join(dir, "occ."+string(symb)), I.LEN)}
@@ -132,7 +130,7 @@ func Load (dir string) *FMIndex {
 		close(Symb_OCC_chan)
 	}()
 
-	for symb_occ := range(Symb_OCC_chan) {
+	for symb_occ := range Symb_OCC_chan {
 		I.OCC[byte(symb_occ.Symb)] = symb_occ.OCC
 	}
 	return I
@@ -141,44 +139,45 @@ func Load (dir string) *FMIndex {
 //-----------------------------------------------------------------------------
 func (I *FMIndex) Save(file string) {
 
-   _save_slice := func(s []uint32, filename string) {
-      f, err := os.Create(filename)
-      check_for_error(err)
-      defer f.Close()
-      w := bufio.NewWriter(f)
-      binary.Write(w, binary.LittleEndian, s)
-      w.Flush()
-   }
+	_save_slice := func(s []uint32, filename string) {
+		f, err := os.Create(filename)
+		check_for_error(err)
+		defer f.Close()
+		w := bufio.NewWriter(f)
+		binary.Write(w, binary.LittleEndian, s)
+		w.Flush()
+	}
 
 	dir := file + ".index"
 	os.Mkdir(dir, 0777)
 
-   var wg sync.WaitGroup
-   wg.Add(5)
+	var wg sync.WaitGroup
+	wg.Add(5)
 
-   go func() {
-      defer wg.Done()
-      _save_slice(I.SA, path.Join(dir, "sa"))
-   }()
+	go func() {
+		defer wg.Done()
+		_save_slice(I.SA, path.Join(dir, "sa"))
+	}()
 
-   for symb := range I.OCC {
-      go func(symb byte) {
-         defer wg.Done()
-         _save_slice(I.OCC[symb], path.Join(dir, "occ." + string(symb)))
-      }(symb)
-   }
+	for symb := range I.OCC {
+		go func(symb byte) {
+			defer wg.Done()
+			_save_slice(I.OCC[symb], path.Join(dir, "occ."+string(symb)))
+		}(symb)
+	}
 
-   f, err := os.Create(path.Join(dir, "others"))
-   check_for_error(err)
-   defer f.Close()
-   w := bufio.NewWriter(f)
-   fmt.Fprintf(w, "%d %d\n", I.LEN, I.END_POS)
-   for i:=0; i<len(I.SYMBOLS); i++ {
-      symb := byte(I.SYMBOLS[i])
-      fmt.Fprintf(w, "%s %d %d %d\n", string(symb), I.Freq[symb], I.C[symb], I.EP[symb])
-   }
-   w.Flush()
-   wg.Wait()
+	f, err := os.Create(path.Join(dir, "others"))
+	check_for_error(err)
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	fmt.Fprintf(w, "%d %d\n", I.LEN, I.END_POS)
+	for i := 0; i < len(I.SYMBOLS); i++ {
+		symb := byte(I.SYMBOLS[i])
+		fmt.Fprintf(w, "%s %d %d %d\n", string(symb), I.Freq[symb], I.C[symb], I.EP[symb])
+	}
+	w.Flush()
+
+	wg.Wait()
 }
 
 //-----------------------------------------------------------------------------
@@ -186,10 +185,10 @@ func (I *FMIndex) Save(file string) {
 func (I *FMIndex) build_suffix_array() {
 	I.LEN = uint32(len(SEQ))
 	I.SA = make([]uint32, I.LEN)
-   SA := qsufsort(SEQ)
-   for i := range SA {
-      I.SA[i] = uint32(SA[i])
-   }
+	SA := qsufsort(SEQ)
+	for i := range SA {
+		I.SA[i] = uint32(SA[i])
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -228,40 +227,28 @@ func (I *FMIndex) build_bwt_fmindex() {
 			}
 		}
 	}
-	I.SYMBOLS = I.SYMBOLS[1:]  // Remove $, which is the first symbol
+	I.SYMBOLS = I.SYMBOLS[1:] // Remove $, which is the first symbol
 	delete(I.OCC, '$')
 	delete(I.C, '$')
-   delete(I.OCC, 'Y')
-   delete(I.C, 'Y')
-   delete(I.OCC, 'W')
-   delete(I.C, 'W')
-
+	delete(I.OCC, 'Y')
+	delete(I.C, 'Y')
+	delete(I.OCC, 'W')
+	delete(I.C, 'W')
 }
 
 //-----------------------------------------------------------------------------
 func ReadSequence(file string) {
-   f, err := os.Open(file)
-   check_for_error(err)
-   defer f.Close()
+	f, err := os.Open(file)
+	check_for_error(err)
+	defer f.Close()
 
-   if file[len(file)-6:] == ".fasta" {
-		scanner := bufio.NewScanner(f)
-		byte_array := make([]byte, 0)
-		for scanner.Scan() {
-			line := scanner.Bytes()
-			if len(line)>0 && line[0] != '>' {
-				byte_array = append(byte_array, bytes.Trim(line,"\n\r ")...)
-			}
-		}
-		SEQ = append(byte_array, byte('$'))
-	} else {
-		byte_array, err := ioutil.ReadFile(file)
-		check_for_error(err)
-		SEQ = append(bytes.Trim(byte_array, "\n\r "), byte('$'))
-	}
-	
+	r := bufio.NewReader(f)
+	r.ReadBytes('\n')
+	seq, _ := r.ReadBytes('\n')
+	SEQ = append(bytes.Trim(seq, "\n\r "), byte('$'))
+
 	// replace N with Y and '*' with W (last character is '$')
-	for i:=0; i<len(SEQ)-1; i++ {
+	for i := 0; i < len(SEQ)-1; i++ {
 		if SEQ[i] == 'N' {
 			SEQ[i] = 'Y'
 		} else if SEQ[i] == '*' {

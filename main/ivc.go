@@ -61,8 +61,8 @@ func ReadParaInfo() *ivc.ParaInfo {
 	flag.Parse()
 
 	_, genome_file_name := path.Split(*genome_file)
-	multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + "_mgf.fasta"
-	rev_multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + "_mgf_rev.fasta"
+	multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + ".mgf"
+	rev_multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + ".rev.mgf"
 	_, var_prof_file_name := path.Split(*var_prof_file)
 	var_prof_index_file_name := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 

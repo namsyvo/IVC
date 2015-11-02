@@ -202,13 +202,13 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 
 	if input_para_info.Dist_thres == 0 {
 		/*
-			err := float64(para_info.Err_rate)
-			rlen := float64(para_info.Read_len)
-			mut := float64(para_info.Mut_rate)
-			k1 := float64(para_info.Err_var_factor)
-			k2 := float64(para_info.Mut_var_factor)
-			var_dist = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) + int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
-		    para_info.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
+				err := float64(para_info.Err_rate)
+				rlen := float64(para_info.Read_len)
+				mut := float64(para_info.Mut_rate)
+				k1 := float64(para_info.Err_var_factor)
+				k2 := float64(para_info.Mut_var_factor)
+				var_dist = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) + int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
+			    para_info.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
 		*/
 		para_info.Dist_thres = 36
 		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%.1f).", para_info.Dist_thres)
@@ -224,7 +224,7 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (%d).", para_info.Proc_num)
 	}
 
-	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Read_file_1=%s, Read_file_2=%s, Var_call_file=%s", 
+	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Read_file_1=%s, Read_file_2=%s, Var_call_file=%s",
 		para_info.Ref_file, para_info.Var_prof_file, para_info.Rev_index_file, para_info.Read_file_1, para_info.Read_file_2, para_info.Var_call_file)
 
 	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Max_snum=%d, Max_psnum=%d, "+
@@ -233,7 +233,7 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 		para_info.Dist_thres, para_info.Iter_num, para_info.Sub_cost, para_info.Gap_open, para_info.Gap_ext, para_info.Proc_num, para_info.Debug_mode)
 
 	log.Printf("Prog paras:\tMax_ins=%d, Max_err=%.5f, Mut_rate=%.5f, Err_var_factor=%d, Mut_var_factor=%d, Iter_num_factor=%d, "+
-		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para_info.Max_ins, para_info.Err_rate, para_info.Mut_rate, 
+		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para_info.Max_ins, para_info.Err_rate, para_info.Mut_rate,
 		para_info.Err_var_factor, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
 		para_info.Seed_backup, para_info.Ham_backup, para_info.Indel_backup)
 

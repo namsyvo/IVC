@@ -53,8 +53,8 @@ func main() {
 		rev_multi_seq[i] = multi_seq[multi_seq_len-1-i]
 	}
 	_, genome_file_name := path.Split(*genome_file)
-	multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + "_mgf.fasta"
-	rev_multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + "_mgf_rev.fasta"
+	multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + ".mgf"
+	rev_multi_seq_file_name := path.Join(*idx_dir, genome_file_name) + ".rev.mgf"
 	_, var_prof_file_name := path.Split(*var_prof_file)
 	var_prof_idx_file_name := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 
@@ -77,7 +77,6 @@ func main() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Indexing multi-sequence...")
 	start_time = time.Now()
-
 	idx := *ivc.NewFMIndex(rev_multi_seq_file_name)
 	idx.Save(rev_multi_seq_file_name)
 	index_time := time.Since(start_time)
