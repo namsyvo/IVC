@@ -1,6 +1,0 @@
-##fileformat=VCFv4.1
-##contig=<ID=gi|71025128|ref|NC_007194.1|,length=4918980>
-##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
-##INFO=<ID=pl,Number=1,Type=Integer,Description="Phasing: 1 - HET contig 1, #2 - HET contig #2, 3 - HOM both contigs">
-##INFO=<ID=mt,Number=1,Type=String,Description="Variant Type: SUBSTITUTE/INSERT/DELETE">
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
