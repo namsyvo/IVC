@@ -33,7 +33,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
-	var var_len int
+	var var_len, indel_backup_pos int
 	var var_str string
 	var is_var, is_same_len_var bool
 	var p, min_p, var_prob float64
@@ -47,8 +47,14 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 	var var_base, var_qual [][]byte
 	var_pos_trace := make(map[int]bool)
 	for m > 0 && n > 0 {
-		if MULTI_GENOME.Seq[ref_pos_map[n-1]-PARA_INFO.Indel_backup] == '*' {
-			if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[n-1]-PARA_INFO.Indel_backup]; !is_same_len_var {
+		indel_backup_pos = ref_pos_map[n-1] - PARA_INFO.Indel_backup
+		if indel_backup_pos < 0 {
+			indel_backup_pos = 0
+		} else if indel_backup_pos > len(MULTI_GENOME.Seq)-1 {
+			indel_backup_pos = len(MULTI_GENOME.Seq) - 1
+		}
+		if MULTI_GENOME.Seq[indel_backup_pos] == '*' {
+			if _, is_same_len_var = MULTI_GENOME.SameLenVar[indel_backup_pos]; !is_same_len_var {
 				break
 			}
 		}
@@ -425,7 +431,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
-	var var_len int
+	var var_len, indel_backup_pos int
 	var var_prof map[string]float64
 	var is_var, is_same_len_var bool
 	var var_str string
@@ -439,8 +445,14 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 	m, n := M, N
 	var_pos_trace := make(map[int]bool)
 	for m > 0 && n > 0 {
-		if MULTI_GENOME.Seq[ref_pos_map[N-n]+PARA_INFO.Indel_backup] == '*' {
-			if _, is_same_len_var = MULTI_GENOME.SameLenVar[ref_pos_map[N-n]+PARA_INFO.Indel_backup]; !is_same_len_var {
+		indel_backup_pos = ref_pos_map[N-n] + PARA_INFO.Indel_backup
+		if indel_backup_pos < 0 {
+			indel_backup_pos = 0
+		} else if indel_backup_pos > len(MULTI_GENOME.Seq)-1 {
+			indel_backup_pos = len(MULTI_GENOME.Seq) - 1
+		}
+		if MULTI_GENOME.Seq[indel_backup_pos] == '*' {
+			if _, is_same_len_var = MULTI_GENOME.SameLenVar[indel_backup_pos]; !is_same_len_var {
 				break
 			}
 		}

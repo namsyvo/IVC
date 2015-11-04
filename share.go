@@ -7,9 +7,11 @@
 package ivc
 
 import (
+	"bufio"
 	"bytes"
 	"log"
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
 )
@@ -93,14 +95,47 @@ func Setup(input_para_info *ParaInfo) {
 	log.Printf("Checking input information and seting up parameters...")
 
 	//Check input files
-	if _, e := os.Stat(input_para_info.Read_file_1); e != nil {
-		log.Printf("Error: Read_file_1 does not exists! (err: %s)", e)
-		os.Exit(1)
+	var f *os.File
+	var e error
+	if _, e = os.Stat(input_para_info.Ref_file); e != nil {
+		log.Panicf("Error: %s", e)
 	}
-	if _, e := os.Stat(input_para_info.Read_file_2); e != nil {
-		log.Printf("Error: Read_file_2 does not exists! (err: %s)", e)
-		os.Exit(1)
+	if _, e = os.Stat(input_para_info.Var_prof_file); e != nil {
+		log.Panicf("Error: %s", e)
 	}
+	if _, e = os.Stat(input_para_info.Rev_index_file); e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	if _, e = os.Stat(input_para_info.Read_file_1); e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	if _, e = os.Stat(input_para_info.Read_file_2); e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	result_dir := path.Dir(input_para_info.Var_call_file)
+	if _, e = os.Stat(result_dir); e != nil {
+		if os.IsNotExist(e) {
+			if e = os.Mkdir(result_dir, 0777); e != nil {
+				log.Panicf("Error: %s", e)
+			}
+		} else {
+			log.Panicf("Error: %s", e)
+		}
+	}
+	if f, e = os.Create(input_para_info.Var_call_file); e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	w := bufio.NewWriter(f)
+	if input_para_info.Debug_mode == false {
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
+			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\n")
+	} else {
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
+			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
+			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\n")
+	}
+	w.Flush()
+	f.Close()
 
 	MEM_STATS = new(runtime.MemStats)
 
@@ -108,17 +143,14 @@ func Setup(input_para_info *ParaInfo) {
 	runtime.GOMAXPROCS(PARA_INFO.Proc_num)
 
 	if input_para_info.Debug_mode {
-		var err error
-		CPU_FILE, err = os.Create(input_para_info.Var_call_file + ".cprof")
-		if err != nil {
-			log.Fatal(err)
+		if CPU_FILE, e = os.Create(input_para_info.Var_call_file + ".cprof"); e != nil {
+			log.Panicf("Error: %s", e)
 		}
 		pprof.StartCPUProfile(CPU_FILE)
 		defer pprof.StopCPUProfile()
 
-		MEM_FILE, err = os.Create(input_para_info.Var_call_file + ".mprof")
-		if err != nil {
-			log.Fatal(err)
+		if MEM_FILE, e = os.Create(input_para_info.Var_call_file + ".mprof"); e != nil {
+			log.Panicf("Error: %s", e)
 		}
 		defer MEM_FILE.Close()
 		log.Printf("Debug mode:\tCpu_prof_file: %s, Mem_prof_file: %s", input_para_info.Var_call_file+".cprof", input_para_info.Var_call_file+".mprof")
@@ -145,7 +177,7 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 	para_info.Max_ins = 700
 
 	//0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
-	//will be replaced by based on input reads
+	//will be set up based on input reads
 	para_info.Err_rate = 0.0015
 	para_info.Mut_rate = 0.01
 

@@ -676,22 +676,13 @@ func (VC *VarCall) OutputVarCalls() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Outputing variant calls...")
 	start_time := time.Now()
-	f, e := os.Create(PARA_INFO.Var_call_file)
+	f, e := os.OpenFile(PARA_INFO.Var_call_file, os.O_APPEND|os.O_WRONLY, 0666)
 	if e != nil {
-		log.Printf("Error: Create output file, %s, (err: %s)", PARA_INFO.Var_call_file, e)
-		os.Exit(1)
+		log.Panicf("Error: %s", e)
 	}
 	defer f.Close()
 
 	w := bufio.NewWriter(f)
-	if PARA_INFO.Debug_mode == false {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
-			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\n")
-	} else {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
-			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
-			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\n")
-	}
 	var var_pos uint32
 	Var_Pos := make([]int, 0, len(VC.VarProb))
 	for var_pos, _ = range VC.VarProb {
@@ -704,6 +695,7 @@ func (VC *VarCall) OutputVarCalls() {
 	var var_prob, var_call_prob, map_prob, p float64
 	var is_var bool
 	var idx, var_num int
+	header := string(bytes.Split(MULTI_GENOME.Header, []byte(" "))[0][1:])
 	for _, pos := range Var_Pos {
 		var_pos = uint32(pos)
 		//Get variant call by considering maximum prob
@@ -717,7 +709,7 @@ func (VC *VarCall) OutputVarCalls() {
 		//Start getting variant call info
 		line_aln = make([]string, 0)
 		//#CHROM
-		line_aln = append(line_aln, ".")
+		line_aln = append(line_aln, header)
 		//POS
 		line_aln = append(line_aln, strconv.Itoa(pos+1))
 		//ID

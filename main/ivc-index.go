@@ -29,11 +29,10 @@ func main() {
 	if _, err := os.Stat(*idx_dir); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.Mkdir(*idx_dir, 0777); err != nil {
-				log.Printf("Could not create index directory, possibly due to a path error.")
-				os.Exit(1)
+				log.Panicf("Error: %s", err)
 			}
 		} else {
-			os.Exit(1)
+			log.Panicf("Error: %s", err)
 		}
 	}
 

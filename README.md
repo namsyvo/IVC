@@ -5,9 +5,14 @@ IVC - An Integrated Variant Caller.
 1. Overview
 -----------
 
+IVC is a tool for calling genomic variants from next-generation sequencing data. The tool is developed based on a new approach to variant calling which leverages existing genetic variants to improve the accuracy of called variants, including new variants and hard-to-detect INDELs. IVC also simplifies workflow by integrating read alignment, alignment sorting, and variant calling phases, which eliminates many intermediate steps and consequently reduces human intervention and errors.
+
 
 2. Install IVC
 --------------
+
+### 2.1 Install IVC from source code
+
 Pre-requirement: GO environment is already set up properly.  
 Check Go path to make sure GOPATH is set up properly. For example:
 ```
@@ -17,14 +22,15 @@ echo $GOPATH
 
 Get fmi and IVC source code:
 ```
-go get github.com/vtphan/fmi
 go get github.com/namsyvo/IVC
 ```
-After these steps, fmi source code and IVC source code should be in the directories $GOPATH/github.com/vtphan/fmi and $GOPATH/github.com/namsyvo/IVC, respectively.  
+After these steps, fmi source code and IVC source code should be in the directory $GOPATH/github.com/namsyvo/IVC.  
 Then go to the IVC directory, from which IVC can be run as a Go program:
 ```
 cd $GOPATH/src/github.com/namsyvo/IVC
 ```
+
+### 2.2 Download binary executable files
 
 3. Usage
 --------
@@ -36,15 +42,13 @@ test_data/reads: includes a set of paired-end reads with 10.000 simulated reads.
 
 3.1.1. Creating and indexing reference genomes with variant profile:
 ```
-mkdir test_data/index
 go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
 ```
 
 3.1.2. Calling Variants from reads and the reference
 
 ```
-mkdir test_data/results
-go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes/ -1 test_data/reads/chr1_reads_1.fq -2 test_data/reads/chr1_reads_2.fq -O test_data/results/chr1_variant_calls.vcf
+go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf
 ```
 
 ### 3.2 Commands and options
@@ -101,5 +105,6 @@ Options:
 
 4. Contact:
 -----------
+
 Nam Sy Vo  
 nsvo1@memphis.edu

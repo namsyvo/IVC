@@ -40,7 +40,6 @@ func NewMultiGenome() *MultiGenome {
 	M := new(MultiGenome)
 	M.Header, M.Seq = LoadMultiSeq(PARA_INFO.Ref_file)
 	PrintMemStats("Memstats after loading multi-sequence")
-
 	M.Variants, M.VarAF = LoadVarProf(PARA_INFO.Var_prof_file)
 	PrintMemStats("Memstats after loading variant profile")
 
@@ -267,7 +266,6 @@ func ReadVCF(file_name string) map[int]VarProf {
 		} else {
 			var_prof_elem := VarProf{}
 			sub_line := bytes.SplitN(line, []byte("\t"), 9)
-			pos, _ = strconv.Atoi(string(sub_line[1]))
 			var_prof_elem.Variant = append(var_prof_elem.Variant, sub_line[3])
 			var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 0)
 			alt = bytes.Split(sub_line[4], []byte(","))
@@ -299,6 +297,7 @@ func ReadVCF(file_name string) map[int]VarProf {
 				}
 				var_prof_elem.AleFreq[0] = 1 / float32(var_num)
 			}
+			pos, _ = strconv.Atoi(string(sub_line[1]))
 			var_prof[pos-1] = var_prof_elem
 		}
 	}

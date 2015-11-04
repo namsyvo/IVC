@@ -1,0 +1,2 @@
+#POS	REF	ALT
+146	A	AC
