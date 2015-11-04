@@ -11,7 +11,7 @@ IVC is a tool for calling genomic variants from next-generation sequencing data.
 2. Install IVC
 --------------
 
-### 2.1 Install IVC from source code
+### 2.1 Download IVC source code with Go
 
 Pre-requirement: GO environment is already set up properly.  
 Check Go path to make sure GOPATH is set up properly. For example:
@@ -19,18 +19,23 @@ Check Go path to make sure GOPATH is set up properly. For example:
 echo $GOPATH
 /home/nsvo/workspace/goprojects
 ```
-
-Get fmi and IVC source code:
+Get IVC source code:
 ```
 go get github.com/namsyvo/IVC
 ```
-After these steps, fmi source code and IVC source code should be in the directory $GOPATH/github.com/namsyvo/IVC.  
+After these steps, IVC source code should be in the directory $GOPATH/github.com/namsyvo/IVC   
 Then go to the IVC directory, from which IVC can be run as a Go program:
 ```
 cd $GOPATH/src/github.com/namsyvo/IVC
 ```
 
-### 2.2 Download binary executable files
+### 2.2 Download IVC source code with pre-compiled binary executable files
+
+Get pre-compiled IVC on Linux delphinus 3.2.0-4-amd64 #1 SMP Debian 3.2.68-1+deb7u3 x86_64 GNU/Linux:   
+```
+git clone https://github.com/namsyvo/IVC.git
+cd IVC
+```
 
 3. Usage
 --------
@@ -44,12 +49,23 @@ test_data/reads: includes a set of paired-end reads with 10.000 simulated reads.
 ```
 go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
 ```
+or run from binary executable file (it is better to compile first)
+```
+go build main/ivc-index.go
+./ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
+```
 
 3.1.2. Calling Variants from reads and the reference
 
 ```
 go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf
 ```
+or run from binary executable file (it is better to compile first)
+```
+go build main/ivc.go
+./ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf
+```
+
 
 ### 3.2 Commands and options
 
