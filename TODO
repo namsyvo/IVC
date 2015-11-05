@@ -1,7 +1,6 @@
 (1) Prepare to release the first public version.
-    + Clean code, make well-format output, adapt to full-info input
-    + Make a full test dataset
     + Working with whole human genome
+    + Clean code, make well-format output, adapt to full-info input
     + Adjust quality of variants in output based on the best evaluation.
     + Improve runtime & memory
 

@@ -14,7 +14,7 @@ IVC is written in Go programming language (see https://golang.org). It currently
 --------------
 
 ### 2.1 Download IVC source code with Go
-Pre-requirement: GO environment is already set up properly.
+Pre-requirement: Go environment is already set up properly.
 
 Get IVC source code:
 ```
@@ -120,11 +120,11 @@ Then follow the instructions to generate simulated mutant genomes and evaluate t
 
 ### 4.2 Real data
 
-- Human (and other species) reference genomes and variant profiles (dbSNP, dbVar) can be downloaded at http://www.ncbi.nlm.nih.gov   
-	- Human reference genome: http://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.25   
-	- Human variant profile: http://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes   
+* Human (and other species) reference genomes and variant profiles (dbSNP, dbVar) can be downloaded at http://www.ncbi.nlm.nih.gov   
+	* Human reference genome: http://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.25   
+	* Human variant profile: http://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes   
 
-- Human (and other species) sequence reads can be downloaded at http://sra.dnanexus.com
+* Human (and other species) sequence reads can be downloaded at http://sra.dnanexus.com
 
 
 5. Contact
