@@ -1,3 +1,9 @@
+v0.7.5 <Nov 5, 2015> <fmi-integr>
+Major changes:
+- Integrate FM-index code into IVC.
+Minor changes:
+- Clean up code, ignore some debug func calls, fix some minor bugs.
+
 v0.7.4 <Oct 4, 2015> <unknown-del>
 Major changes:
 - Modify Bayesian formula to call long unknown deletions.
