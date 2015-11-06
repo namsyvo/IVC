@@ -1,6 +1,6 @@
-(1) Prepare to release the first public version.
-    + Working with whole human genome
-    + Clean code, make well-format output, adapt to full-info input
+(1) Working with whole-genome, towarding to the first public release.
+    + Deal with multiple chromosomes in both genome and variant profile.
+    + Make well-format output, adapt to full-info input.
     + Adjust quality of variants in output based on the best evaluation.
     + Improve runtime & memory
 
