@@ -240,6 +240,7 @@ func (I *FMIndex) build_bwt_fmindex() {
 func GetSeq(seq []byte) {
 	SEQ = make([]byte, len(seq))
 	copy(SEQ, seq)
+	SEQ = append(SEQ, byte('$'))
 	// replace N with Y and '*' with W (last character is '$')
 	for i := 0; i < len(SEQ)-1; i++ {
 		if SEQ[i] == 'N' {

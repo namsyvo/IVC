@@ -690,11 +690,11 @@ func (VC *VarCall) OutputVarCalls() {
 	}
 	sort.Ints(Var_Pos)
 
-	var var_base, var_call, str_qual, str_aln, chr_name string
+	var var_base, var_call, str_qual, str_aln string
 	var line_aln, line_base, line_ivc []string
-	var var_prob, var_call_prob, map_prob, p float64
+	var p, var_prob, var_call_prob, map_prob float64
+	var i, var_num int
 	var is_var bool
-	var idx, var_num int
 	for _, pos := range Var_Pos {
 		var_pos = uint32(pos)
 		//Get variant call by considering maximum prob
@@ -707,17 +707,12 @@ func (VC *VarCall) OutputVarCalls() {
 		}
 		//Start getting variant call info
 		line_aln = make([]string, 0)
+		//Get the largest ChrPos that is <= pos
+		for i = 0; i < len(MULTI_GENOME.ChrPos) && MULTI_GENOME.ChrPos[i] <= pos; i++ {}
 		//#CHROM
-		chr_name = "."
-		for idx = 0; idx < len(MULTI_GENOME.ChrPos); idx++ {
-			if pos >= MULTI_GENOME.ChrPos[idx] && pos < MULTI_GENOME.ChrPos[idx+1] {
-				chr_name = string(MULTI_GENOME.ChrName[idx])
-				break
-			}
-		}
-		line_aln = append(line_aln, chr_name)
+		line_aln = append(line_aln, string(MULTI_GENOME.ChrName[i-1]))
 		//POS
-		line_aln = append(line_aln, strconv.Itoa(pos+1-MULTI_GENOME.ChrPos[0]))
+		line_aln = append(line_aln, strconv.Itoa(pos+1-MULTI_GENOME.ChrPos[i-1]))
 		//ID
 		line_aln = append(line_aln, ".")
 		//REF & ALT
@@ -791,19 +786,19 @@ func (VC *VarCall) OutputVarCalls() {
 				line_base = append(line_base, var_base)
 				line_base = append(line_base, strconv.Itoa(var_num))
 			}
-			for idx, _ = range VC.VarBQual[var_pos][var_call] {
+			for i = 0; i < len(VC.VarBQual[var_pos][var_call]); i++ {
 				line_ivc = make([]string, 0)
-				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDis[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDiff[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, strconv.FormatFloat(VC.MapProb[var_pos][var_call][idx], 'f', 20, 64))
-				line_ivc = append(line_ivc, strconv.FormatFloat(VC.AlnProb[var_pos][var_call][idx], 'f', 20, 64))
-				line_ivc = append(line_ivc, strconv.FormatFloat(VC.ChrProb[var_pos][var_call][idx], 'f', 20, 64))
-				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos1[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand1[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand2[var_pos][var_call][idx]))
-				line_ivc = append(line_ivc, string(VC.ReadInfo[var_pos][var_call][idx]))
+				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDis[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.ChrDiff[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, strconv.FormatFloat(VC.MapProb[var_pos][var_call][i], 'f', 20, 64))
+				line_ivc = append(line_ivc, strconv.FormatFloat(VC.AlnProb[var_pos][var_call][i], 'f', 20, 64))
+				line_ivc = append(line_ivc, strconv.FormatFloat(VC.ChrProb[var_pos][var_call][i], 'f', 20, 64))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos1[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand1[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos2[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand2[var_pos][var_call][i]))
+				line_ivc = append(line_ivc, string(VC.ReadInfo[var_pos][var_call][i]))
 				w.WriteString(str_aln + "\t" + strings.Join(line_ivc, "\t") + "\t" + strings.Join(line_base, "\t") + "\n")
 			}
 		}
