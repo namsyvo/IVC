@@ -78,7 +78,7 @@ func NewVariantCaller() *VarCall {
 	start_time := time.Now()
 
 	//Initialize multi-genome
-	MULTI_GENOME = NewMultiGenome()
+	MULTI_GENOME = NewMultiGenome(PARA_INFO)
 
 	//Initialize "local-global" variable which shared by all downstream functions from CallVariants function.
 	//May consider a better solution later.
@@ -168,7 +168,7 @@ func NewVariantCaller() *VarCall {
 }
 
 //---------------------------------------------------------------------------------------------------
-// CallVariants finds variants and updates variant information in VarCall.
+// CallVariants searches for variants and updates variant information in VarCall.
 // This function will be called from main program.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) CallVariants() {
@@ -177,21 +177,21 @@ func (VC *VarCall) CallVariants() {
 	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 
 	start_time := time.Now()
-	//The channel read_signal is used for signaling between goroutines which run ReadReads and FindVariants,
-	//when a FindSNPs goroutine finish copying a read to its own memory,
-	//it signals ReadReads goroutine to scan next reads.
+	//The channel read_signal is used for signaling between goroutines which run ReadReads and SearchVariants.
+	//When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
+	//to scan next reads.
 	read_signal := make(chan bool)
 
 	//Call a goroutine to read input reads
 	read_data := make(chan *ReadInfo, PARA_INFO.Proc_num)
 	go VC.ReadReads(read_data, read_signal)
 
-	//Call goroutines to find Vars, pass shared variable to each goroutine
+	//Call goroutines to search for variants, pass shared variable to each goroutine
 	var_results := make(chan *VarInfo)
 	var wg sync.WaitGroup
 	for i := 0; i < PARA_INFO.Proc_num; i++ {
 		wg.Add(1)
-		go VC.FindVariants(read_data, read_signal, var_results, &wg)
+		go VC.SearchVariants(read_data, read_signal, var_results, &wg)
 	}
 	go GetNoAlignReadInfo()
 
@@ -271,9 +271,9 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindVariants takes data from data channel, find variants and put them into results channel.
+// SearchVariants takes data from data channel, searches for variants and put them into results channel.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool, var_results chan *VarInfo,
+func (VC *VarCall) SearchVariants(read_data chan *ReadInfo, read_signal chan bool, var_results chan *VarInfo,
 	wg *sync.WaitGroup) {
 
 	defer wg.Done()
@@ -306,15 +306,15 @@ func (VC *VarCall) FindVariants(read_data chan *ReadInfo, read_signal chan bool,
 		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2,
 			read_info.Comp_read2, read_info.Rev_qual2)
 
-		VC.FindVariantsPE(read_info, edit_aln_info, seed_pos, rand_gen, var_results)
+		VC.SearchVariantsPE(read_info, edit_aln_info, seed_pos, rand_gen, var_results)
 	}
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindVariantsPE finds variants from alignment between pair-end reads and the multigenome.
-// It uses seed-and-extend strategy and finds best alignment candidates through several iterations.
+// SearchVariantsPE searches for variants from alignment between pair-end reads and the multigenome.
+// It uses seed-and-extend strategy and looks for the best alignment candidates through several iterations.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
+func (VC *VarCall) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
 	rand_gen *rand.Rand, var_results chan *VarInfo) {
 
 	//-----------------------------------------------------------------------------------------------
@@ -355,7 +355,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 	paired_dist := math.MaxFloat64
 	loop_has_cand := 0
 	for loop_num := 1; loop_num <= PARA_INFO.Iter_num; loop_num++ {
-		seed_info1, seed_info2, has_seeds = MULTI_GENOME.FindSeedsPE(read_info, seed_pos, rand_gen)
+		seed_info1, seed_info2, has_seeds = MULTI_GENOME.SearchSeedsPE(read_info, seed_pos, rand_gen)
 		if !has_seeds {
 			cand_num = append(cand_num, 0)
 			continue
@@ -368,7 +368,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 			if seed_info1.strand[p_idx] == seed_info2.strand[p_idx] {
 				continue
 			}
-			//Find variants for the first end
+			//Search variants for the first end
 			if seed_info1.strand[p_idx] == true {
 				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 					seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info)
@@ -376,7 +376,7 @@ func (VC *VarCall) FindVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInf
 				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 					seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info)
 			}
-			//Find variants for the second end
+			//Search variants for the second end
 			if seed_info2.strand[p_idx] == true {
 				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 					seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info)
@@ -690,12 +690,11 @@ func (VC *VarCall) OutputVarCalls() {
 	}
 	sort.Ints(Var_Pos)
 
-	var var_base, var_call, str_qual, str_aln, str_base, str_ivc string
+	var var_base, var_call, str_qual, str_aln, chr_name string
 	var line_aln, line_base, line_ivc []string
 	var var_prob, var_call_prob, map_prob, p float64
 	var is_var bool
 	var idx, var_num int
-	header := string(bytes.Split(MULTI_GENOME.Header, []byte(" "))[0][1:])
 	for _, pos := range Var_Pos {
 		var_pos = uint32(pos)
 		//Get variant call by considering maximum prob
@@ -709,9 +708,16 @@ func (VC *VarCall) OutputVarCalls() {
 		//Start getting variant call info
 		line_aln = make([]string, 0)
 		//#CHROM
-		line_aln = append(line_aln, header)
+		chr_name = "."
+		for idx = 0; idx < len(MULTI_GENOME.ChrPos); idx++ {
+			if pos >= MULTI_GENOME.ChrPos[idx] && pos < MULTI_GENOME.ChrPos[idx+1] {
+				chr_name = string(MULTI_GENOME.ChrName[idx])
+				break
+			}
+		}
+		line_aln = append(line_aln, chr_name)
 		//POS
-		line_aln = append(line_aln, strconv.Itoa(pos+1))
+		line_aln = append(line_aln, strconv.Itoa(pos+1-MULTI_GENOME.ChrPos[0]))
 		//ID
 		line_aln = append(line_aln, ".")
 		//REF & ALT
@@ -785,7 +791,6 @@ func (VC *VarCall) OutputVarCalls() {
 				line_base = append(line_base, var_base)
 				line_base = append(line_base, strconv.Itoa(var_num))
 			}
-			str_base = strings.Join(line_base, "\t")
 			for idx, _ = range VC.VarBQual[var_pos][var_call] {
 				line_ivc = make([]string, 0)
 				line_ivc = append(line_ivc, string(VC.VarBQual[var_pos][var_call][idx]))
@@ -799,8 +804,7 @@ func (VC *VarCall) OutputVarCalls() {
 				line_ivc = append(line_ivc, strconv.Itoa(VC.StartPos2[var_pos][var_call][idx]))
 				line_ivc = append(line_ivc, strconv.FormatBool(VC.Strand2[var_pos][var_call][idx]))
 				line_ivc = append(line_ivc, string(VC.ReadInfo[var_pos][var_call][idx]))
-				str_ivc = strings.Join(line_ivc, "\t")
-				w.WriteString(str_aln + "\t" + str_ivc + "\t" + str_base + "\n")
+				w.WriteString(str_aln + "\t" + strings.Join(line_ivc, "\t") + "\t" + strings.Join(line_base, "\t") + "\n")
 			}
 		}
 	}

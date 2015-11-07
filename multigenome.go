@@ -10,7 +10,6 @@ package ivc
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -22,25 +21,26 @@ import (
 //MultiGenome represents multi-genome.
 //--------------------------------------------------------------------------------------------------
 type MultiGenome struct {
-	Header     []byte            //store header of the input reference genome.
-	Seq        []byte            //store "starred" sequence of the standard reference genome.
-	Variants   map[int][][]byte  //store variants (position, variants).
-	VarAF      map[int][]float32 //store allele frequency of variants (position, allele frequency).
+	Seq        []byte            //multi-genome sequence.
+	ChrPos     []int             //position (first base) of the chromosome on whole-genome.
+	ChrName    [][]byte          //chromosome names
+	Variants   map[int][][]byte  //variants (position, variants).
+	VarAF      map[int][]float32 //allele frequency of variants (position, allele frequency).
 	SameLenVar map[int]int       //indicate if variants has same length (SNPs or MNPs).
-	DelVar     map[int]int       //store length of deletions if variants are deletion.
+	DelVar     map[int]int       //length of deletions if variants are deletion.
 	RevFMI     FMIndex           //FM-index of reverse multigenomes (to do forward search).
 }
 
 //--------------------------------------------------------------------------------------------------
 // MultiGenome creates a multi-genome instance and set up its content.
 //--------------------------------------------------------------------------------------------------
-func NewMultiGenome() *MultiGenome {
+func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
 	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 
 	M := new(MultiGenome)
-	M.Header, M.Seq = LoadMultiSeq(PARA_INFO.Ref_file)
+	M.ChrPos, M.ChrName, M.Seq = LoadMultiSeq(para_info.Ref_file)
 	PrintMemStats("Memstats after loading multi-sequence")
-	M.Variants, M.VarAF = LoadVarProf(PARA_INFO.Var_prof_file)
+	M.Variants, M.VarAF = LoadVarProf(para_info.Var_prof_file)
 	PrintMemStats("Memstats after loading variant profile")
 
 	M.SameLenVar = make(map[int]int)
@@ -67,7 +67,7 @@ func NewMultiGenome() *MultiGenome {
 	}
 	PrintMemStats("Memstats after creating auxiliary data structures")
 
-	M.RevFMI = *Load(PARA_INFO.Rev_index_file)
+	M.RevFMI = *Load(para_info.Rev_index_file)
 	PrintMemStats("Memstats after loading index of reverse multi-sequence")
 
 	return M
@@ -81,224 +81,268 @@ type VarProf struct {
 //-------------------------------------------------------------------------------------------------
 // BuildMultiGenome builds multi-sequence from a standard reference genome and a variant profile.
 //-------------------------------------------------------------------------------------------------
-func BuildMultiGenome(genome_file, var_prof_file string) ([]byte, []byte, map[int]VarProf) {
-	header, genome := ReadFASTA(genome_file)
+func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_name [][]byte,
+	seq []byte, var_prof map[string]map[int]VarProf) {
+
+	chr_pos, chr_name, seq = GetGenome(genome_file)
 	PrintProcessMem("Memstats after reading reference genome")
-	var_prof := ReadVCF(var_prof_file)
+	var_prof = GetVarProf(var_prof_file)
 	PrintProcessMem("Memstats after reading variant profile")
-	multi_seq := make([]byte, len(genome))
-	copy(multi_seq, genome)
-	for key, _ := range var_prof {
-		multi_seq[key] = '*'
+	var contig_name string
+	var ok bool
+	for i, pos := range chr_pos {
+		contig_name = string(chr_name[i])
+		if _, ok = var_prof[contig_name]; ok {
+			for key, _ := range var_prof[contig_name] {
+				seq[pos+key] = '*'
+			}
+		} else {
+			log.Println("Missing chromosome " + contig_name + " in variant profile")
+		}
 	}
-	return header, multi_seq, var_prof
+	return chr_pos, chr_name, seq, var_prof
 }
 
 //-------------------------------------------------------------------------------------------------
 // LoadMultiSeq loads multi-sequence from file.
 //-------------------------------------------------------------------------------------------------
-func LoadMultiSeq(file_name string) ([]byte, []byte) {
-	f, err := os.Open(file_name)
-	if err != nil {
-		fmt.Println("Error: Open ref file", err)
-		os.Exit(1)
+func LoadMultiSeq(file_name string) (chr_pos []int, chr_name [][]byte, multi_seq []byte) {
+	f, e := os.Open(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
 	}
 	defer f.Close()
+	chr_pos = make([]int, 0)
 	r := bufio.NewReader(f)
-	header, _ := r.ReadBytes('\n')
-	seq, _ := r.ReadBytes('\n')
-	return bytes.Trim(header, "\n\r"), bytes.Trim(seq, "\n\r\t ")
+	var pos int
+	var line, sline []byte
+	multi_seq = make([]byte, 0)
+	for {
+		line, e = r.ReadBytes('\n')
+		if e != nil { //reach EOF
+			break
+		}
+		sline = bytes.Trim(line, "\n\r")
+		if len(sline) == 0 {
+			continue
+		}
+		if sline[0] == '>' {
+			split := bytes.Split(sline, []byte("\t"))
+			pos, _ = strconv.Atoi(string(split[1]))
+			chr_pos = append(chr_pos, pos)
+			chr_name = append(chr_name, split[0][1:])
+		} else {
+			multi_seq = append(multi_seq, sline...)
+		}
+	}
+	return chr_pos, chr_name, multi_seq
 }
 
 //-------------------------------------------------------------------------------------------------
 // SaveMultiSeq saves multi-sequence to file.
 //-------------------------------------------------------------------------------------------------
-func SaveMultiSeq(file_name string, header, multi_seq []byte) {
-	file, err := os.Create(file_name)
-	if err != nil {
-		fmt.Println("Error: Create ref file", err)
-		os.Exit(1)
+func SaveMultiSeq(file_name string, chr_pos []int, chr_name [][]byte, multi_seq []byte) {
+	f, e := os.Create(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
 	}
-	defer file.Close()
-	w := bufio.NewWriter(file)
-	w.Write(header)
-	w.WriteString("\n")
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	for i := 0; i < len(chr_pos); i++ {
+		w.WriteString(">" + string(chr_name[i]) + "\t" + strconv.Itoa(chr_pos[i]) + "\n")
+	}
 	w.Write(multi_seq)
+	w.WriteString("\n")
 	w.Flush()
 }
 
 //-------------------------------------------------------------------------------------------------
 // LoadVarProf loads variant profile from file and return a map of variants.
 //-------------------------------------------------------------------------------------------------
-func LoadVarProf(file_name string) (map[int][][]byte, map[int][]float32) {
-	Variant := make(map[int][][]byte)
-	AleFreq := make(map[int][]float32)
+func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float32) {
 
-	f, err := os.Open(file_name)
-	if err != nil {
-		fmt.Println("Error: Open variant profile file", err)
-		os.Exit(1)
+	f, e := os.Open(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
 	}
 	defer f.Close()
+
+	variant = make(map[int][][]byte)
+	af = make(map[int][]float32)
+	var line []byte
+	var sline string
+	var split, t []string
+	var i int
+	var k int64
 	r := bufio.NewReader(f)
 	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
+		line, e = r.ReadBytes('\n')
+		if e != nil {
 			break
 		}
-		sline := string(line[:len(line)-1])
-		split := strings.Split(sline, "\t")
-		k, _ := strconv.ParseInt(split[0], 10, 64)
-		t := make([]string, (len(split)-1)/2)
+		sline = string(bytes.Trim(line, "\n\r"))
+		if len(sline) == 0 {
+			continue
+		}
+		split = strings.Split(sline, "\t")
+		k, e = strconv.ParseInt(split[0], 10, 64)
+		t = make([]string, (len(split)-1)/2)
 		p := make([]float32, (len(split)-1)/2)
-		for i := 0; i < len(t); i++ {
+		for i = 0; i < len(t); i++ {
 			t[i] = split[2*i+1]
 			tmp, _ := strconv.ParseFloat(split[2*i+2], 32)
 			p[i] = float32(tmp)
 		}
-
-		// convert to [][]byte & map[int]int
 		b := make([][]byte, len(t))
-
-		for i := range b {
+		for i = 0; i < len(b); i++ {
 			b[i] = make([]byte, len(t[i]))
 			copy(b[i], []byte(t[i]))
 		}
-		Variant[int(k)] = b
-		AleFreq[int(k)] = p
+		variant[int(k)] = b
+		af[int(k)] = p
 	}
-	return Variant, AleFreq
+	return variant, af
 }
 
 //-------------------------------------------------------------------------------------------------
 // SaveVarProf saves variant profile to file.
 //-------------------------------------------------------------------------------------------------
-func SaveVarProf(file_name string, var_prof map[int]VarProf) {
-	file, err := os.Create(file_name)
-	if err != nil {
-		fmt.Println("Error: Create variant profile index file", err)
-		os.Exit(1)
+func SaveVarProf(file_name string, chr_pos []int, chr_name [][]byte, var_prof map[string]map[int]VarProf) {
+	f, e := os.Create(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
 	}
-	defer file.Close()
+	defer f.Close()
+	w := bufio.NewWriter(f)
 	var var_pos []int
-	for pos, _ := range var_prof {
-		var_pos = append(var_pos, pos)
-	}
-	sort.Sort(sort.IntSlice(var_pos))
-	w := bufio.NewWriter(file)
-	for _, pos := range var_pos {
-		_, err = w.WriteString(strconv.Itoa(pos) + "\t")
-		for idx, val := range var_prof[pos].Variant {
-			_, err = w.WriteString(string(val) + "\t" +
-				strconv.FormatFloat(float64(var_prof[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
-			if err != nil {
-				fmt.Println("Error in writing to variant profile index file", err)
-				break
-			}
+	var var_prof_chr map[int]VarProf
+	for i, contig_name := range chr_name {
+		var_prof_chr = var_prof[string(contig_name)]
+		var_pos = make([]int, 0)
+		for pos, _ := range var_prof_chr {
+			var_pos = append(var_pos, pos)
 		}
-		_, err = w.WriteString("\n")
-		if err != nil {
-			fmt.Println("Error in writing to variant profile index file", err)
-			break
+		sort.Sort(sort.IntSlice(var_pos))
+		for _, pos := range var_pos {
+			w.WriteString(strconv.Itoa(chr_pos[i]+pos) + "\t")
+			for idx, val := range var_prof_chr[pos].Variant {
+				w.WriteString(string(val) + "\t" + strconv.FormatFloat(float64(var_prof_chr[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
+			}
+			w.WriteString("\n")
 		}
 	}
 	w.Flush()
 }
 
 //--------------------------------------------------------------------------------------------------
-// ReadFASTA reads reference genome from FASTA files.
+// GetGenome gets reference genome from FASTA files.
 //--------------------------------------------------------------------------------------------------
-func ReadFASTA(sequence_file string) ([]byte, []byte) {
-	f, err := os.Open(sequence_file)
-	if err != nil {
-		fmt.Println("Error: Open FASTA file", err)
-		os.Exit(1)
+func GetGenome(file_name string) (chr_pos []int, chr_name [][]byte, seq []byte) {
+	f, e := os.Open(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
 	}
 	defer f.Close()
-	w := bufio.NewReader(f)
-	byte_array := bytes.Buffer{}
 
-	var isPrefix bool
+	chr_pos = make([]int, 0)
+	chr_name = make([][]byte, 0)
+	seq = make([]byte, 0)
 	var line []byte
-	line, isPrefix, err = w.ReadLine()
-	if err != nil || isPrefix {
-		fmt.Printf("%v\n", err)
-		os.Exit(1)
-	}
-	header := make([]byte, len(line))
-	copy(header, line)
-	for {
-		line, isPrefix, err = w.ReadLine()
-		if err != nil || isPrefix {
-			break
+	var sub_line [][]byte
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line = scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		if line[0] == '>' {
+			sub_line = bytes.Split(line, []byte(" "))
+			chr_pos = append(chr_pos, len(seq))
+			contig_name := make([]byte, len(sub_line[0][1:]))
+			copy(contig_name, sub_line[0][1:])
+			chr_name = append(chr_name, contig_name)
 		} else {
-			byte_array.Write(line)
+			seq = append(seq, line...)
 		}
 	}
-	return header, []byte(byte_array.String())
+	return chr_pos, chr_name, seq
 }
 
 //--------------------------------------------------------------------------------------------------
-// ReadVCF reads variant profile from VCF files.
+// GetVarProf gets variant profile from VCF files.
 //--------------------------------------------------------------------------------------------------
-func ReadVCF(file_name string) map[int]VarProf {
-	var_prof := make(map[int]VarProf)
-	f, err := os.Open(file_name)
-	if err != nil {
-		fmt.Println("Error: Open VCF file", err)
-		os.Exit(1)
+func GetVarProf(file_name string) map[string]map[int]VarProf {
+
+	f, e := os.Open(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
 	}
 	defer f.Close()
 
-	var line, sub_info []byte
-	var alt, info, sub_info_part [][]byte
-	var pos int
+	var_prof := make(map[string]map[int]VarProf)
+	var line, sline, info, sub_info, tmp_af []byte
+	var sub_line, sub_info_part, info_arr [][]byte
+	var i, var_pos int
+	var alt_prob float32
+	var tmp_p float64
 	var af []float32
-
 	r := bufio.NewReader(f)
 	for {
-		line, err = r.ReadBytes('\n')
-		if err != nil {
+		line, e = r.ReadBytes('\n')
+		if e != nil {
 			break
 		}
-		if bytes.Equal(line[0:1], []byte("#")) {
+		sline = bytes.Trim(line, "\n\r")
+		if sline[0] == '#' || len(sline) == 0 {
 			continue
 		} else {
+			sub_line = bytes.SplitN(sline, []byte("\t"), 9)
+
 			var_prof_elem := VarProf{}
-			sub_line := bytes.SplitN(line, []byte("\t"), 9)
-			var_prof_elem.Variant = append(var_prof_elem.Variant, sub_line[3])
-			var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 0)
-			alt = bytes.Split(sub_line[4], []byte(","))
-			info = bytes.Split(sub_line[7], []byte(";"))
+			ref := make([]byte, len(sub_line[3]))
+			copy(ref, sub_line[3])
+			var_prof_elem.Variant = append(var_prof_elem.Variant, ref)
+
+			alt := make([]byte, len(sub_line[4]))
+			copy(alt, sub_line[4])
+			alt_arr := bytes.Split(alt, []byte(","))
+			info = make([]byte, len(sub_line[7]))
+			copy(info, sub_line[7])
+			info_arr = bytes.Split(sub_line[7], []byte(";"))
 			af = make([]float32, 0)
-			for _, sub_info = range info {
+			for _, sub_info = range info_arr {
 				sub_info_part = bytes.Split(sub_info, []byte("="))
 				if bytes.Equal(sub_info_part[0], []byte("AF")) {
-					for _, tmp_af := range bytes.Split(sub_info_part[1], []byte(",")) {
-						tmp_p, _ := strconv.ParseFloat(string(tmp_af), 32)
+					for _, tmp_af = range bytes.Split(sub_info_part[1], []byte(",")) {
+						tmp_p, _ = strconv.ParseFloat(string(tmp_af), 32)
 						af = append(af, float32(tmp_p))
 					}
 					break
 				}
 			}
-			if len(af) == len(alt) {
-				alt_prob := float32(0)
-				for i := 0; i < len(alt); i++ {
-					var_prof_elem.Variant = append(var_prof_elem.Variant, alt[i])
+			var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 0)
+			if len(af) == len(alt_arr) {
+				alt_prob = float32(0)
+				for i := 0; i < len(alt_arr); i++ {
+					var_prof_elem.Variant = append(var_prof_elem.Variant, alt_arr[i])
 					var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, af[i])
 					alt_prob += af[i]
 				}
 				var_prof_elem.AleFreq[0] = 1 - alt_prob
 			} else {
-				var_num := 1 + len(alt)
-				for i := 0; i < len(alt); i++ {
-					var_prof_elem.Variant = append(var_prof_elem.Variant, alt[i])
-					var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, 1/float32(var_num))
+				alt_prob = 1 / float32(1+len(alt_arr))
+				for i = 0; i < len(alt_arr); i++ {
+					var_prof_elem.Variant = append(var_prof_elem.Variant, alt_arr[i])
+					var_prof_elem.AleFreq = append(var_prof_elem.AleFreq, alt_prob)
 				}
-				var_prof_elem.AleFreq[0] = 1 / float32(var_num)
+				var_prof_elem.AleFreq[0] = alt_prob
 			}
-			pos, _ = strconv.Atoi(string(sub_line[1]))
-			var_prof[pos-1] = var_prof_elem
+			chr_name := string(sub_line[0])
+			if _, ok := var_prof[chr_name]; !ok {
+				var_prof[chr_name] = make(map[int]VarProf)
+			}
+			var_pos, _ = strconv.Atoi(string(sub_line[1]))
+			var_prof[chr_name][var_pos-1] = var_prof_elem
 		}
 	}
 	return var_prof

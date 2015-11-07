@@ -6,9 +6,9 @@ package ivc
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"sort"
@@ -45,9 +45,9 @@ func check_for_error(e error) {
 //-----------------------------------------------------------------------------
 // Build FM index given the file storing the text.
 
-func NewFMIndex(file string) *FMIndex {
+func NewFMIndex(seq []byte) *FMIndex {
 	I := new(FMIndex)
-	ReadSequence(file)
+	GetSeq(seq)
 	I.build_suffix_array()
 	I.build_bwt_fmindex()
 	return I
@@ -237,16 +237,9 @@ func (I *FMIndex) build_bwt_fmindex() {
 }
 
 //-----------------------------------------------------------------------------
-func ReadSequence(file string) {
-	f, err := os.Open(file)
-	check_for_error(err)
-	defer f.Close()
-
-	r := bufio.NewReader(f)
-	r.ReadBytes('\n')
-	seq, _ := r.ReadBytes('\n')
-	SEQ = append(bytes.Trim(seq, "\n\r "), byte('$'))
-
+func GetSeq(seq []byte) {
+	SEQ = make([]byte, len(seq))
+	copy(SEQ, seq)
 	// replace N with Y and '*' with W (last character is '$')
 	for i := 0; i < len(SEQ)-1; i++ {
 		if SEQ[i] == 'N' {
@@ -254,7 +247,8 @@ func ReadSequence(file string) {
 		} else if SEQ[i] == '*' {
 			SEQ[i] = 'W'
 		} else if SEQ[i] != 'A' && SEQ[i] != 'C' && SEQ[i] != 'G' && SEQ[i] != 'T' {
-			panic("Sequence contains an illegal character: " + string(SEQ[i]))
+			log.Println("Sequence contains a non-standard base (will be replaced by N)", string(SEQ[i]), "(", i, ")")
+			SEQ[i] = 'Y'
 		}
 	}
 }

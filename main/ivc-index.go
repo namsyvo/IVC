@@ -43,7 +43,7 @@ func main() {
 	ivc.MEM_STATS = new(runtime.MemStats)
 
 	start_time := time.Now()
-	header, multi_seq, var_prof := ivc.BuildMultiGenome(*genome_file, *var_prof_file)
+	chr_pos, chr_name, multi_seq, var_prof := ivc.BuildMultiGenome(*genome_file, *var_prof_file)
 	ivc.PrintProcessMem("Memstats after building multi-sequence")
 
 	multi_seq_len := len(multi_seq)
@@ -57,13 +57,10 @@ func main() {
 	_, var_prof_file_name := path.Split(*var_prof_file)
 	var_prof_idx_file_name := path.Join(*idx_dir, var_prof_file_name) + ".idx"
 
-	ivc.SaveMultiSeq(multi_seq_file_name, header, multi_seq)
-	ivc.SaveMultiSeq(rev_multi_seq_file_name, header, rev_multi_seq)
-	ivc.SaveVarProf(var_prof_idx_file_name, var_prof)
+	ivc.SaveMultiSeq(multi_seq_file_name, chr_pos, chr_name, multi_seq)
+	ivc.SaveVarProf(var_prof_idx_file_name, chr_pos, chr_name, var_prof)
 	gen_time := time.Since(start_time)
 
-	log.Printf("Multi-sequence length: %d", multi_seq_len)
-	log.Printf("Variant profile index size: %d", len(var_prof))
 	log.Printf("Multi-sequence file: %s", multi_seq_file_name)
 	log.Printf("Variant profile index file: %s", var_prof_idx_file_name)
 
@@ -76,7 +73,7 @@ func main() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Indexing multi-sequence...")
 	start_time = time.Now()
-	idx := *ivc.NewFMIndex(rev_multi_seq_file_name)
+	idx := *ivc.NewFMIndex(rev_multi_seq)
 	idx.Save(rev_multi_seq_file_name)
 	index_time := time.Since(start_time)
 	log.Printf("Time for indexing reverse multi-sequence:\t%s", index_time)

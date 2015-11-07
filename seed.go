@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 // IVC: seed.go
-// Finding seeds for alignment betwwen reads and multigenomes.
+// Searching for seeds of alignment betwwen reads and multigenomes.
 // Searching is perfomed from a random position on reads forwardly using an FM-index of reverse multigenomes.
 // Copyright 2015 Nam Sy Vo.
 //--------------------------------------------------------------------------------------------------
@@ -48,11 +48,11 @@ func (MG *MultiGenome) BackwardSearchFrom(pattern []byte, start_pos int) (int, i
 }
 
 //--------------------------------------------------------------------------------------------------
-// FindSeeds returns positions and distances of seeds between a read and the reference.
+// SearchSeeds returns positions and distances of seeds between a read and the reference.
 // It uses both backward search and forward search
 // Forward search is backward search on reverse of the reference.
 //--------------------------------------------------------------------------------------------------
-func (MG *MultiGenome) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
+func (MG *MultiGenome) SearchSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
 
 	var rev_sp, rev_ep int = 0, PARA_INFO.Max_snum
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
@@ -76,9 +76,9 @@ func (MG *MultiGenome) FindSeeds(read, rev_read []byte, p int, m_pos []int) (int
 }
 
 //---------------------------------------------------------------------------------------------------
-// FindSeedsPE finds all pairs of seeds which have proper chromosome distances.
+// SearchSeedsPE searches for all pairs of seeds which have proper chromosome distances.
 //---------------------------------------------------------------------------------------------------
-func (MG *MultiGenome) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
+func (MG *MultiGenome) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
 	var s_pos_r1_or, e_pos_r1_or, m_num_r1_or, s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc int
@@ -102,32 +102,32 @@ func (MG *MultiGenome) FindSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_g
 	}
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num {
-		//PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
-		//PrintLoopTraceInfo(loop_num, "FindSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
+		//PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
+		//PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
 
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or =
-			MG.FindSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
+			MG.SearchSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
 		//PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
 		//if has_seeds_r1_or {
 		//PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
 		//	e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
 		//}
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc =
-			MG.FindSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, seed_pos[1])
+			MG.SearchSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, seed_pos[1])
 		//PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
 		//if has_seeds_r1_rc {
 		//PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc:s_pos_r1_rc+1],
 		//	e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
 		//}
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or =
-			MG.FindSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, seed_pos[2])
+			MG.SearchSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, seed_pos[2])
 		//PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
 		//if has_seeds_r2_or {
 		//PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or:s_pos_r2_or+1],
 		//	e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
 		//}
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc =
-			MG.FindSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, seed_pos[3])
+			MG.SearchSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, seed_pos[3])
 		//PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
 		//if has_seeds_r2_rc {
 		//PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
