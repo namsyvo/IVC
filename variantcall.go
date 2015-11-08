@@ -708,7 +708,8 @@ func (VC *VarCall) OutputVarCalls() {
 		//Start getting variant call info
 		line_aln = make([]string, 0)
 		//Get the largest ChrPos that is <= pos
-		for i = 0; i < len(MULTI_GENOME.ChrPos) && MULTI_GENOME.ChrPos[i] <= pos; i++ {}
+		for i = 0; i < len(MULTI_GENOME.ChrPos) && MULTI_GENOME.ChrPos[i] <= pos; i++ {
+		}
 		//#CHROM
 		line_aln = append(line_aln, string(MULTI_GENOME.ChrName[i-1]))
 		//POS

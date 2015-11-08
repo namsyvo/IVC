@@ -1,6 +1,7 @@
 /*
  FM-index
  Copyright 2013 Vinhthuy Phan
+ Modified by Nam Sy Vo
 */
 package ivc
 
@@ -230,10 +231,12 @@ func (I *FMIndex) build_bwt_fmindex() {
 	I.SYMBOLS = I.SYMBOLS[1:] // Remove $, which is the first symbol
 	delete(I.OCC, '$')
 	delete(I.C, '$')
+	delete(I.OCC, 'X')
+	delete(I.C, 'X')
 	delete(I.OCC, 'Y')
 	delete(I.C, 'Y')
-	delete(I.OCC, 'W')
-	delete(I.C, 'W')
+	delete(I.OCC, 'Z')
+	delete(I.C, 'Z')
 }
 
 //-----------------------------------------------------------------------------
@@ -241,15 +244,15 @@ func GetSeq(seq []byte) {
 	SEQ = make([]byte, len(seq))
 	copy(SEQ, seq)
 	SEQ = append(SEQ, byte('$'))
-	// replace N with Y and '*' with W (last character is '$')
+	// replace N with X, '*' with Y, and other characters with Z (last character is '$')
 	for i := 0; i < len(SEQ)-1; i++ {
 		if SEQ[i] == 'N' {
-			SEQ[i] = 'Y'
+			SEQ[i] = 'X'
 		} else if SEQ[i] == '*' {
-			SEQ[i] = 'W'
+			SEQ[i] = 'Y'
 		} else if SEQ[i] != 'A' && SEQ[i] != 'C' && SEQ[i] != 'G' && SEQ[i] != 'T' {
 			log.Println("Sequence contains a non-standard base (will be replaced by N)", string(SEQ[i]), "(", i, ")")
-			SEQ[i] = 'Y'
+			SEQ[i] = 'Z'
 		}
 	}
 }
