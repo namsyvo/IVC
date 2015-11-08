@@ -166,11 +166,27 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 
 	para_info := input_para_info
 
-	//Estimate parameters for the variant caller
-	//100 is length of testing reads, 500 is maximum length of info line of reads,
-	//will be set up based on input reads
-	para_info.Read_len = 100
-	para_info.Info_len = 500
+	f, e := os.Open(para_info.Read_file_1)
+	if e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	s := bufio.NewScanner(f)
+	s.Scan()
+	header := s.Bytes()
+	if len(header) > 0 {
+		para_info.Info_len = len(header) + 10 //there might be longer header
+	} else {
+		para_info.Info_len = 100
+		log.Printf("Possibly missing header")
+	}
+	s.Scan()
+	read := s.Bytes()
+	if len(read) > 0 {
+		para_info.Read_len = len(read)
+	} else {
+		log.Panicf("Something is wrong with input read sequence.")
+	}
+	f.Close()
 
 	//700 is maximum insert size of paired-end testing reads
 	//will be estimated based on input reads

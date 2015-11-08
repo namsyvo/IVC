@@ -100,7 +100,7 @@ func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_nam
 			log.Println("Missing chromosome " + contig_name + " in variant profile")
 		}
 	}
-	return chr_pos, chr_name, seq, var_prof
+	return
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ func LoadMultiSeq(file_name string) (chr_pos []int, chr_name [][]byte, multi_seq
 			multi_seq = append(multi_seq, sline...)
 		}
 	}
-	return chr_pos, chr_name, multi_seq
+	return
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float
 		variant[int(k)] = b
 		af[int(k)] = p
 	}
-	return variant, af
+	return
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -265,7 +265,7 @@ func GetGenome(file_name string) (chr_pos []int, chr_name [][]byte, seq []byte) 
 			seq = append(seq, line...)
 		}
 	}
-	return chr_pos, chr_name, seq
+	return
 }
 
 //--------------------------------------------------------------------------------------------------
