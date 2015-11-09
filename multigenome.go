@@ -135,7 +135,7 @@ func LoadMultiSeq(file_name string) (chr_pos []int, chr_name [][]byte, multi_seq
 			multi_seq = append(multi_seq, sline...)
 		}
 	}
-	return
+	return chr_pos, chr_name, multi_seq
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float
 		variant[int(k)] = b
 		af[int(k)] = p
 	}
-	return
+	return variant, af
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -265,7 +265,7 @@ func GetGenome(file_name string) (chr_pos []int, chr_name [][]byte, seq []byte) 
 			seq = append(seq, line...)
 		}
 	}
-	return
+	return chr_pos, chr_name, seq
 }
 
 //--------------------------------------------------------------------------------------------------
