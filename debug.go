@@ -18,14 +18,12 @@ import (
 var (
 	PRINT_PROCESS_MEM = true
 
-	PRINT_EDIT_DIST_INFO     = false
+	PRINT_EDIT_DIST_INFO     = true
 	PRINT_EDIT_DIST_MAT_INFO = false
 
-	PRINT_VAR_CALL_INFO    = false
-	PRINT_ALIGN_TRACE_INFO = false
-
-	GET_UNALIGN_INFO   = true
-	PRINT_UNALIGN_INFO = false
+	PRINT_VAR_CALL_INFO    = true
+	PRINT_ALIGN_TRACE_INFO = true
+	PRINT_UNALIGN_INFO     = true
 )
 
 //Global variable for memory profiling
@@ -252,7 +250,7 @@ var (
 
 //Reading noalign reads and related info from channel and store them
 func GetNoAlignReadInfo() {
-	if GET_UNALIGN_INFO {
+	if PRINT_UNALIGN_INFO {
 		for uai := range UNALIGN_INFO_CHAN {
 			UNALIGN_INFO_ARR = append(UNALIGN_INFO_ARR, uai)
 		}

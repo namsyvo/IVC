@@ -102,49 +102,61 @@ func (MG *MultiGenome) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand
 	}
 	loop_num := 1
 	for loop_num <= PARA_INFO.Iter_num {
-		//PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
-		//PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
-
+		if PARA_INFO.Debug_mode {
+			PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, First:\t"+string(read_info.Read1))
+			PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
+		}
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or =
 			MG.SearchSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
-		//PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
-		//if has_seeds_r1_or {
-		//PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
-		//	e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
-		//}
+		if PARA_INFO.Debug_mode {
+			PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
+			if has_seeds_r1_or {
+				PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
+					e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
+			}
+		}
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc =
 			MG.SearchSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, seed_pos[1])
-		//PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
-		//if has_seeds_r1_rc {
-		//PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc:s_pos_r1_rc+1],
-		//	e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
-		//}
+		if PARA_INFO.Debug_mode {
+			PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
+			if has_seeds_r1_rc {
+				PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc:s_pos_r1_rc+1],
+					e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
+			}
+		}
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or =
 			MG.SearchSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, seed_pos[2])
-		//PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
-		//if has_seeds_r2_or {
-		//PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or:s_pos_r2_or+1],
-		//	e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
-		//}
+		if PARA_INFO.Debug_mode {
+			PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
+			if has_seeds_r2_or {
+				PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or:s_pos_r2_or+1],
+					e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
+			}
+		}
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc =
 			MG.SearchSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, seed_pos[3])
-		//PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
-		//if has_seeds_r2_rc {
-		//PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
-		//	e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
-		//}
-
+		if PARA_INFO.Debug_mode {
+			PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
+			if has_seeds_r2_rc {
+				PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
+					e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
+			}
+		}
 		if has_seeds_r1_or && has_seeds_r2_rc {
-			//PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
-			//	e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
-			//PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc:s_pos_r2_rc+1],
-			//	e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
+			if PARA_INFO.Debug_mode {
+				PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
+					e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
+				PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc:s_pos_r2_rc+1],
+					e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
+			}
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
 					//Check if alignments are likely pair-end alignments
 					if (seed_pos[3][j]-seed_pos[0][i]) >= PARA_INFO.Read_len &&
 						(seed_pos[3][j]-seed_pos[0][i]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
-						//PrintPairedSeedInfo("r1_or, r2_rc, paired pos", seed_pos[0][i], seed_pos[3][j])
+						if PARA_INFO.Debug_mode {
+							PrintPairedSeedInfo("r1_or, r2_rc, paired pos", seed_pos[0][i], seed_pos[3][j])
+						}
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_or)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_or)
 						s_pos_r2 = append(s_pos_r2, s_pos_r2_rc)
@@ -158,16 +170,20 @@ func (MG *MultiGenome) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand
 			}
 		}
 		if has_seeds_r1_rc && has_seeds_r2_or {
-			//PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc:s_pos_r1_rc+1],
-			//	e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
-			//PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or:s_pos_r2_or+1],
-			//	e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
+			if PARA_INFO.Debug_mode {
+				PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc:s_pos_r1_rc+1],
+					e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
+				PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or:s_pos_r2_or+1],
+					e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
+			}
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_or; j++ {
 					//Check if alignments are likely pair-end alignments
 					if (seed_pos[1][i]-seed_pos[2][j]) >= PARA_INFO.Read_len &&
 						(seed_pos[1][i]-seed_pos[2][j]) <= PARA_INFO.Read_len+PARA_INFO.Max_ins {
-						//PrintPairedSeedInfo("r1_rc, r2_or, paired pos", seed_pos[1][i], seed_pos[2][j])
+						if PARA_INFO.Debug_mode {
+							PrintPairedSeedInfo("r1_rc, r2_or, paired pos", seed_pos[1][i], seed_pos[2][j])
+						}
 						s_pos_r1 = append(s_pos_r1, s_pos_r1_rc)
 						e_pos_r1 = append(e_pos_r1, e_pos_r1_rc)
 						s_pos_r2 = append(s_pos_r2, s_pos_r2_or)

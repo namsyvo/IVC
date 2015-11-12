@@ -206,7 +206,9 @@ func (VC *VarCall) CallVariants() {
 	for var_info = range var_results {
 		VC.UpdateVariantProb(var_info)
 	}
-	ProcessNoAlignReadInfo()
+	if PARA_INFO.Debug_mode {
+		ProcessNoAlignReadInfo()
+	}
 	PrintProcessMem("Memstats after calling variants")
 	call_var_time := time.Since(start_time)
 	log.Printf("Time for calling variants:\t%s", call_var_time)
@@ -239,22 +241,22 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 	for scanner1.Scan() && scanner2.Scan() {
 		read_info.Info1 = read_info.Info1[:len(scanner1.Bytes())]
 		read_info.Info2 = read_info.Info2[:len(scanner2.Bytes())]
-		copy(read_info.Info1, scanner1.Bytes()) //use 1st line in input FASTQ file 1
-		copy(read_info.Info2, scanner2.Bytes()) //use 1st line in input FASTQ file 2
+		copy(read_info.Info1, scanner1.Bytes()) //use 1st line in 1st FASTQ file
+		copy(read_info.Info2, scanner2.Bytes()) //use 1st line in 2nd FASTQ file
 		scanner1.Scan()
 		scanner2.Scan()
 		read_info.Read1 = read_info.Read1[:len(scanner1.Bytes())]
 		read_info.Read2 = read_info.Read2[:len(scanner2.Bytes())]
-		copy(read_info.Read1, scanner1.Bytes()) //use 2nd line in input FASTQ file 1
-		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in input FASTQ file 2
-		scanner1.Scan()                         //ignore 3rd line in 1st input FASTQ file 1
-		scanner2.Scan()                         //ignore 3rd line in 2nd input FASTQ file 2
+		copy(read_info.Read1, scanner1.Bytes()) //use 2nd line in 1st FASTQ file
+		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in 2nd FASTQ file
+		scanner1.Scan()                         //ignore 3rd line in 1st FASTQ file
+		scanner2.Scan()                         //ignore 3rd line in 2nd FASTQ file
 		scanner1.Scan()
 		scanner2.Scan()
 		read_info.Qual1 = read_info.Qual1[:len(scanner1.Bytes())]
 		read_info.Qual2 = read_info.Qual2[:len(scanner2.Bytes())]
-		copy(read_info.Qual1, scanner1.Bytes()) //use 4th line in input FASTQ file 1
-		copy(read_info.Qual2, scanner2.Bytes()) //use 4th line in input FASTQ file 2
+		copy(read_info.Qual1, scanner1.Bytes()) //use 4th line in 1st FASTQ file
+		copy(read_info.Qual2, scanner2.Bytes()) //use 4th line in 2nd FASTQ file
 		if len(read_info.Read1) > 0 && len(read_info.Read2) > 0 {
 			read_num++
 			read_data <- read_info
@@ -434,7 +436,9 @@ func (VC *VarCall) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnI
 	}
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
-		//PrintGetVariants("Final_var", paired_dist, aln_dist1, aln_dist2, vars_get1, vars_get2)
+		if PARA_INFO.Debug_mode {
+			PrintGetVariants("Final_var", paired_dist, aln_dist1, aln_dist2, vars_get1, vars_get2)
+		}
 		for _, var_info := range vars_get1 {
 			var_info.MProb = map_qual
 			var_results <- var_info
@@ -524,8 +528,9 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 		j++
 		i++
 	}
-	//PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
-
+	if PARA_INFO.Debug_mode {
+		PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
+	}
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
 		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_aln_s_pos, edit_aln_info.l_Dist_D, edit_aln_info.l_Dist_IS,
 			edit_aln_info.l_Dist_IT, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, l_ref_pos_map)
@@ -543,7 +548,9 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			l_var_qual = append(l_var_qual, l_qual...)
 			l_var_type = append(l_var_type, l_type...)
 		}
-		//PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
+		if PARA_INFO.Debug_mode {
+			PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
+		}
 		if r_m > 0 && r_n > 0 {
 			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n,
 				r_aln_s_pos, r_bt_mat, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
@@ -552,7 +559,9 @@ func (VC *VarCall) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_
 			r_var_qual = append(r_var_qual, r_qual...)
 			r_var_type = append(r_var_type, r_type...)
 		}
-		//PrintMatchTraceInfo(m_pos, r_aln_s_pos, aln_dist, r_var_pos, read)
+		if PARA_INFO.Debug_mode {
+			PrintMatchTraceInfo(m_pos, r_aln_s_pos, aln_dist, r_var_pos, read)
+		}
 		var k int
 		var vars_arr []*VarInfo
 		for k = 0; k < len(l_var_pos); k++ {
