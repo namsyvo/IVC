@@ -76,8 +76,8 @@ func main() {
 	idx := *ivc.NewFMIndex(rev_multi_seq)
 	idx.Save(rev_multi_seq_file_name)
 	index_time := time.Since(start_time)
-	log.Printf("Time for indexing reverse multi-sequence:\t%s", index_time)
-	ivc.PrintProcessMem("Memstats after indexing reverse multi-sequence")
-	log.Printf("Index directory for reverse multi-sequence: %s", rev_multi_seq_file_name+".index/")
+	log.Printf("Time for indexing multi-sequence:\t%s", index_time)
+	ivc.PrintProcessMem("Memstats after indexing multi-sequence")
+	log.Printf("Index directory for multi-sequence: %s", rev_multi_seq_file_name+".index/")
 	log.Printf("Finish indexing multi-sequence.")
 }

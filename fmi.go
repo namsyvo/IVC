@@ -251,7 +251,7 @@ func GetSeq(seq []byte) {
 		} else if SEQ[i] == '*' {
 			SEQ[i] = 'Y'
 		} else if SEQ[i] != 'A' && SEQ[i] != 'C' && SEQ[i] != 'G' && SEQ[i] != 'T' {
-			log.Println("Sequence contains a non-standard base (will be replaced by N)", string(SEQ[i]), "(", i, ")")
+			log.Println("Sequence contains a non-standard base", string(SEQ[i]), "at location", i, "(will be replaced by Z)")
 			SEQ[i] = 'Z'
 		}
 	}

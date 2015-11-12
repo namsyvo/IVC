@@ -69,7 +69,6 @@ func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
 
 	M.RevFMI = *Load(para_info.Rev_index_file)
 	PrintMemStats("Memstats after loading index of reverse multi-sequence")
-
 	return M
 }
 
@@ -100,7 +99,7 @@ func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_nam
 			log.Println("Missing chromosome " + contig_name + " in variant profile")
 		}
 	}
-	return
+	return chr_pos, chr_name, seq, var_prof
 }
 
 //-------------------------------------------------------------------------------------------------
