@@ -140,7 +140,7 @@ func Setup(input_para_info *ParaInfo) {
 	MEM_STATS = new(runtime.MemStats)
 
 	PARA_INFO = SetupPara(input_para_info)
-	runtime.GOMAXPROCS(PARA_INFO.Proc_num)
+	//runtime.GOMAXPROCS(PARA_INFO.Proc_num)
 
 	if input_para_info.Debug_mode {
 		if CPU_FILE, e = os.Create(input_para_info.Var_call_file + ".cprof"); e != nil {
@@ -174,7 +174,7 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 	s.Scan()
 	header := s.Bytes()
 	if len(header) > 0 {
-		para_info.Info_len = len(header) + 10 //there might be longer header
+		para_info.Info_len = len(header) + 20 //there might be longer header
 	} else {
 		para_info.Info_len = 100
 		log.Printf("Possibly missing header")
