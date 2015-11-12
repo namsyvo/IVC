@@ -1,8 +1,10 @@
-/*
- FM-index
- Copyright 2013 Vinhthuy Phan
- Modified by Nam Sy Vo
-*/
+//----------------------------------------------------------------------------------------
+// IVC: fmi.go
+// Constructing FM-index.
+// Copyright 2013 Vinhthuy Phan.
+// Modified 2014 Nam Sy Vo.
+//----------------------------------------------------------------------------------------
+
 package ivc
 
 import (
@@ -24,15 +26,14 @@ var SEQ []byte
 
 type FMIndex struct {
 	SA  []uint32          // suffix array
-	C   map[byte]uint32   // count table
 	OCC map[byte][]uint32 // occurence table
+	C   map[byte]uint32   // count table
+	EP  map[byte]uint32   // ending row/position of each symbol
 
+	LEN     uint32
 	END_POS uint32          // position of "$" in the text
 	SYMBOLS []int           // sorted symbols
-	EP      map[byte]uint32 // ending row/position of each symbol
-
-	LEN  uint32
-	Freq map[byte]uint32 // Frequency of each symbol
+	Freq    map[byte]uint32 // Frequency of each symbol
 }
 
 //-----------------------------------------------------------------------------
