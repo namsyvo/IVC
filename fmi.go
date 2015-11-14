@@ -50,8 +50,12 @@ func check_for_error(e error) {
 func NewFMIndex(seq []byte) *FMIndex {
 	I := new(FMIndex)
 	GetSeq(seq)
+	log.Println("Building suffix array...")
 	I.build_suffix_array()
+	log.Println("Finish building suffix array.")
+	log.Println("Building bwt and fm-index...")
 	I.build_bwt_fmindex()
+	log.Println("Finish building bwt and fm-index.")
 	return I
 }
 
@@ -200,7 +204,11 @@ func (I *FMIndex) build_bwt_fmindex() {
 	var i uint32
 	for i = 0; i < I.LEN; i++ {
 		I.Freq[SEQ[i]]++
-		bwt[i] = SEQ[(I.LEN+I.SA[i]-1)%I.LEN]
+		if I.SA[i] == 0 {
+			bwt[i] = SEQ[I.LEN-1]
+		} else {
+			bwt[i] = SEQ[I.SA[i]-1]
+		}
 		if bwt[i] == '$' {
 			I.END_POS = i
 		}
