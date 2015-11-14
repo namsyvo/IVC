@@ -19,7 +19,7 @@ import (
 //--------------------------------------------------------------------------------------------------
 // Global constants
 //--------------------------------------------------------------------------------------------------
-var (
+const (
 	NEW_SNP_RATE   = 0.00001   //probability of new alleles
 	NEW_INDEL_RATE = 0.000001  //probability of new indels
 	INDEL_ERR_RATE = 0.0000001 //probability of indel error
