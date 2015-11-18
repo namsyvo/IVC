@@ -106,34 +106,46 @@ func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_nam
 // LoadMultiSeq loads multi-sequence from file.
 //-------------------------------------------------------------------------------------------------
 func LoadMultiSeq(file_name string) (chr_pos []int, chr_name [][]byte, multi_seq []byte) {
-	f, e := os.Open(file_name)
+	f, e := os.Open(file_name + ".idx")
 	if e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	defer f.Close()
 	chr_pos = make([]int, 0)
+	chr_name = make([][]byte, 0)
 	r := bufio.NewReader(f)
 	var pos int
-	var line, sline []byte
-	multi_seq = make([]byte, 0)
+	var line []byte
 	for {
 		line, e = r.ReadBytes('\n')
-		if e != nil { //reach EOF
-			break
-		}
-		sline = bytes.Trim(line, "\n\r")
-		if len(sline) == 0 {
-			continue
-		}
-		if sline[0] == '>' {
+		sline := bytes.Trim(line, "\n\r")
+		if len(sline) != 0 && sline[0] == '>' {
 			split := bytes.Split(sline, []byte("\t"))
 			pos, _ = strconv.Atoi(string(split[1]))
 			chr_pos = append(chr_pos, pos)
 			chr_name = append(chr_name, split[0][1:])
-		} else {
-			multi_seq = append(multi_seq, sline...)
+		}
+		if e != nil { //reach EOF
+			break
 		}
 	}
+	f.Close()
+
+	f, e = os.Open(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	r = bufio.NewReader(f)
+	multi_seq = make([]byte, 0)
+	for {
+		line, e = r.ReadBytes('\n')
+		sline := bytes.Trim(line, "\n\r")
+		multi_seq = append(multi_seq, sline...)
+		if e != nil { //reach EOF
+			break
+		}
+	}
+	f.Close()
+	log.Println("seq len", len(multi_seq))
 	return chr_pos, chr_name, multi_seq
 }
 
@@ -141,18 +153,25 @@ func LoadMultiSeq(file_name string) (chr_pos []int, chr_name [][]byte, multi_seq
 // SaveMultiSeq saves multi-sequence to file.
 //-------------------------------------------------------------------------------------------------
 func SaveMultiSeq(file_name string, chr_pos []int, chr_name [][]byte, multi_seq []byte) {
-	f, e := os.Create(file_name)
+	f, e := os.Create(file_name + ".idx")
 	if e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	defer f.Close()
 	w := bufio.NewWriter(f)
 	for i := 0; i < len(chr_pos); i++ {
 		w.WriteString(">" + string(chr_name[i]) + "\t" + strconv.Itoa(chr_pos[i]) + "\n")
 	}
-	w.Write(multi_seq)
-	w.WriteString("\n")
 	w.Flush()
+	f.Close()
+
+	f, e = os.Create(file_name)
+	if e != nil {
+		log.Panicf("Error: %s", e)
+	}
+	w = bufio.NewWriter(f)
+	w.Write(multi_seq)
+	w.Flush()
+	f.Close()
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -176,13 +195,7 @@ func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float
 	r := bufio.NewReader(f)
 	for {
 		line, e = r.ReadBytes('\n')
-		if e != nil {
-			break
-		}
 		sline = string(bytes.Trim(line, "\n\r"))
-		if len(sline) == 0 {
-			continue
-		}
 		split = strings.Split(sline, "\t")
 		k, e = strconv.ParseInt(split[0], 10, 64)
 		t = make([]string, (len(split)-1)/2)
@@ -199,6 +212,9 @@ func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float
 		}
 		variant[int(k)] = b
 		af[int(k)] = p
+		if e != nil {
+			break
+		}
 	}
 	return variant, af
 }
