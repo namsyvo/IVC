@@ -1,3 +1,9 @@
+v0.8.0 <Nov 19, 2015> <whole-genome>
+Major changes:
+- Working with whole genome.
+Minor changes:
+- Fix some bugs (especially overflow problem as constructing bwt), change input format, adapt code to Go1.5.
+
 v0.7.5 <Nov 5, 2015> <fmi-integr>
 Major changes:
 - Integrate FM-index code into IVC.
