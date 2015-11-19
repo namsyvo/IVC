@@ -87,15 +87,27 @@ func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_nam
 	var_prof = GetVarProf(var_prof_file)
 	PrintProcessMem("Memstats after reading variant profile")
 	var contig_name string
-	var ok bool
+	var name_check bool
+	for contig_name, _ = range var_prof {
+		name_check = false
+		for _, rname := range chr_name {
+			if contig_name == string(rname) {
+				name_check = true
+				break
+			}
+		}
+		if name_check == false {
+			log.Println("Warning: Contig or chromosome " + contig_name + " in the variant profile is not exist in the reference genome.")
+		}
+	}
 	for i, pos := range chr_pos {
 		contig_name = string(chr_name[i])
-		if _, ok = var_prof[contig_name]; ok {
+		if _, name_check = var_prof[contig_name]; name_check {
 			for key, _ := range var_prof[contig_name] {
 				seq[pos+key] = '*'
 			}
 		} else {
-			log.Println("Missing chromosome " + contig_name + " in variant profile")
+			log.Println("Warning: Contig or chromosome " + contig_name + " in the reference genome is not exist in the variant profile.")
 		}
 	}
 	return chr_pos, chr_name, seq, var_prof
