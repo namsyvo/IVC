@@ -28,7 +28,7 @@ type MultiGenome struct {
 	VarAF      map[int][]float32 //allele frequency of variants (position, allele frequency).
 	SameLenVar map[int]int       //indicate if variants has same length (SNPs or MNPs).
 	DelVar     map[int]int       //length of deletions if variants are deletion.
-	RevFMI     FMIndex           //FM-index of reverse multigenomes (to do forward search).
+	RevFMI     *FMIndex          //FM-index of reverse multigenomes (to do forward search).
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -38,6 +38,8 @@ func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
 	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 
 	M := new(MultiGenome)
+	M.RevFMI = Load(para_info.Rev_index_file)
+	PrintMemStats("Memstats after loading index of multi-sequence")
 	M.ChrPos, M.ChrName, M.Seq = LoadMultiSeq(para_info.Ref_file)
 	PrintMemStats("Memstats after loading multi-sequence")
 	M.Variants, M.VarAF = LoadVarProf(para_info.Var_prof_file)
@@ -66,9 +68,6 @@ func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
 		}
 	}
 	PrintMemStats("Memstats after creating auxiliary data structures")
-
-	M.RevFMI = *Load(para_info.Rev_index_file)
-	PrintMemStats("Memstats after loading index of reverse multi-sequence")
 	return M
 }
 
@@ -145,7 +144,6 @@ func LoadMultiSeq(file_name string) (chr_pos []int, chr_name [][]byte, multi_seq
 		}
 	}
 	f.Close()
-	log.Println("seq len", len(multi_seq))
 	return chr_pos, chr_name, multi_seq
 }
 
@@ -196,22 +194,24 @@ func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float
 	for {
 		line, e = r.ReadBytes('\n')
 		sline = string(bytes.Trim(line, "\n\r"))
-		split = strings.Split(sline, "\t")
-		k, e = strconv.ParseInt(split[0], 10, 64)
-		t = make([]string, (len(split)-1)/2)
-		p := make([]float32, (len(split)-1)/2)
-		for i = 0; i < len(t); i++ {
-			t[i] = split[2*i+1]
-			tmp, _ := strconv.ParseFloat(split[2*i+2], 32)
-			p[i] = float32(tmp)
+		if len(sline) > 0 {
+			split = strings.Split(sline, "\t")
+			k, e = strconv.ParseInt(split[0], 10, 64)
+			t = make([]string, (len(split)-1)/2)
+			p := make([]float32, (len(split)-1)/2)
+			for i = 0; i < len(t); i++ {
+				t[i] = split[2*i+1]
+				tmp, _ := strconv.ParseFloat(split[2*i+2], 32)
+				p[i] = float32(tmp)
+			}
+			b := make([][]byte, len(t))
+			for i = 0; i < len(b); i++ {
+				b[i] = make([]byte, len(t[i]))
+				copy(b[i], []byte(t[i]))
+			}
+			variant[int(k)] = b
+			af[int(k)] = p
 		}
-		b := make([][]byte, len(t))
-		for i = 0; i < len(b); i++ {
-			b[i] = make([]byte, len(t[i]))
-			copy(b[i], []byte(t[i]))
-		}
-		variant[int(k)] = b
-		af[int(k)] = p
 		if e != nil {
 			break
 		}

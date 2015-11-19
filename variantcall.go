@@ -159,6 +159,9 @@ func NewVariantCaller() *VarCall {
 			VC.VarBQual[pos] = make(map[string][][]byte)
 			VC.ReadInfo[pos] = make(map[string][][]byte)
 		}
+		//Release memory of Variants and VarAF, but keep the MULTI_GENOME exist at var_pos to check for known variants later
+		MULTI_GENOME.Variants[var_pos] = nil
+		MULTI_GENOME.VarAF[var_pos] = nil
 	}
 	index_time := time.Since(start_time)
 	PrintProcessMem("Memstats after initializing the variant caller")
