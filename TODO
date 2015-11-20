@@ -1,16 +1,15 @@
-(1) Working with whole-genome, towarding to the first public release.
-    + Deal with multiple chromosomes in both genome and variant profile.
-    + Make well-format output, adapt to full-info input.
-    + Adjust quality of variants in output based on the best evaluation.
-    + Improve runtime & memory
-
-(2) Other improvements.
-    + Filter indels at beginning and end of reads more carefully.
+(1) Improve running time and memory usage.
+    + Update variant profile in parallel.
     + Working with Phred-scale values directly instead of probability
     + Use base quality fully in alignment
-    + Add functions to allow IVC working with single-end reads.
+
+(2) Other improvements.
+    + Make well-format output, adapt to full-info input.
+    + Adjust quality of variants in output based on the best evaluation.
+    + Filter indels at beginning and end of reads more carefully.
 
 (3) Future work
+    + Add functions to allow IVC working with single-end reads.
     + Allow new alleles
     + Analyze hard-to-detect INDELs
     + Working with some cancer datasets
