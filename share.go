@@ -37,10 +37,10 @@ var (
 // Global variables for calculating variant quality.
 //--------------------------------------------------------------------------------------------------
 var (
-	Q2C map[byte]float64 //pre-calculated alignment cost  based on Phred-based quality.
-	Q2E map[byte]float64 //pre-calculated error probability based on Phred-based quality.
-	Q2P map[byte]float64 //pre-calculated not-error probability based on Phred-based quality.
-	L2E []float64        //pre-calculated indel error corresponding to length of indels.
+	Q2C map[byte]float64 //pre-calculated alignment cost based on Phred-scale quality.
+	Q2E map[byte]float64 //pre-calculated error probability based on Phred-scale quality.
+	Q2P map[byte]float64 //pre-calculated not-error probability based on Phred-scale quality.
+	L2E []float64        //pre-calculated indel error rate corresponding to lengths of indels.
 )
 
 //--------------------------------------------------------------------------------------------------

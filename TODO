@@ -13,7 +13,7 @@
     + Allow new alleles
     + Analyze hard-to-detect INDELs
     + Working with some cancer datasets
- 
+
 (4) Integrate indexing and SNP calling phases:
     (a) Create or load the index:
         + Create the index only if (A) it does not exist, or (B) it exists but there is an error loading it.
