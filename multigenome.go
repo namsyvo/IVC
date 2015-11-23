@@ -35,16 +35,20 @@ type MultiGenome struct {
 // MultiGenome creates a multi-genome instance and set up its content.
 //--------------------------------------------------------------------------------------------------
 func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
-	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
-
 	M := new(MultiGenome)
 	M.RevFMI = Load(para_info.Rev_index_file)
-	PrintMemStats("Memstats after loading index of multi-sequence")
+	if PARA_INFO.Debug_mode {
+		log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
+		PrintMemStats("Memstats after loading index of multi-sequence")
+	}
 	M.ChrPos, M.ChrName, M.Seq = LoadMultiSeq(para_info.Ref_file)
-	PrintMemStats("Memstats after loading multi-sequence")
+	if PARA_INFO.Debug_mode {
+		PrintMemStats("Memstats after loading multi-sequence")
+	}
 	M.Variants, M.VarAF = LoadVarProf(para_info.Var_prof_file)
-	PrintMemStats("Memstats after loading variant profile")
-
+	if PARA_INFO.Debug_mode {
+		PrintMemStats("Memstats after loading variant profile")
+	}
 	M.SameLenVar = make(map[int]int)
 	M.DelVar = make(map[int]int)
 	var same_len_flag, del_flag bool
@@ -67,7 +71,9 @@ func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
 			M.DelVar[var_pos] = var_len - 1
 		}
 	}
-	PrintMemStats("Memstats after creating auxiliary data structures")
+	if PARA_INFO.Debug_mode {
+		PrintMemStats("Memstats after creating auxiliary data structures")
+	}
 	return M
 }
 
@@ -83,9 +89,13 @@ func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_nam
 	seq []byte, var_prof map[string]map[int]VarProf) {
 
 	chr_pos, chr_name, seq = GetGenome(genome_file)
-	PrintProcessMem("Memstats after reading reference genome")
+	if PARA_INFO.Debug_mode {
+		PrintProcessMem("Memstats after reading reference genome")
+	}
 	var_prof = GetVarProf(var_prof_file)
-	PrintProcessMem("Memstats after reading variant profile")
+	if PARA_INFO.Debug_mode {
+		PrintProcessMem("Memstats after reading variant profile")
+	}
 	var contig_name string
 	var name_check bool
 	for contig_name, _ = range var_prof {

@@ -239,13 +239,13 @@ func PrintVarInfo(mess string, var_pos []int, var_val, var_qlt [][]byte) {
 //----------------------------------------
 // Process unaligned-reads info
 //----------------------------------------
-type UnAlignInfo struct {
+type UnAlnRead struct {
 	read_info1, read_info2 []byte
 }
 
 var (
-	UNALIGN_INFO_CHAN = make(chan UnAlignInfo)
-	UNALIGN_INFO_ARR  = make([]UnAlignInfo, 0)
+	UNALIGN_INFO_CHAN = make(chan UnAlnRead)
+	UNALIGN_INFO_ARR  = make([]UnAlnRead, 0)
 )
 
 //Reading noalign reads and related info from channel and store them

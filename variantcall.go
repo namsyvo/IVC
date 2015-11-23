@@ -161,7 +161,9 @@ func NewVariantCaller() *VarCall {
 		}
 	}
 	index_time := time.Since(start_time)
-	PrintProcessMem("Memstats after initializing the variant caller")
+	if PARA_INFO.Debug_mode {
+		PrintProcessMem("Memstats after initializing the variant caller")
+	}
 	log.Printf("Time for initializing the variant caller:\t%s", index_time)
 	log.Printf("Finish initializing the variant caller.")
 	return VC
@@ -174,177 +176,61 @@ func NewVariantCaller() *VarCall {
 func (VC *VarCall) CallVariants() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Calling variants...")
-	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
-
+	if PARA_INFO.Debug_mode {
+		log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
+	}
 	start_time := time.Now()
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and SearchVariants.
 	//When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
 	//to scan next reads.
 	read_signal := make(chan bool)
-	result_signal := make([]chan bool, PARA_INFO.Proc_num)
-	for i := 0; i < PARA_INFO.Proc_num; i++ {
+	result_signal := make([]chan bool, 32)
+	for i := 0; i < 32; i++ {
 		result_signal[i] = make(chan bool)
 	}
-	//Call a goroutine to read input reads
 	read_data := make(chan *ReadInfo, PARA_INFO.Proc_num)
-	go VC.ReadReads(read_data, read_signal)
-
-	//Call goroutines to search for variants, pass shared variable to each goroutine
 	var_results := make([]chan *VarInfo, 32)
 	for i := 0; i < 32; i++ {
 		var_results[i] = make(chan *VarInfo)
 	}
-
 	var wg sync.WaitGroup
+	//Call a goroutine to read input reads
+	go VC.ReadReads(read_data, read_signal)
+	//Call goroutines to search for variants, pass shared variable to each goroutine
 	for i := 0; i < PARA_INFO.Proc_num; i++ {
 		wg.Add(1)
 		go VC.SearchVariants(read_data, read_signal, var_results, &wg)
 	}
-
 	//Collect variants from results channel and update variant probabilities
-	for i := 0; i < PARA_INFO.Proc_num; i++ {
-		wg.Add(1)
-		go VC.UpdateVarProf(var_results, result_signal, &wg)
+	for i := 0; i < 32; i++ {
+		go func(i int) {
+			for var_info := range var_results[i] {
+				VC.UpdateVariantProb(var_info)
+			}
+		}(i)
 	}
-
-	go GetNoAlignReadInfo()
-
 	go func() {
 		wg.Wait()
-		for i := 0; i < 32; i++ {
+		for i := 0; i < PARA_INFO.Proc_num; i++ {
 			close(var_results[i])
 		}
 		close(UNALIGN_INFO_CHAN)
 	}()
-
-	//VC.UpdateVarProf(var_results, result_signal)
-	/*
-		for i := 0; i < 32; i++ {
-			go func() {
-				for var_info := range var_results[i] {
-					VC.UpdateVariantProb(var_info)
-				}
-			}()
+	unaln_read_num := 0
+	for uai := range UNALIGN_INFO_CHAN {
+		unaln_read_num++
+		if PARA_INFO.Debug_mode {
+			UNALIGN_INFO_ARR = append(UNALIGN_INFO_ARR, uai)
 		}
-	*/
-	VC.UpdateVarProf(var_results, result_signal, &wg)
+	}
+	log.Printf("Number of no-aligned reads:\t%d", unaln_read_num)
 	if PARA_INFO.Debug_mode {
 		ProcessNoAlignReadInfo()
+		PrintProcessMem("Memstats after calling variants")
 	}
-	PrintProcessMem("Memstats after calling variants")
 	call_var_time := time.Since(start_time)
 	log.Printf("Time for calling variants:\t%s", call_var_time)
 	log.Printf("Finish calling variants.")
-}
-
-func (VC *VarCall) UpdateVarProf(var_results chan *VarInfo, result_signal []chan bool, wg *sync.WaitGroup) {
-
-	defer wg.Done()
-
-	var var_pos uint32
-	var segment_id int
-	segment_len := uint32(len(MULTI_GENOME.Seq) / 32)
-	for var_info := range var_results {
-		var_pos = var_info.Pos
-		if var_pos == segment_len*15 {
-			segment_id = 15
-		} else if var_pos < segment_len*15 {
-			if var_pos == segment_len*7 {
-				segment_id = 7
-			} else if var_pos < segment_len*7 {
-				if var_pos == segment_len*3 {
-					segment_id = 3
-				} else if var_pos < segment_len*3 {
-					if var_pos == segment_len {
-						segment_id = 1
-					} else if var_pos < segment_len {
-						segment_id = 0
-					} else {
-						segment_id = 2
-					}
-				} else {
-					if var_pos == segment_len*5 {
-						segment_id = 5
-					} else if var_pos < segment_len*5 {
-						segment_id = 4
-					} else {
-						segment_id = 6
-					}
-				}
-			} else {
-				if var_pos == segment_len*11 {
-					segment_id = 11
-				} else if var_pos < segment_len*11 {
-					if var_pos == segment_len*9 {
-						segment_id = 9
-					} else if var_pos < segment_len*9 {
-						segment_id = 8
-					} else {
-						segment_id = 10
-					}
-				} else {
-					if var_pos == segment_len*13 {
-						segment_id = 13
-					} else if var_pos < segment_len*13 {
-						segment_id = 12
-					} else {
-						segment_id = 14
-					}
-				}
-			}
-		} else {
-			if var_pos == segment_len*23 {
-				segment_id = 23
-			} else if var_pos < segment_len*23 {
-				if var_pos == segment_len*19 {
-					segment_id = 19
-				} else if var_pos < segment_len*19 {
-					if var_pos == segment_len*17 {
-						segment_id = 17
-					} else if var_pos < segment_len*17 {
-						segment_id = 16
-					} else {
-						segment_id = 18
-					}
-				} else {
-					if var_pos == segment_len*21 {
-						segment_id = 21
-					} else if var_pos < segment_len*21 {
-						segment_id = 20
-					} else {
-						segment_id = 22
-					}
-				}
-			} else {
-				if var_pos == segment_len*27 {
-					segment_id = 27
-				} else if var_pos < segment_len*27 {
-					if var_pos == segment_len*25 {
-						segment_id = 25
-					} else if var_pos < segment_len*25 {
-						segment_id = 24
-					} else {
-						segment_id = 26
-					}
-				} else {
-					if var_pos == segment_len*29 {
-						segment_id = 29
-					} else if var_pos < segment_len*29 {
-						segment_id = 28
-					} else {
-						if var_pos < segment_len*31 {
-							segment_id = 30
-						} else {
-							segment_id = 31
-						}
-					}
-				}
-			}
-		}
-		result_signal[segment_id] <- true
-		VC.UpdateVariantProb(var_info)
-		<-result_signal[segment_id]
-	}
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -395,8 +281,8 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 			read_signal <- true
 		}
 		if read_num%10000 == 0 {
-			PrintProcessMem("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
 			if PARA_INFO.Debug_mode {
+				PrintProcessMem("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
 				pprof.WriteHeapProfile(MEM_FILE)
 			}
 		}
@@ -407,7 +293,7 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 //---------------------------------------------------------------------------------------------------
 // SearchVariants takes data from data channel, searches for variants and put them into results channel.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCall) SearchVariants(read_data chan *ReadInfo, read_signal chan bool, var_results chan *VarInfo,
+func (VC *VarCall) SearchVariants(read_data chan *ReadInfo, read_signal chan bool, var_results []chan *VarInfo,
 	wg *sync.WaitGroup) {
 
 	defer wg.Done()
@@ -449,7 +335,7 @@ func (VC *VarCall) SearchVariants(read_data chan *ReadInfo, read_signal chan boo
 // It uses seed-and-extend strategy and looks for the best alignment candidates through several iterations.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCall) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
-	rand_gen *rand.Rand, var_results chan *VarInfo) {
+	rand_gen *rand.Rand, var_results []chan *VarInfo) {
 
 	//-----------------------------------------------------------------------------------------------
 	//in case of simulated reads, get info with specific format of testing dataset
@@ -573,123 +459,21 @@ func (VC *VarCall) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnI
 		}
 		for _, var_info := range vars_get1 {
 			var_info.MProb = map_qual
-			var_results <- var_info
+			var_results[locate_segment(var_info.Pos)] <- var_info
 		}
 		for _, var_info := range vars_get2 {
 			var_info.MProb = map_qual
-			var_results <- var_info
+			var_results[locate_segment(var_info.Pos)] <- var_info
 		}
 		return
 	}
 	//Get unaligned paired-end reads
-	uai := UnAlignInfo{}
+	uai := UnAlnRead{}
 	if PARA_INFO.Debug_mode {
 		uai.read_info1 = read_info1
 		uai.read_info2 = read_info2
 	}
 	UNALIGN_INFO_CHAN <- uai
-}
-
-func locate_segment(var_pos uint32) int {
-	var segment_id int
-	segment_len := uint32(len(MULTI_GENOME.Seq) / 32)
-
-	if var_pos == segment_len*15 {
-		segment_id = 15
-	} else if var_pos < segment_len*15 {
-		if var_pos == segment_len*7 {
-			segment_id = 7
-		} else if var_pos < segment_len*7 {
-			if var_pos == segment_len*3 {
-				segment_id = 3
-			} else if var_pos < segment_len*3 {
-				if var_pos == segment_len {
-					segment_id = 1
-				} else if var_pos < segment_len {
-					segment_id = 0
-				} else {
-					segment_id = 2
-				}
-			} else {
-				if var_pos == segment_len*5 {
-					segment_id = 5
-				} else if var_pos < segment_len*5 {
-					segment_id = 4
-				} else {
-					segment_id = 6
-				}
-			}
-		} else {
-			if var_pos == segment_len*11 {
-				segment_id = 11
-			} else if var_pos < segment_len*11 {
-				if var_pos == segment_len*9 {
-					segment_id = 9
-				} else if var_pos < segment_len*9 {
-					segment_id = 8
-				} else {
-					segment_id = 10
-				}
-			} else {
-				if var_pos == segment_len*13 {
-					segment_id = 13
-				} else if var_pos < segment_len*13 {
-					segment_id = 12
-				} else {
-					segment_id = 14
-				}
-			}
-		}
-	} else {
-		if var_pos == segment_len*23 {
-			segment_id = 23
-		} else if var_pos < segment_len*23 {
-			if var_pos == segment_len*19 {
-				segment_id = 19
-			} else if var_pos < segment_len*19 {
-				if var_pos == segment_len*17 {
-					segment_id = 17
-				} else if var_pos < segment_len*17 {
-					segment_id = 16
-				} else {
-					segment_id = 18
-				}
-			} else {
-				if var_pos == segment_len*21 {
-					segment_id = 21
-				} else if var_pos < segment_len*21 {
-					segment_id = 20
-				} else {
-					segment_id = 22
-				}
-			}
-		} else {
-			if var_pos == segment_len*27 {
-				segment_id = 27
-			} else if var_pos < segment_len*27 {
-				if var_pos == segment_len*25 {
-					segment_id = 25
-				} else if var_pos < segment_len*25 {
-					segment_id = 24
-				} else {
-					segment_id = 26
-				}
-			} else {
-				if var_pos == segment_len*29 {
-					segment_id = 29
-				} else if var_pos < segment_len*29 {
-					segment_id = 28
-				} else {
-					if var_pos < segment_len*31 {
-						segment_id = 30
-					} else {
-						segment_id = 31
-					}
-				}
-			}
-		}
-	}
-	return segment_id
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -1049,9 +833,117 @@ func (VC *VarCall) OutputVarCalls() {
 	}
 	w.Flush()
 	output_var_time := time.Since(start_time)
-	PrintProcessMem("Memstats after outputing variant calls")
+	if PARA_INFO.Debug_mode {
+		PrintProcessMem("Memstats after outputing variant calls")
+	}
 	log.Printf("Time for outputing variant calls:\t%s", output_var_time)
 	log.Printf("Finish outputing variant calls.")
 	log.Printf("------------------------------------------------------")
 	log.Printf("Check results in the file: %s", PARA_INFO.Var_call_file)
+}
+
+//---------------------------------------------------------------------------------------------------
+// locate_segment return segment id for a postion
+//---------------------------------------------------------------------------------------------------
+func locate_segment(var_pos uint32) int {
+	var segment_id int
+	segment_len := uint32(len(MULTI_GENOME.Seq) / 32)
+    if var_pos >= segment_len*15 && var_pos < segment_len*16 {
+        segment_id = 15
+    } else if var_pos < segment_len*15 {
+        if var_pos >= segment_len*7 && var_pos < segment_len*8 {
+			segment_id = 7
+        } else if var_pos < segment_len*7 {
+			if var_pos >= segment_len*3 && var_pos < segment_len*4{
+				segment_id = 3
+			} else if var_pos < segment_len*3 {
+				if var_pos >= segment_len && var_pos < segment_len*2 {
+					segment_id = 1
+				} else if var_pos < segment_len {
+					segment_id = 0
+				} else {
+					segment_id = 2
+				}
+            } else {
+                if var_pos >= segment_len*5 && var_pos < segment_len*6 {
+                    segment_id = 5
+                } else if var_pos < segment_len*5 {
+                    segment_id = 4
+                } else {
+                    segment_id = 6
+                }
+            }
+        } else {
+			if var_pos >= segment_len*11 && var_pos < segment_len*12 {
+				segment_id = 11
+			} else if var_pos < segment_len*11 {
+				if var_pos >= segment_len*9 && var_pos < segment_len*10 {
+					segment_id = 9
+				} else if var_pos < segment_len*9 {
+					segment_id = 8
+				} else {
+                    segment_id = 10
+                }
+            } else {
+                if var_pos >= segment_len*13 && var_pos < segment_len*14 {
+                    segment_id = 13
+                } else if var_pos < segment_len*13 {
+                    segment_id = 12
+                } else {
+                    segment_id = 14
+                }
+            }
+        }
+    } else {
+		if var_pos >= segment_len*23 && var_pos < segment_len*24 {
+			segment_id = 23
+        } else if var_pos < segment_len*23 {
+			if var_pos >= segment_len*19 && var_pos < segment_len*20 {
+				segment_id = 19
+            } else if var_pos < segment_len*19 {
+                if var_pos >= segment_len*17 && var_pos < segment_len*18 {
+                    segment_id = 17
+                } else if var_pos < segment_len*17 {
+                    segment_id = 16
+                } else {
+                    segment_id = 18
+                }
+            } else {
+                if var_pos >= segment_len*21 && var_pos < segment_len*22 {
+                    segment_id = 21
+                } else if var_pos < segment_len*21 {
+                    segment_id = 20
+                } else {
+                    segment_id = 22
+                }
+			}
+		} else {
+            if var_pos >= segment_len*27 && var_pos < segment_len*28 {
+                segment_id = 27
+            } else if var_pos < segment_len*27 {
+                if var_pos >= segment_len*25 && var_pos < segment_len*26 {
+                    segment_id = 25
+                } else if var_pos < segment_len*25 {
+                    segment_id = 24
+                } else {
+                    segment_id = 26
+				}
+            } else {
+				if var_pos >= segment_len*29 && var_pos < segment_len*30 {
+                    segment_id = 29
+				} else if var_pos < segment_len*29 {
+					segment_id = 28
+                } else {
+					if var_pos < segment_len*31 {
+						segment_id = 30
+                    } else if var_pos < segment_len*32 {
+                        segment_id = 31
+                    } else {
+						segment_id = -1
+					}
+                }
+            }
+        }
+    }
+    return segment_id
 }
