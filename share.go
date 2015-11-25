@@ -109,16 +109,15 @@ func Setup(input_para *ParaInfo) {
 	PARA = SetupPara(input_para)
 
 	if PARA.Debug_mode {
+		MEM_STATS = new(runtime.MemStats)
 		if CPU_FILE, e = os.Create(PARA.Var_call_file + ".cprof"); e != nil {
 			log.Panicf("Error: %s", e)
 		}
 		pprof.StartCPUProfile(CPU_FILE)
-		defer pprof.StopCPUProfile()
 
 		if MEM_FILE, e = os.Create(PARA.Var_call_file + ".mprof"); e != nil {
 			log.Panicf("Error: %s", e)
 		}
-		defer MEM_FILE.Close()
 		log.Printf("Debug mode:\tCpu_prof_file: %s, Mem_prof_file: %s", PARA.Var_call_file+".cprof", PARA.Var_call_file+".mprof")
 	}
 
@@ -149,8 +148,6 @@ func Setup(input_para *ParaInfo) {
 
 	//Initialize "local-global" variable which shared by all downstream functions from CallVariants function.
 	//May consider a better solution later.
-	MEM_STATS = new(runtime.MemStats)
-
 	Q2C = make(map[byte]float64)
 	Q2E = make(map[byte]float64)
 	Q2P = make(map[byte]float64)

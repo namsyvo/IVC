@@ -25,16 +25,16 @@ type VarProfInfo struct {
 //-------------------------------------------------------------------------------------------------
 // BuildMultiGenome builds multi-sequence from a standard reference genome and a variant profile.
 //-------------------------------------------------------------------------------------------------
-func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_name [][]byte,
+func BuildMultiGenome(genome_file, var_prof_file string, debug_mode bool) (chr_pos []int, chr_name [][]byte,
 	seq []byte, var_prof map[string]map[int]VarProfInfo) {
 
 	chr_pos, chr_name, seq = GetGenome(genome_file)
-	if PARA.Debug_mode {
-		PrintProcessMem("Memstats after reading reference genome")
+	if debug_mode {
+		PrintMemStats("Memstats after reading reference genome")
 	}
 	var_prof = GetVarProfInfo(var_prof_file)
-	if PARA.Debug_mode {
-		PrintProcessMem("Memstats after reading variant profile")
+	if debug_mode {
+		PrintMemStats("Memstats after reading variant profile")
 	}
 	var contig_name string
 	var name_check bool

@@ -24,6 +24,7 @@ func main() {
 	var genome_file = flag.String("R", "", "reference genome file")
 	var var_prof_file = flag.String("V", "", "variant profile file")
 	var idx_dir = flag.String("I", "", "index directory")
+	var debug_mode = flag.Bool("debug", false, "turn on debug mode.")
 	flag.Parse()
 
 	if _, err := os.Stat(*idx_dir); err != nil {
@@ -43,8 +44,10 @@ func main() {
 	ivc.MEM_STATS = new(runtime.MemStats)
 
 	start_time := time.Now()
-	chr_pos, chr_name, multi_seq, var_prof := ivc.BuildMultiGenome(*genome_file, *var_prof_file)
-	ivc.PrintProcessMem("Memstats after building multi-sequence")
+	chr_pos, chr_name, multi_seq, var_prof := ivc.BuildMultiGenome(*genome_file, *var_prof_file, *debug_mode)
+	if *debug_mode {
+		ivc.PrintMemStats("Memstats after building multi-sequence")
+	}
 
 	multi_seq_len := len(multi_seq)
 	rev_multi_seq := make([]byte, multi_seq_len)
@@ -65,7 +68,9 @@ func main() {
 	log.Printf("Variant profile index file: %s", var_prof_idx_file_name)
 
 	log.Printf("Time for creating multi-sequence and variant profile index:\t%s", gen_time)
-	ivc.PrintProcessMem("Memstats after creating multi-sequence and variant profile index")
+	if *debug_mode {
+		ivc.PrintMemStats("Memstats after creating multi-sequence and variant profile index")
+	}
 	log.Printf("Finish creating multi-sequence and variant profile index.")
 	//--------------------------------------------------------------------------//
 
@@ -77,7 +82,9 @@ func main() {
 	fmi.Save(rev_multi_seq_file_name)
 	index_time := time.Since(start_time)
 	log.Printf("Time for indexing multi-sequence:\t%s", index_time)
-	ivc.PrintProcessMem("Memstats after indexing multi-sequence")
+	if *debug_mode {
+		ivc.PrintMemStats("Memstats after indexing multi-sequence")
+	}
 	log.Printf("Index directory for multi-sequence: %s", rev_multi_seq_file_name+".index/")
 	log.Printf("Finish indexing multi-sequence.")
 }

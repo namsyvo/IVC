@@ -205,7 +205,7 @@ func NewVariantCaller() *VarCall {
 	}
 	index_time := time.Since(start_time)
 	if PARA.Debug_mode {
-		PrintProcessMem("Memstats after initializing the variant caller")
+		PrintMemStats("Memstats after initializing the variant caller")
 	}
 	log.Printf("Time for initializing the variant caller:\t%s", index_time)
 	log.Printf("Finish initializing the variant caller.")
@@ -219,9 +219,6 @@ func NewVariantCaller() *VarCall {
 func (VC *VarCall) CallVariants() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Calling variants...")
-	if PARA.Debug_mode {
-		log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
-	}
 	start_time := time.Now()
 	//The channel read_signal is used for signaling between goroutines which run ReadReads and SearchVariants.
 	//When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
@@ -264,8 +261,8 @@ func (VC *VarCall) CallVariants() {
 	}
 	log.Printf("Number of no-aligned reads:\t%d", unaln_read_num)
 	if PARA.Debug_mode {
-		ProcessNoAlignReadInfo()
-		PrintProcessMem("Memstats after calling variants")
+		//ProcessNoAlignReadInfo()
+		PrintMemStats("Memstats after calling variants")
 	}
 	call_var_time := time.Since(start_time)
 	log.Printf("Time for calling variants:\t%s", call_var_time)
@@ -322,7 +319,7 @@ func (VC *VarCall) ReadReads(read_data chan *ReadInfo, read_signal chan bool) {
 		if read_num%10000 == 0 {
 			log.Println("Processed " + strconv.Itoa(read_num) + " reads")
 			if PARA.Debug_mode {
-				PrintProcessMem("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
+				//PrintMemStats("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
 				pprof.WriteHeapProfile(MEM_FILE)
 			}
 		}
@@ -876,7 +873,10 @@ func (VC *VarCall) OutputVarCalls() {
 	w.Flush()
 	output_var_time := time.Since(start_time)
 	if PARA.Debug_mode {
-		PrintProcessMem("Memstats after outputing variant calls")
+		PrintMemStats("Memstats after outputing variant calls")
+		pprof.StopCPUProfile()
+		CPU_FILE.Close()
+		MEM_FILE.Close()
 	}
 	log.Printf("Time for outputing variant calls:\t%s", output_var_time)
 	log.Printf("Finish outputing variant calls.")

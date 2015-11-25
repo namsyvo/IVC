@@ -16,14 +16,14 @@ import (
 
 //Global variable for turnning on/off info profiling
 var (
-	PRINT_PROCESS_MEM = true
+	PRINT_MEMSTATS = false
 
-	PRINT_EDIT_DIST_INFO     = true
+	PRINT_EDIT_DIST_INFO     = false
 	PRINT_EDIT_DIST_MAT_INFO = false
 
-	PRINT_VAR_CALL_INFO    = true
-	PRINT_ALIGN_TRACE_INFO = true
-	PRINT_UNALIGN_INFO     = true
+	PRINT_VAR_CALL_INFO    = false
+	PRINT_ALIGN_TRACE_INFO = false
+	PRINT_UNALIGN_INFO     = false
 )
 
 //Global variable for memory profiling
@@ -34,18 +34,14 @@ var (
 )
 
 //Printing memory information
-func PrintProcessMem(mesg string) {
-	if PRINT_PROCESS_MEM {
-		PrintMemStats(mesg)
-	}
-}
-
 func PrintMemStats(mesg string) {
-	runtime.ReadMemStats(MEM_STATS)
-	log.Printf(mesg+"\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f",
-		float64(MEM_STATS.Alloc)/(math.Pow(1024, 3)), float64(MEM_STATS.TotalAlloc)/(math.Pow(1024, 3)),
-		float64(MEM_STATS.Sys)/(math.Pow(1024, 3)), float64(MEM_STATS.HeapAlloc)/(math.Pow(1024, 3)),
-		float64(MEM_STATS.HeapSys)/(math.Pow(1024, 3)))
+	if PRINT_MEMSTATS {
+		runtime.ReadMemStats(MEM_STATS)
+		log.Printf(mesg+"\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f",
+			float64(MEM_STATS.Alloc)/(math.Pow(1024, 3)), float64(MEM_STATS.TotalAlloc)/(math.Pow(1024, 3)),
+			float64(MEM_STATS.Sys)/(math.Pow(1024, 3)), float64(MEM_STATS.HeapAlloc)/(math.Pow(1024, 3)),
+			float64(MEM_STATS.HeapSys)/(math.Pow(1024, 3)))
+	}
 }
 
 //------------------------
