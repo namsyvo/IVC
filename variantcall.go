@@ -227,25 +227,21 @@ func (VC *VarCall) CallVariants() {
 	//When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
 	//to scan next reads.
 	read_signal := make(chan bool)
-	result_signal := make([]chan bool, 32)
-	for i := 0; i < 32; i++ {
-		result_signal[i] = make(chan bool)
-	}
-	read_data := make(chan *ReadInfo, PARA.Proc_num)
-	var_results := make([]chan *VarInfo, 32)
-	for i := 0; i < 32; i++ {
+	read_data := make(chan *ReadInfo)
+	var_results := make([]chan *VarInfo, PARA.Proc_num)
+	for i := 0; i < PARA.Proc_num; i++ {
 		var_results[i] = make(chan *VarInfo)
 	}
 	var wg sync.WaitGroup
 	//Call a goroutine to read input reads
 	go VC.ReadReads(read_data, read_signal)
 	//Call goroutines to search for variants, pass shared variable to each goroutine
-	for i := 0; i < PARA.Proc_num; i++ {
+	for i := 0; i < 32; i++ {
 		wg.Add(1)
 		go VC.SearchVariants(read_data, read_signal, var_results, &wg)
 	}
 	//Collect variants from results channel and update variant probabilities
-	for i := 0; i < 32; i++ {
+	for i := 0; i < PARA.Proc_num; i++ {
 		go func(i int) {
 			for var_info := range var_results[i] {
 				VC.UpdateVariantProb(var_info)
