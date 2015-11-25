@@ -17,67 +17,7 @@ import (
 	"strings"
 )
 
-//--------------------------------------------------------------------------------------------------
-//MultiGenome represents multi-genome.
-//--------------------------------------------------------------------------------------------------
-type MultiGenome struct {
-	Seq        []byte            //multi-genome sequence.
-	ChrPos     []int             //position (first base) of the chromosome on whole-genome.
-	ChrName    [][]byte          //chromosome names
-	Variants   map[int][][]byte  //variants (position, variants).
-	VarAF      map[int][]float32 //allele frequency of variants (position, allele frequency).
-	SameLenVar map[int]int       //indicate if variants has same length (SNPs or MNPs).
-	DelVar     map[int]int       //length of deletions if variants are deletion.
-	RevFMI     *FMIndex          //FM-index of reverse multigenomes (to do forward search).
-}
-
-//--------------------------------------------------------------------------------------------------
-// MultiGenome creates a multi-genome instance and set up its content.
-//--------------------------------------------------------------------------------------------------
-func NewMultiGenome(para_info *ParaInfo) *MultiGenome {
-	M := new(MultiGenome)
-	M.RevFMI = Load(para_info.Rev_index_file)
-	if PARA_INFO.Debug_mode {
-		log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
-		PrintMemStats("Memstats after loading index of multi-sequence")
-	}
-	M.ChrPos, M.ChrName, M.Seq = LoadMultiSeq(para_info.Ref_file)
-	if PARA_INFO.Debug_mode {
-		PrintMemStats("Memstats after loading multi-sequence")
-	}
-	M.Variants, M.VarAF = LoadVarProf(para_info.Var_prof_file)
-	if PARA_INFO.Debug_mode {
-		PrintMemStats("Memstats after loading variant profile")
-	}
-	M.SameLenVar = make(map[int]int)
-	M.DelVar = make(map[int]int)
-	var same_len_flag, del_flag bool
-	var var_len int
-	for var_pos, var_bases := range M.Variants {
-		var_len = len(var_bases[0])
-		same_len_flag, del_flag = true, true
-		for _, val := range var_bases[1:] {
-			if var_len != len(val) {
-				same_len_flag = false
-			}
-			if var_len <= len(val) {
-				del_flag = false
-			}
-		}
-		if same_len_flag {
-			M.SameLenVar[var_pos] = var_len
-		}
-		if del_flag {
-			M.DelVar[var_pos] = var_len - 1
-		}
-	}
-	if PARA_INFO.Debug_mode {
-		PrintMemStats("Memstats after creating auxiliary data structures")
-	}
-	return M
-}
-
-type VarProf struct {
+type VarProfInfo struct {
 	Variant [][]byte
 	AleFreq []float32
 }
@@ -86,14 +26,14 @@ type VarProf struct {
 // BuildMultiGenome builds multi-sequence from a standard reference genome and a variant profile.
 //-------------------------------------------------------------------------------------------------
 func BuildMultiGenome(genome_file, var_prof_file string) (chr_pos []int, chr_name [][]byte,
-	seq []byte, var_prof map[string]map[int]VarProf) {
+	seq []byte, var_prof map[string]map[int]VarProfInfo) {
 
 	chr_pos, chr_name, seq = GetGenome(genome_file)
-	if PARA_INFO.Debug_mode {
+	if PARA.Debug_mode {
 		PrintProcessMem("Memstats after reading reference genome")
 	}
-	var_prof = GetVarProf(var_prof_file)
-	if PARA_INFO.Debug_mode {
+	var_prof = GetVarProfInfo(var_prof_file)
+	if PARA.Debug_mode {
 		PrintProcessMem("Memstats after reading variant profile")
 	}
 	var contig_name string
@@ -244,7 +184,7 @@ func LoadVarProf(file_name string) (variant map[int][][]byte, af map[int][]float
 //-------------------------------------------------------------------------------------------------
 // SaveVarProf saves variant profile to file.
 //-------------------------------------------------------------------------------------------------
-func SaveVarProf(file_name string, chr_pos []int, chr_name [][]byte, var_prof map[string]map[int]VarProf) {
+func SaveVarProf(file_name string, chr_pos []int, chr_name [][]byte, var_prof map[string]map[int]VarProfInfo) {
 	f, e := os.Create(file_name)
 	if e != nil {
 		log.Panicf("Error: %s", e)
@@ -252,7 +192,7 @@ func SaveVarProf(file_name string, chr_pos []int, chr_name [][]byte, var_prof ma
 	defer f.Close()
 	w := bufio.NewWriter(f)
 	var var_pos []int
-	var var_prof_chr map[int]VarProf
+	var var_prof_chr map[int]VarProfInfo
 	for i, contig_name := range chr_name {
 		var_prof_chr = var_prof[string(contig_name)]
 		var_pos = make([]int, 0)
@@ -306,9 +246,9 @@ func GetGenome(file_name string) (chr_pos []int, chr_name [][]byte, seq []byte) 
 }
 
 //--------------------------------------------------------------------------------------------------
-// GetVarProf gets variant profile from VCF files.
+// GetVarProfInfo gets variant profile from VCF files.
 //--------------------------------------------------------------------------------------------------
-func GetVarProf(file_name string) map[string]map[int]VarProf {
+func GetVarProfInfo(file_name string) map[string]map[int]VarProfInfo {
 
 	f, e := os.Open(file_name)
 	if e != nil {
@@ -316,7 +256,7 @@ func GetVarProf(file_name string) map[string]map[int]VarProf {
 	}
 	defer f.Close()
 
-	var_prof := make(map[string]map[int]VarProf)
+	var_prof := make(map[string]map[int]VarProfInfo)
 	var line, sline, info, sub_info, tmp_af []byte
 	var sub_line, sub_info_part, info_arr [][]byte
 	var i, var_pos int
@@ -335,7 +275,7 @@ func GetVarProf(file_name string) map[string]map[int]VarProf {
 		} else {
 			sub_line = bytes.SplitN(sline, []byte("\t"), 9)
 
-			var_prof_elem := VarProf{}
+			var_prof_elem := VarProfInfo{}
 			ref := make([]byte, len(sub_line[3]))
 			copy(ref, sub_line[3])
 			var_prof_elem.Variant = append(var_prof_elem.Variant, ref)
@@ -376,7 +316,7 @@ func GetVarProf(file_name string) map[string]map[int]VarProf {
 			}
 			chr_name := string(sub_line[0])
 			if _, ok := var_prof[chr_name]; !ok {
-				var_prof[chr_name] = make(map[int]VarProf)
+				var_prof[chr_name] = make(map[int]VarProfInfo)
 			}
 			var_pos, _ = strconv.Atoi(string(sub_line[1]))
 			var_prof[chr_name][var_pos-1] = var_prof_elem

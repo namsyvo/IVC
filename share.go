@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"log"
+	"math"
 	"os"
 	"path"
 	"runtime"
@@ -26,21 +27,14 @@ const (
 )
 
 //--------------------------------------------------------------------------------------------------
-// Global variables for whole variant calling process.
-//--------------------------------------------------------------------------------------------------
-var (
-	PARA_INFO    *ParaInfo    //program parameters
-	MULTI_GENOME *MultiGenome //multi-genome instance
-)
-
-//--------------------------------------------------------------------------------------------------
 // Global variables for calculating variant quality.
 //--------------------------------------------------------------------------------------------------
 var (
-	Q2C map[byte]float64 //pre-calculated alignment cost based on Phred-scale quality.
-	Q2E map[byte]float64 //pre-calculated error probability based on Phred-scale quality.
-	Q2P map[byte]float64 //pre-calculated not-error probability based on Phred-scale quality.
-	L2E []float64        //pre-calculated indel error rate corresponding to lengths of indels.
+	PARA *ParaInfo        //all parameters of the program
+	L2E  []float64        //indel error rate corresponding to lengths of indels.
+	Q2C  map[byte]float64 //alignment cost based on Phred-scale quality.
+	Q2E  map[byte]float64 //error probability based on Phred-scale quality.
+	Q2P  map[byte]float64 //non-error probability based on Phred-scale quality.
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -89,7 +83,7 @@ type ParaInfo struct {
 //--------------------------------------------------------------------------------------------------
 // Read input information and set up parameters
 //--------------------------------------------------------------------------------------------------
-func Setup(input_para_info *ParaInfo) {
+func Setup(input_para *ParaInfo) {
 
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Checking input information and seting up parameters...")
@@ -97,22 +91,38 @@ func Setup(input_para_info *ParaInfo) {
 	//Check input files
 	var f *os.File
 	var e error
-	if _, e = os.Stat(input_para_info.Ref_file); e != nil {
+	if _, e = os.Stat(input_para.Ref_file); e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	if _, e = os.Stat(input_para_info.Var_prof_file); e != nil {
+	if _, e = os.Stat(input_para.Var_prof_file); e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	if _, e = os.Stat(input_para_info.Rev_index_file); e != nil {
+	if _, e = os.Stat(input_para.Rev_index_file); e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	if _, e = os.Stat(input_para_info.Read_file_1); e != nil {
+	if _, e = os.Stat(input_para.Read_file_1); e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	if _, e = os.Stat(input_para_info.Read_file_2); e != nil {
+	if _, e = os.Stat(input_para.Read_file_2); e != nil {
 		log.Panicf("Error: %s", e)
 	}
-	result_dir := path.Dir(input_para_info.Var_call_file)
+	PARA = SetupPara(input_para)
+
+	if PARA.Debug_mode {
+		if CPU_FILE, e = os.Create(PARA.Var_call_file + ".cprof"); e != nil {
+			log.Panicf("Error: %s", e)
+		}
+		pprof.StartCPUProfile(CPU_FILE)
+		defer pprof.StopCPUProfile()
+
+		if MEM_FILE, e = os.Create(PARA.Var_call_file + ".mprof"); e != nil {
+			log.Panicf("Error: %s", e)
+		}
+		defer MEM_FILE.Close()
+		log.Printf("Debug mode:\tCpu_prof_file: %s, Mem_prof_file: %s", PARA.Var_call_file+".cprof", PARA.Var_call_file+".mprof")
+	}
+
+	result_dir := path.Dir(PARA.Var_call_file)
 	if _, e = os.Stat(result_dir); e != nil {
 		if os.IsNotExist(e) {
 			if e = os.Mkdir(result_dir, 0777); e != nil {
@@ -122,11 +132,11 @@ func Setup(input_para_info *ParaInfo) {
 			log.Panicf("Error: %s", e)
 		}
 	}
-	if f, e = os.Create(input_para_info.Var_call_file); e != nil {
+	if f, e = os.Create(PARA.Var_call_file); e != nil {
 		log.Panicf("Error: %s", e)
 	}
 	w := bufio.NewWriter(f)
-	if input_para_info.Debug_mode == false {
+	if PARA.Debug_mode == false {
 		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
 			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\n")
 	} else {
@@ -137,23 +147,24 @@ func Setup(input_para_info *ParaInfo) {
 	w.Flush()
 	f.Close()
 
+	//Initialize "local-global" variable which shared by all downstream functions from CallVariants function.
+	//May consider a better solution later.
 	MEM_STATS = new(runtime.MemStats)
 
-	PARA_INFO = SetupPara(input_para_info)
-	//runtime.GOMAXPROCS(PARA_INFO.Proc_num)
-
-	if input_para_info.Debug_mode {
-		if CPU_FILE, e = os.Create(input_para_info.Var_call_file + ".cprof"); e != nil {
-			log.Panicf("Error: %s", e)
-		}
-		pprof.StartCPUProfile(CPU_FILE)
-		defer pprof.StopCPUProfile()
-
-		if MEM_FILE, e = os.Create(input_para_info.Var_call_file + ".mprof"); e != nil {
-			log.Panicf("Error: %s", e)
-		}
-		defer MEM_FILE.Close()
-		log.Printf("Debug mode:\tCpu_prof_file: %s, Mem_prof_file: %s", input_para_info.Var_call_file+".cprof", input_para_info.Var_call_file+".mprof")
+	Q2C = make(map[byte]float64)
+	Q2E = make(map[byte]float64)
+	Q2P = make(map[byte]float64)
+	L2E = make([]float64, PARA.Read_len) //maximum length of called indels
+	var q byte
+	for i := 33; i < 74; i++ {
+		q = byte(i)
+		//Phred-encoding factor (33) need to be estimated from input data
+		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
+		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
+		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
+	}
+	for i := 1; i < PARA.Read_len; i++ {
+		L2E[i] = math.Pow(INDEL_ERR_RATE, float64(i))
 	}
 
 	log.Printf("Finish checking input information and seting up parameters.")
@@ -162,11 +173,11 @@ func Setup(input_para_info *ParaInfo) {
 //--------------------------------------------------------------------------------------------------
 // SetupPara setups values of parameters for alignment process
 //--------------------------------------------------------------------------------------------------
-func SetupPara(input_para_info *ParaInfo) *ParaInfo {
+func SetupPara(input_para *ParaInfo) *ParaInfo {
 
-	para_info := input_para_info
+	para := input_para
 
-	f, e := os.Open(para_info.Read_file_1)
+	f, e := os.Open(para.Read_file_1)
 	if e != nil {
 		log.Panicf("Error: %s", e)
 	}
@@ -174,15 +185,15 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 	s.Scan()
 	header := s.Bytes()
 	if len(header) > 0 {
-		para_info.Info_len = len(header) + 20 //there might be longer header
+		para.Info_len = len(header) + 20 //there might be longer header
 	} else {
-		para_info.Info_len = 100
+		para.Info_len = 100
 		log.Printf("Possibly missing header")
 	}
 	s.Scan()
 	read := s.Bytes()
 	if len(read) > 0 {
-		para_info.Read_len = len(read)
+		para.Read_len = len(read)
 	} else {
 		log.Panicf("Something is wrong with input read sequence.")
 	}
@@ -190,102 +201,102 @@ func SetupPara(input_para_info *ParaInfo) *ParaInfo {
 
 	//700 is maximum insert size of paired-end testing reads
 	//will be estimated based on input reads
-	para_info.Max_ins = 700
+	para.Max_ins = 700
 
 	//0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
 	//will be set up based on input reads
-	para_info.Err_rate = 0.0015
-	para_info.Mut_rate = 0.01
+	para.Err_rate = 0.0015
+	para.Mut_rate = 0.01
 
-	para_info.Err_var_factor = 4
-	para_info.Mut_var_factor = 2
-	para_info.Iter_num_factor = 2
+	para.Err_var_factor = 4
+	para.Mut_var_factor = 2
+	para.Iter_num_factor = 2
 
-	para_info.Seed_backup = 6
-	para_info.Ham_backup = 15
-	para_info.Indel_backup = 30
+	para.Seed_backup = 6
+	para.Ham_backup = 15
+	para.Indel_backup = 30
 
 	//Setup input parameters if not specified
-	if input_para_info.Search_mode == 0 {
-		para_info.Search_mode = 1
+	if input_para.Search_mode == 0 {
+		para.Search_mode = 1
 		log.Printf("No or invalid input for searching mode, use default strategy (randomizaion).")
-	} else if input_para_info.Search_mode == 1 {
-		if input_para_info.Start_pos == 0 {
-			para_info.Start_pos = 512
-			log.Printf("Deterministic search mode: no or invalid input for start postion on reads to find seeds, use default value (%d).", para_info.Start_pos)
+	} else if input_para.Search_mode == 1 {
+		if input_para.Start_pos == 0 {
+			para.Start_pos = 512
+			log.Printf("Deterministic search mode: no or invalid input for start postion on reads to find seeds, use default value (%d).", para.Start_pos)
 		}
-		if input_para_info.Search_step == 0 {
-			para_info.Search_step = 512
-			log.Printf("Deterministic search mode: no or invalid input for searching step, use default value (%d).", para_info.Search_step)
+		if input_para.Search_step == 0 {
+			para.Search_step = 512
+			log.Printf("Deterministic search mode: no or invalid input for searching step, use default value (%d).", para.Search_step)
 		}
 	}
-	if input_para_info.Max_snum == 0 {
-		para_info.Max_snum = 512
-		log.Printf("No or invalid input for maximum number of seeds, use default value (%d).", para_info.Max_snum)
+	if input_para.Max_snum == 0 {
+		para.Max_snum = 512
+		log.Printf("No or invalid input for maximum number of seeds, use default value (%d).", para.Max_snum)
 	}
-	if input_para_info.Max_psnum == 0 {
-		para_info.Max_psnum = 128
-		log.Printf("No or invalid input for maximum number of paired-seeds, use default value (%d).", para_info.Max_psnum)
+	if input_para.Max_psnum == 0 {
+		para.Max_psnum = 128
+		log.Printf("No or invalid input for maximum number of paired-seeds, use default value (%d).", para.Max_psnum)
 	}
-	if input_para_info.Min_slen == 0 {
-		para_info.Min_slen = 15
-		log.Printf("No or invalid input for minimum length of seeds, use default value (%d).", para_info.Min_slen)
+	if input_para.Min_slen == 0 {
+		para.Min_slen = 15
+		log.Printf("No or invalid input for minimum length of seeds, use default value (%d).", para.Min_slen)
 	}
-	if input_para_info.Max_slen == 0 {
-		para_info.Max_slen = 25
-		log.Printf("No or invalid input for maximum length of seeds, use default value (%d).", para_info.Max_slen)
+	if input_para.Max_slen == 0 {
+		para.Max_slen = 25
+		log.Printf("No or invalid input for maximum length of seeds, use default value (%d).", para.Max_slen)
 	}
-	if input_para_info.Sub_cost == 0 {
-		para_info.Sub_cost = 4
-		log.Printf("No or invalid input for substitution cost of alignment, use default value (%.1f).", para_info.Sub_cost)
+	if input_para.Sub_cost == 0 {
+		para.Sub_cost = 4
+		log.Printf("No or invalid input for substitution cost of alignment, use default value (%.1f).", para.Sub_cost)
 	}
-	if input_para_info.Gap_open == 0 {
-		para_info.Gap_open = 4.1
-		log.Printf("No or invalid input for gap open cost of alignment, use default value (%.1f).", para_info.Gap_open)
+	if input_para.Gap_open == 0 {
+		para.Gap_open = 4.1
+		log.Printf("No or invalid input for gap open cost of alignment, use default value (%.1f).", para.Gap_open)
 	}
-	if input_para_info.Gap_ext == 0 {
-		para_info.Gap_ext = 1
-		log.Printf("No or invalid input for gap extension cost of alignment, use default value (%.1f).", para_info.Gap_ext)
+	if input_para.Gap_ext == 0 {
+		para.Gap_ext = 1
+		log.Printf("No or invalid input for gap extension cost of alignment, use default value (%.1f).", para.Gap_ext)
 	}
 
-	if input_para_info.Dist_thres == 0 {
+	if input_para.Dist_thres == 0 {
 		/*
-				err := float64(para_info.Err_rate)
-				rlen := float64(para_info.Read_len)
-				mut := float64(para_info.Mut_rate)
-				k1 := float64(para_info.Err_var_factor)
-				k2 := float64(para_info.Mut_var_factor)
+				err := float64(para.Err_rate)
+				rlen := float64(para.Read_len)
+				mut := float64(para.Mut_rate)
+				k1 := float64(para.Err_var_factor)
+				k2 := float64(para.Mut_var_factor)
 				var_dist = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) + int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
-			    para_info.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
+			    para.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
 		*/
-		para_info.Dist_thres = 36
-		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%.1f).", para_info.Dist_thres)
+		para.Dist_thres = 36
+		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%.1f).", para.Dist_thres)
 	}
-	if input_para_info.Iter_num == 0 {
-		//para_info.Iter_num = para_info.Iter_num_factor * (para_info.Dist_thres + 1)
-		para_info.Iter_num = 12
-		log.Printf("No or invalid input for numbers of random iterations, calculate based on input data (%d).", para_info.Iter_num)
+	if input_para.Iter_num == 0 {
+		//para.Iter_num = para.Iter_num_factor * (para.Dist_thres + 1)
+		para.Iter_num = 12
+		log.Printf("No or invalid input for numbers of random iterations, calculate based on input data (%d).", para.Iter_num)
 	}
 
-	if input_para_info.Proc_num == 0 {
-		para_info.Proc_num = runtime.NumCPU()
-		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (%d).", para_info.Proc_num)
+	if input_para.Proc_num == 0 {
+		para.Proc_num = runtime.NumCPU()
+		log.Printf("No or invalid input for number of threads, use maximum number of CPUs of the current machine (%d).", para.Proc_num)
 	}
 
 	log.Printf("Input files:\tGenome_file: %s, Var_file: %s, Index_file=%s, Read_file_1=%s, Read_file_2=%s, Var_call_file=%s",
-		para_info.Ref_file, para_info.Var_prof_file, para_info.Rev_index_file, para_info.Read_file_1, para_info.Read_file_2, para_info.Var_call_file)
+		para.Ref_file, para.Var_prof_file, para.Rev_index_file, para.Read_file_1, para.Read_file_2, para.Var_call_file)
 
 	log.Printf("Input paras:\tSearch_mode=%d, Start_pos=%d, Search_step=%d, Max_snum=%d, Max_psnum=%d, "+
 		"Min_slen=%d, Max_slen=%d, Dist_thres=%.1f, Iter_num=%d, Sub_cost=%.1f, Gap_open=%.1f, Gap_ext=%.1f, Proc_num=%d, Debug_mode=%t",
-		para_info.Search_mode, para_info.Start_pos, para_info.Search_step, para_info.Max_snum, para_info.Max_psnum, para_info.Min_slen, para_info.Max_slen,
-		para_info.Dist_thres, para_info.Iter_num, para_info.Sub_cost, para_info.Gap_open, para_info.Gap_ext, para_info.Proc_num, para_info.Debug_mode)
+		para.Search_mode, para.Start_pos, para.Search_step, para.Max_snum, para.Max_psnum, para.Min_slen, para.Max_slen,
+		para.Dist_thres, para.Iter_num, para.Sub_cost, para.Gap_open, para.Gap_ext, para.Proc_num, para.Debug_mode)
 
 	log.Printf("Prog paras:\tMax_ins=%d, Max_err=%.5f, Mut_rate=%.5f, Err_var_factor=%d, Mut_var_factor=%d, Iter_num_factor=%d, "+
-		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para_info.Max_ins, para_info.Err_rate, para_info.Mut_rate,
-		para_info.Err_var_factor, para_info.Mut_var_factor, para_info.Iter_num_factor, para_info.Read_len, para_info.Info_len,
-		para_info.Seed_backup, para_info.Ham_backup, para_info.Indel_backup)
+		"Read_len=%d, Info_len=%d, Seed_backup=%d, Ham_backup=%d, Indel_backup=%d", para.Max_ins, para.Err_rate, para.Mut_rate,
+		para.Err_var_factor, para.Mut_var_factor, para.Iter_num_factor, para.Read_len, para.Info_len,
+		para.Seed_backup, para.Ham_backup, para.Indel_backup)
 
-	return para_info
+	return para
 }
 
 //--------------------------------------------------------------------------------------------------

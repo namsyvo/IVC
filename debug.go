@@ -262,7 +262,7 @@ func GetNoAlignReadInfo() {
 func ProcessNoAlignReadInfo() {
 	if PRINT_UNALIGN_INFO {
 		fmt.Println("Processing noaligned read info...")
-		file, _ := os.Create(PARA_INFO.Var_call_file + ".unalign")
+		file, _ := os.Create(PARA.Var_call_file + ".unalign")
 		defer file.Close()
 		for _, uai := range UNALIGN_INFO_ARR {
 			file.WriteString(string(uai.read_info1) + "\t" + string(uai.read_info2) + "\n")
