@@ -30,7 +30,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 // LeftAlign calculates the distance between a read and a ref in backward direction.
 // The read include standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
+func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
@@ -78,7 +78,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 				n += backup_num
 				break
 			}
-			if _, is_var = VC.VarProf[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarType[uint32(ref_pos_map[n-1])]; is_var {
+			if _, is_var = VarCall[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarType[uint32(ref_pos_map[n-1])]; is_var {
 				var_pos_trace[n-1] = true
 				var_pos = append(var_pos, ref_pos_map[n-1])
 				var_base = append(var_base, []byte{read[m-1]})
@@ -88,7 +88,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 			m--
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
-			var_prof, _ = VC.VarProf[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[n-1])]
+			var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[n-1])]
 			min_p = math.MaxFloat64
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
@@ -208,7 +208,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
-				var_prof, _ = VC.VarProf[PARA.Proc_num*ref_pos_map[j-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[j-1])]
+				var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[j-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[j-1])]
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
@@ -269,7 +269,7 @@ func (VC *VarCall) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]floa
 // LeftAlignEditTraceBack constructs alignment between a read and a ref from LeftAlign.
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
+func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	var var_len int
@@ -412,7 +412,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
-					if _, is_prof_new_var := VC.VarProf[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
+					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
 						var_base = append(var_base, []byte{aln_read[i]})
 						var_qual = append(var_qual, []byte{aln_qual[i]})
@@ -435,7 +435,7 @@ func (VC *VarCall) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos 
 // RightAlign calculates the distance between a read and a ref in forward direction.
 // The read includes standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
+func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
@@ -483,7 +483,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 				n += backup_num
 				break
 			}
-			if _, is_var = VC.VarProf[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarType[uint32(ref_pos_map[N-n])]; is_var {
+			if _, is_var = VarCall[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarType[uint32(ref_pos_map[N-n])]; is_var {
 				var_pos_trace[N-n] = true
 				var_pos = append(var_pos, ref_pos_map[N-n])
 				var_base = append(var_base, []byte{read[M-m]})
@@ -494,7 +494,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
 			min_p = math.MaxFloat64
-			var_prof, _ = VC.VarProf[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-n])]
+			var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-n])]
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
 					p = AlignCostKnownLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
@@ -609,7 +609,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
-				var_prof, _ = VC.VarProf[PARA.Proc_num*ref_pos_map[N-j]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-j])]
+				var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[N-j]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-j])]
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
@@ -677,7 +677,7 @@ func (VC *VarCall) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]flo
 // RightAlignEditTraceBack constructs alignment between a read and a ref from RightAlign.
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
+func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
 	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	if PARA.Debug_mode {
@@ -832,7 +832,7 @@ func (VC *VarCall) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
-					if _, is_prof_new_var := VC.VarProf[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
+					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
 						var_base = append(var_base, []byte{aln_read[i]})
 						var_qual = append(var_qual, []byte{aln_qual[i]})

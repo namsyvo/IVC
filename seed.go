@@ -15,7 +15,7 @@ import (
 // BackwardSearchFrom searches for exact matches between a pattern and the reference using FM-index,
 // It starts to search from any position on the pattern.
 //--------------------------------------------------------------------------------------------------
-func (VC *VarCall) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int) {
+func (VC *VarCallIndex) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int) {
 	var sp, ep, offset uint32
 	var ok bool
 
@@ -52,7 +52,7 @@ func (VC *VarCall) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, 
 // It uses both backward search and forward search
 // Forward search is backward search on reverse of the reference.
 //--------------------------------------------------------------------------------------------------
-func (VC *VarCall) SearchSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
+func (VC *VarCallIndex) SearchSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
 
 	var rev_sp, rev_ep int = 0, PARA.Max_snum
 	var rev_s_pos, rev_e_pos, s_pos, e_pos int
@@ -78,7 +78,7 @@ func (VC *VarCall) SearchSeeds(read, rev_read []byte, p int, m_pos []int) (int, 
 //---------------------------------------------------------------------------------------------------
 // SearchSeedsPE searches for all pairs of seeds which have proper chromosome distances.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCall) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
+func (VC *VarCallIndex) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, rand_gen *rand.Rand) (*SeedInfo, *SeedInfo, bool) {
 
 	var has_seeds_r1_or, has_seeds_r1_rc, has_seeds_r2_or, has_seeds_r2_rc bool
 	var s_pos_r1_or, e_pos_r1_or, m_num_r1_or, s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc int
