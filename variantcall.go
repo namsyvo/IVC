@@ -362,7 +362,7 @@ func (VC *VarCallIndex) ReadReads(read_data chan *ReadInfo, read_signal chan boo
 			read_data <- read_info
 			read_signal <- true
 		}
-		if read_num%10000 == 0 {
+		if read_num%100000 == 0 {
 			log.Println("Processed " + strconv.Itoa(read_num) + " reads")
 			if PARA.Debug_mode {
 				PrintMemStats("Memstats after distributing " + strconv.Itoa(read_num) + " reads")

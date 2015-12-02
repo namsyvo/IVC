@@ -71,14 +71,14 @@ type Symb_OCC struct {
 func Load(dirname string) *Index {
 
 	I := new(Index)
-	seq_len := int(I.LEN / 100)
-	_, idx_fn := path.Split(dirname)
 
 	_load_slice := func(filename string, length uint32) []uint32 {
 		f, err := os.Open(filename)
 		check_for_error(err)
 		defer f.Close()
 
+		seq_len := int(I.LEN / 100)
+		_, idx_fn := path.Split(filename)
 		v := make([]uint32, length)
 		scanner := bufio.NewScanner(f)
 		scanner.Split(bufio.ScanBytes)
@@ -92,7 +92,7 @@ func Load(dirname string) *Index {
 			scanner.Scan()
 			v[i] += uint32(scanner.Bytes()[0]) << 24
 			if (i+1)%(10*seq_len) == 0 {
-				log.Println("Finish loading", (i+1)/seq_len, "% of", idx_fn)
+				log.Println("Finish loading", (i+1)/seq_len, "% of index file", idx_fn)
 			}
 		}
 		return v
