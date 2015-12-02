@@ -531,14 +531,12 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 	if PARA.Debug_mode {
 		PrintEditDisInput("RightAlnEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
 	}
-	/*
-		Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
-		BT_x[i][j][0]: represents direction to trace back to, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j),
-		 	2: left arrow (back to i,j-1).
-		BT_x[i][j][1]: represents matrix to trace back to, can be 0: trace back to matrix D, 1: trace back to matrix IS, 2: trace back to matrix IT.
-		BT_x[i][j][2]: represents number of shifted bases (equal to length of called variants) at known variant locations,
-			can be any integer number, e.g. 5 means back to i-5,j-1.
-	*/
+	//	Backtrace info matrices, for each BT_x[i][j] (x can be D, IS, or IT):
+	//	BT_x[i][j][0]: represents direction to trace back to, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j),
+	//	 	2: left arrow (back to i,j-1).
+	//	BT_x[i][j][1]: represents matrix to trace back to, can be 0: trace back to matrix D, 1: trace back to matrix IS, 2: trace back to matrix IT.
+	//	BT_x[i][j][2]: represents number of shifted bases (equal to length of called variants) at known variant locations,
+	//		can be any integer number, e.g. 5 means back to i-5,j-1.
 	var i, j int
 	for i := 0; i <= m; i++ {
 		for j := 0; j <= n; j++ {

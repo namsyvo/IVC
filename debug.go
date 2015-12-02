@@ -44,7 +44,7 @@ func PrintMemStats(mesg string) {
 	}
 }
 
-// Processing unaligned-reads info
+// Printing unaligned-reads info
 var UNALIGN_READ_INFO = make([]*UnAlnReadInfo, 0)
 
 func ProcessNoAlignReadInfo() {

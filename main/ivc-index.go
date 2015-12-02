@@ -18,10 +18,10 @@ import (
 )
 
 func main() {
-	//Starting program------------------------------------------------------------------//
+
 	log.Printf("IVC - Integrated Variant Caller using next-generation sequencing data.")
 	log.Printf("IVC-index: Indexing reference genomes and variant profiles.")
-	//----------------------------------------------------------------------------------//
+
 	var genome_file = flag.String("R", "", "reference genome file")
 	var var_prof_file = flag.String("V", "", "variant profile file")
 	var idx_dir = flag.String("I", "", "index directory")
@@ -38,15 +38,15 @@ func main() {
 		}
 	}
 
-	//Creating multi_seq and variant profile index---------------------------//
+	// Creating multi-sequence and variant profile index
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Creating multi-sequence and variant profile index...")
-	log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 	ivc.MEM_STATS = new(runtime.MemStats)
 
 	start_time := time.Now()
 	chr_pos, chr_name, multi_seq, var_prof := ivc.BuildMultiGenome(*genome_file, *var_prof_file, *debug_mode)
 	if *debug_mode {
+		log.Printf("Memstats (golang name):\tAlloc\tTotalAlloc\tSys\tHeapAlloc\tHeapSys")
 		ivc.PrintMemStats("Memstats after building multi-sequence")
 	}
 
@@ -73,9 +73,8 @@ func main() {
 		ivc.PrintMemStats("Memstats after creating multi-sequence and variant profile index")
 	}
 	log.Printf("Finish creating multi-sequence and variant profile index.")
-	//--------------------------------------------------------------------------//
 
-	//Indexing multi-sequence------------------------------------------------------//
+	// Creating FM-index of multi-sequence
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Indexing multi-sequence...")
 	start_time = time.Now()

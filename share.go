@@ -20,20 +20,20 @@ import (
 // Global constants
 //--------------------------------------------------------------------------------------------------
 const (
-	NEW_SNP_RATE   = 0.00001   //probability of new alleles
-	NEW_INDEL_RATE = 0.000001  //probability of new indels
-	INDEL_ERR_RATE = 0.0000001 //probability of indel error
+	NEW_SNP_RATE   = 0.00001   // probability of new alleles
+	NEW_INDEL_RATE = 0.000001  // probability of new indels
+	INDEL_ERR_RATE = 0.0000001 // probability of indel error
 )
 
 //--------------------------------------------------------------------------------------------------
 // Global variables for calculating variant quality.
 //--------------------------------------------------------------------------------------------------
 var (
-	PARA *ParaInfo        //all parameters of the program
-	L2E  []float64        //indel error rate corresponding to lengths of indels.
-	Q2C  map[byte]float64 //alignment cost based on Phred-scale quality.
-	Q2E  map[byte]float64 //error probability based on Phred-scale quality.
-	Q2P  map[byte]float64 //non-error probability based on Phred-scale quality.
+	PARA *ParaInfo        // all parameters of the program
+	L2E  []float64        // indel error rate corresponding to lengths of indels
+	Q2C  map[byte]float64 // alignment cost based on Phred-scale quality
+	Q2E  map[byte]float64 // error probability based on Phred-scale quality
+	Q2P  map[byte]float64 // non-error probability based on Phred-scale quality
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -41,42 +41,42 @@ var (
 //--------------------------------------------------------------------------------------------------
 type ParaInfo struct {
 	//Input file names:
-	Ref_file       string //reference multigenome
-	Var_prof_file  string //variant profile
-	Index_file     string //index of original reference genomes
-	Rev_index_file string //index of reverse reference genomes
-	Read_file_1    string //first end of read
-	Read_file_2    string //second end of read
-	Var_call_file  string //store Var call
+	Ref_file       string // reference multigenome
+	Var_prof_file  string // variant profile
+	Index_file     string // index of original reference genomes
+	Rev_index_file string // index of reverse reference genomes
+	Read_file_1    string // first end of read
+	Read_file_2    string // second end of read
+	Var_call_file  string // store Var call
 
-	//Input paras:
-	Search_mode int     //searching mode for finding seeds
-	Start_pos   int     //starting postion on reads for finding seeds
-	Search_step int     //step for searching in deterministic mode
-	Max_snum    int     //maximum number of seeds
-	Max_psnum   int     //maximum number of paired-seeds
-	Min_slen    int     //minimum length of seeds
-	Max_slen    int     //maximum length of seeds
-	Dist_thres  float64 //threshold for distances between reads and multigenomes
-	Iter_num    int     //number of random iterations to find proper alignments
-	Sub_cost    float64 //cost of substitution for Hamming and Edit distance
-	Gap_open    float64 //cost of gap open for Edit distance
-	Gap_ext     float64 //cost of gap extension for Edit distance
-	Proc_num    int     //maximum number of CPUs using by Go
-	Debug_mode  bool    //debug mode for output
+	// Input paras:
+	Search_mode int     // searching mode for finding seeds
+	Start_pos   int     // starting postion on reads for finding seeds
+	Search_step int     // step for searching in deterministic mode
+	Max_snum    int     // maximum number of seeds
+	Max_psnum   int     // maximum number of paired-seeds
+	Min_slen    int     // minimum length of seeds
+	Max_slen    int     // maximum length of seeds
+	Dist_thres  float64 // threshold for distances between reads and multigenomes
+	Iter_num    int     // number of random iterations to find proper alignments
+	Sub_cost    float64 // cost of substitution for Hamming and Edit distance
+	Gap_open    float64 // cost of gap open for Edit distance
+	Gap_ext     float64 // cost of gap extension for Edit distance
+	Proc_num    int     // maximum number of CPUs using by Go
+	Debug_mode  bool    // debug mode for output
 
-	//Estimated paras:
-	Read_len        int     //read length, calculated from read files
-	Info_len        int     //maximum size of array to store read headers
-	Max_ins         int     //maximum insert size of two aligned ends
-	Err_rate        float32 //average sequencing error rate, estmated from reads with real reads
-	Err_var_factor  int     //factor for standard variation of sequencing error rate
-	Mut_rate        float32 //average mutation rate, estmated from reference genome
-	Mut_var_factor  int     //factor for standard variation of mutation rate
-	Iter_num_factor int     //factor for number of iterations
-	Seed_backup     int     //number of backup bases from seeds
-	Ham_backup      int     //number of backup bases from Hamming alignment
-	Indel_backup    int     //number of backup bases from known indels
+	// Estimated paras:
+	Read_len        int     // read length, calculated from read files
+	Info_len        int     // maximum size of array to store read headers
+	Max_ins         int     // maximum insert size of two aligned ends
+	Err_rate        float32 // average sequencing error rate, estmated from reads with real reads
+	Err_var_factor  int     // factor for standard variation of sequencing error rate
+	Mut_rate        float32 // average mutation rate, estmated from reference genome
+	Mut_var_factor  int     // factor for standard variation of mutation rate
+	Iter_num_factor int     // factor for number of iterations
+	Seed_backup     int     // number of backup bases from seeds
+	Ham_backup      int     // number of backup bases from Hamming alignment
+	Indel_backup    int     // number of backup bases from known indels
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -177,12 +177,12 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 	}
 	f.Close()
 
-	//700 is maximum insert size of paired-end testing reads
-	//will be estimated based on input reads
+	// 700 is maximum insert size of paired-end testing reads
+	// will be estimated based on input reads
 	para.Max_ins = 700
 
-	//0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
-	//will be set up based on input reads
+	// 0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
+	// will be set up based on input reads
 	para.Err_rate = 0.0015
 	para.Mut_rate = 0.01
 
@@ -194,7 +194,7 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 	para.Ham_backup = 15
 	para.Indel_backup = 30
 
-	//Setup input parameters if not specified
+	// Setup input parameters if not specified
 	if input_para.Search_mode == 0 {
 		para.Search_mode = 1
 		log.Printf("No or invalid input for searching mode, use default strategy (randomizaion).")
@@ -239,13 +239,13 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 
 	if input_para.Dist_thres == 0 {
 		/*
-				err := float64(para.Err_rate)
-				rlen := float64(para.Read_len)
-				mut := float64(para.Mut_rate)
-				k1 := float64(para.Err_var_factor)
-				k2 := float64(para.Mut_var_factor)
-				var_dist = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) + int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
-			    para.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
+			err := float64(para.Err_rate)
+			rlen := float64(para.Read_len)
+			mut := float64(para.Mut_rate)
+			k1 := float64(para.Err_var_factor)
+			k2 := float64(para.Mut_var_factor)
+			var_dist = int(math.Ceil(err*rlen+k1*math.Sqrt(rlen*err*(1-err)))) + int(math.Ceil(mut*rlen+k2*math.Sqrt(rlen*mut*(1-mut))))
+			para.Dist_thres = -float64(var_dist)*math.Log10(1-err) - float64(var_dist)*math.Log10(NEW_INDEL_RATE)
 		*/
 		para.Dist_thres = 36
 		log.Printf("No or invalid input for threshold of alignment distance, calculate based on input data (%.1f).", para.Dist_thres)
@@ -281,13 +281,13 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 // Information of input reads
 //--------------------------------------------------------------------------------------------------
 type ReadInfo struct {
-	Read1, Read2                   []byte //first and second ends
-	Qual1, Qual2                   []byte //quality info of the first read and second ends
-	Rev_read1, Rev_read2           []byte //reverse of the first and second ends
-	Rev_comp_read1, Rev_comp_read2 []byte //reverse complement of the first and second ends
-	Comp_read1, Comp_read2         []byte //complement of the first and second ends
-	Rev_qual1, Rev_qual2           []byte //quality of reverse of the first and second ends
-	Info1, Info2                   []byte //info of the first and second ends
+	Read1, Read2                   []byte // first and second ends
+	Qual1, Qual2                   []byte // quality info of the first read and second ends
+	Rev_read1, Rev_read2           []byte // reverse of the first and second ends
+	Rev_comp_read1, Rev_comp_read2 []byte // reverse complement of the first and second ends
+	Comp_read1, Comp_read2         []byte // complement of the first and second ends
+	Rev_qual1, Rev_qual2           []byte // quality of reverse of the first and second ends
+	Info1, Info2                   []byte // info of the first and second ends
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -340,20 +340,20 @@ func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []b
 // Information of seeds between reads and the multigenome.
 //---------------------------------------------------------------------------------------------------
 type SeedInfo struct {
-	s_pos  []int  //staring position of seeds on reads.
-	e_pos  []int  //ending position of seeds on reads.
-	m_pos  []int  //(left-most) matching position of seeds on the reference multigenome.
-	strand []bool //strand (forward or reverse) of matches on the reference multigenome.
+	s_pos  []int  // staring position of seeds on reads
+	e_pos  []int  // ending position of seeds on reads
+	m_pos  []int  // (left-most) matching position of seeds on the reference multigenome
+	strand []bool // strand (forward or reverse) of matches on the reference multigenome
 }
 
 //--------------------------------------------------------------------------------------------------
 // Alignment information, served as shared variables between functions for alignment process
 //--------------------------------------------------------------------------------------------------
 type EditAlnInfo struct {
-	l_Dist_D, l_Dist_IS, l_Dist_IT    [][]float64 // Distance matrix for backward alignment
-	l_Trace_D, l_Trace_IS, l_Trace_IT [][][]int   // Backtrace matrix for backward alignment
-	r_Dist_D, r_Dist_IS, r_Dist_IT    [][]float64 // Distance matrix for forward alignment
-	r_Trace_D, r_Trace_IS, r_Trace_IT [][][]int   // Backtrace matrix for forward alignment
+	l_Dist_D, l_Dist_IS, l_Dist_IT    [][]float64 // distance matrix for backward alignment
+	l_Trace_D, l_Trace_IS, l_Trace_IT [][][]int   // backtrace matrix for backward alignment
+	r_Dist_D, r_Dist_IS, r_Dist_IT    [][]float64 // distance matrix for forward alignment
+	r_Trace_D, r_Trace_IS, r_Trace_IT [][][]int   // backtrace matrix for forward alignment
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ func InitEditAlnMat(arr_len int) ([][]float64, [][][]int) {
 // Information of unaligned reads.
 //---------------------------------------------------------------------------------------------------
 type UnAlnInfo struct {
-	read_info1, read_info2 []byte //unalgined read info.
+	read_info1, read_info2 []byte //unalgined read info
 }
 
 //--------------------------------------------------------------------------------------------------

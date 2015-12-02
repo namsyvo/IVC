@@ -14,26 +14,22 @@ import (
 )
 
 func main() {
-	//Starting program----------------------------------------------------------//
 	log.Printf("IVC - Integrated Variant Caller using next-generation sequencing data.")
 	log.Printf("IVC-main: Calling variants based on alignment between reads and reference multi-genomes.")
 
-	//Setting up all para_infometers------------------------------------------------//
+	// Setting up all para_infometers
 	input_para_info := ReadInputInfo()
 	ivc.Setup(input_para_info)
-	//-------------------------------------------------------------------------//
 
-	//Initializing indexes and para_infometers--------------------------------------//
+	// Initializing indexes and para_infometers
 	variant_caller := ivc.NewVariantCaller()
-	//-------------------------------------------------------------------------//
 
-	//Call variants from read-multigenome alignment----------------------------//
+	// Calling variants from read-multigenome alignment
 	variant_caller.CallVariants()
-	//-------------------------------------------------------------------------//
 
-	//Output variant calls-----------------------------------------------------//
+	// Outputing variant calls
 	variant_caller.OutputVarCalls()
-	//-------------------------------------------------------------------------//
+
 	log.Printf("Finish whole variant calling process.")
 }
 

@@ -61,7 +61,7 @@ func (VC *VarCallIndex) SearchSeeds(read, rev_read []byte, p int, m_pos []int) (
 	rev_sp, rev_ep, rev_e_pos = VC.BackwardSearchFrom(rev_read, rev_s_pos)
 	if rev_e_pos >= 0 {
 		var idx int
-		//convert rev_e_pos in forward search to s_pos in backward search
+		// convert rev_e_pos in forward search to s_pos in backward search
 		s_pos = len(read) - 1 - rev_e_pos
 		e_pos = p
 		if rev_ep-rev_sp+1 <= PARA.Max_snum && s_pos-e_pos >= PARA.Min_slen {

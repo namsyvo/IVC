@@ -25,76 +25,77 @@ import (
 )
 
 //---------------------------------------------------------------------------------------------------
-// VarCallIndex represents variant calls and related info at all variant locations on multigenomes.
-// This struct also defines functions for calling variants.
+// VarCallIndex represents preprocessed information of the reference genome and variant profile,
+// includes an FM-index of (reverse of) the multigenome, which is used to speed up variant calling.
+// This struct also consists of functions for calling variants.
 //---------------------------------------------------------------------------------------------------
 type VarCallIndex struct {
-	Seq        []byte            //multi-sequence.
-	SeqLen     int               //length of multi-sequence
-	ChrPos     []int             //position (first base) of the chromosome on whole-genome.
-	ChrName    [][]byte          //chromosome names
-	Variants   map[int][][]byte  //variants (position, variants).
-	VarAF      map[int][]float32 //allele frequency of variants (position, allele frequency).
-	SameLenVar map[int]int       //indicate if variants has same length (SNPs or MNPs).
-	DelVar     map[int]int       //length of deletions if variants are deletion.
-	RevFMI     *fmi.Index        //FM-index of reverse multi-sequence (to do forward search).
+	Seq        []byte            // multi-sequence
+	SeqLen     int               // length of multi-sequence
+	ChrPos     []int             // position (first base) of the chromosome on whole-genome
+	ChrName    [][]byte          // chromosome names
+	Variants   map[int][][]byte  // variants (position, variants).
+	VarAF      map[int][]float32 // allele frequency of variants (position, allele frequency)
+	SameLenVar map[int]int       // indicate if variants has same length (SNPs or MNPs)
+	DelVar     map[int]int       // length of deletions if variants are deletion
+	RevFMI     *fmi.Index        // FM-index of reverse multi-sequence (to do forward search)
 }
 
 //--------------------------------------------------------------------------------------------------
-//VarProf represents variant profile and related info of the individual genome.
+// VarProf represents variant profile and related info of the individual genome.
 //--------------------------------------------------------------------------------------------------
 type VarProf struct {
-	//VarProb stores all possible variants at each position and their confident probablilities.
-	//Prior probablities will be obtained from reference genomes and variant profiles.
-	//Posterior probabilities will be updated during alignment phase based on incomming aligned bases
-	VarProb   map[uint32]map[string]float64   //Probability of the variant call
-	VarType   map[uint32]map[string]int       //Type of variants (0: sub, 1: ins, 2: del; other types will be considered in future)
-	VarRNum   map[uint32]map[string]int       //Numer of aligned reads corresponding to each variant
-	ChrDis    map[uint32]map[string][]int     //Chromosomal distance between two aligned read-ends
-	ChrDiff   map[uint32]map[string][]int     //Chromosomal distance betwwen the aligned postion and true postion (for simulated data)
-	MapProb   map[uint32]map[string][]float64 //Probability of mapping read to be corect (mapping quality)
-	AlnProb   map[uint32]map[string][]float64 //Probability of aligning read to be correct (alignment quality)
-	ChrProb   map[uint32]map[string][]float64 //Probability of insert size to be correct (for pair-end reads)
-	StartPos1 map[uint32]map[string][]int     //Start position (on read) of alignment of the first end
-	StartPos2 map[uint32]map[string][]int     //Start position (on read) of alignment of the second end
-	Strand1   map[uint32]map[string][]bool    //Strand indicator of the first end ("true" if read has same strand with ref, "false" otherwise)
-	Strand2   map[uint32]map[string][]bool    //Strand indicator of the second end ("true" if read has same strand with ref, "false" otherwise)
-	VarBQual  map[uint32]map[string][][]byte  //Quality sequences (in FASTQ format) of aligned bases at the variant call position
-	ReadInfo  map[uint32]map[string][][]byte  //Information sequences (in FASTQ format) of aligned reads (header of reads in FASTQ format)
+	// VarProb stores all possible variants at each position and their confident probablilities.
+	// Prior probablities will be obtained from reference genomes and variant profiles.
+	// Posterior probabilities will be updated during alignment phase based on incomming aligned bases
+	VarProb   map[uint32]map[string]float64   // probability of the variant call
+	VarType   map[uint32]map[string]int       // pype of variants (0: sub, 1: ins, 2: del; other types will be considered in future)
+	VarRNum   map[uint32]map[string]int       // numer of aligned reads corresponding to each variant
+	ChrDis    map[uint32]map[string][]int     // chromosomal distance between two aligned read-ends
+	ChrDiff   map[uint32]map[string][]int     // chromosomal distance betwwen the aligned postion and true postion (for simulated data)
+	MapProb   map[uint32]map[string][]float64 // probability of mapping read to be corect (mapping quality)
+	AlnProb   map[uint32]map[string][]float64 // probability of aligning read to be correct (alignment quality)
+	ChrProb   map[uint32]map[string][]float64 // probability of insert size to be correct (for pair-end reads)
+	StartPos1 map[uint32]map[string][]int     // start position (on read) of alignment of the first end
+	StartPos2 map[uint32]map[string][]int     // start position (on read) of alignment of the second end
+	Strand1   map[uint32]map[string][]bool    // strand indicator of the first end ("true" if read has same strand with ref, "false" otherwise)
+	Strand2   map[uint32]map[string][]bool    // strand indicator of the second end ("true" if read has same strand with ref, "false" otherwise)
+	VarBQual  map[uint32]map[string][][]byte  // quality sequences (in FASTQ format) of aligned bases at the variant call position
+	ReadInfo  map[uint32]map[string][][]byte  // information sequences (in FASTQ format) of aligned reads (header of reads in FASTQ format)
 }
 
 //---------------------------------------------------------------------------------------------------
-// VarInfo represents information of variants, which serves as temporary variables.
+// VarInfo represents information of detected variants, which serves as temporary variables.
 //---------------------------------------------------------------------------------------------------
 type VarInfo struct {
-	Pos     uint32  //Postion of variant (on the reference)
-	Bases   []byte  //Aligned bases to be the variant
-	BQual   []byte  //Quality sequences (in FASTQ format) of bases to be the variant
-	Type    int     //Type of the variant (0: sub, 1: ins, 2: del; other types will be considered in future)
-	CDis    int     //Chromosomal distance between alignment positions of two read-ends
-	CDiff   int     //Chromosomal distance between aligned pos and true pos
-	MProb   float64 //Probability of mapping read corectly (mapping quality)
-	AProb   float64 //Probability of aligning read correctly (alignment quality)
-	IProb   float64 //Probability of insert size to be correct (for pair-end reads)
-	SPos1   int     //Starting position on read1 of exact match (or ending position from backward search with FM-index)
-	SPos2   int     //Starting position on read2 of exact match (or ending position from backward search with FM-index)
-	Strand1 bool    //Strand (backward/forward) of read1 of exact match
-	Strand2 bool    //Strand (backward/forward) of read2 of exact match
-	RInfo   []byte  //Information sequences (in FASTQ format) of aligned reads (header of reads in FASTQ format)
+	Pos     uint32  // postion of variant (on the reference)
+	Bases   []byte  // aligned bases to be the variant
+	BQual   []byte  // quality sequences (in FASTQ format) of bases to be the variant
+	Type    int     // type of the variant (0: sub, 1: ins, 2: del; other types will be considered in future)
+	CDis    int     // chromosomal distance between alignment positions of two read-ends
+	CDiff   int     // chromosomal distance between aligned pos and true pos
+	MProb   float64 // probability of mapping read corectly (mapping quality)
+	AProb   float64 // probability of aligning read correctly (alignment quality)
+	IProb   float64 // probability of insert size to be correct (for pair-end reads)
+	SPos1   int     // starting position on read1 of exact match (or ending position from backward search with FM-index)
+	SPos2   int     // starting position on read2 of exact match (or ending position from backward search with FM-index)
+	Strand1 bool    // strand (backward/forward) of read1 of exact match
+	Strand2 bool    // strand (backward/forward) of read2 of exact match
+	RInfo   []byte  // information sequences (in FASTQ format) of aligned reads (header of reads in FASTQ format)
 }
 
 //---------------------------------------------------------------------------------------------------
 // UnAlnReadInfo represents information of unaligned-reads, which serves as temporary variables.
 //---------------------------------------------------------------------------------------------------
 type UnAlnReadInfo struct {
-	read_info1 []byte //info of first-end of read
-	read_info2 []byte //info of second-end of read
+	read_info1 []byte // info of first-end of read
+	read_info2 []byte // info of second-end of read
 }
 
 //---------------------------------------------------------------------------------------------------
-//Set of variant calls w.r.t their positions.
+// Set of variant calls, each element cover a certain region on the multigenome.
 //---------------------------------------------------------------------------------------------------
-var VarCall []*VarProf //set of variant calls w.r.t their positions
+var VarCall []*VarProf // number of elements will be set equal to number of cores to run parallel updates
 
 //---------------------------------------------------------------------------------------------------
 // NewVariantCaller creates an instance of VarCallIndex and sets up its variables.
@@ -153,14 +154,15 @@ func NewVariantCaller() *VarCallIndex {
 			VC.DelVar[var_pos] = var_len - 1
 		}
 	}
-	Q2C = make(map[byte]float64)
-	Q2E = make(map[byte]float64)
-	Q2P = make(map[byte]float64)
-	L2E = make([]float64, PARA.Read_len) //maximum length of called indels
+	// Set up pre-calculated cost
+	// Notice: Phred-encoding factor is set to 33 here. It is better to be determined from input data.
+	Q2C = make(map[byte]float64)         // alignment cost based on Phred-scale quality
+	Q2E = make(map[byte]float64)         // error probability based on Phred-scale quality
+	Q2P = make(map[byte]float64)         // non-error probability based on Phred-scale quality
+	L2E = make([]float64, PARA.Read_len) // indel-error rate based on indel-length
 	var q byte
 	for i := 33; i < 74; i++ {
 		q = byte(i)
-		//Phred-encoding factor (33) need to be estimated from input data
 		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
 		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
 		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
@@ -174,8 +176,8 @@ func NewVariantCaller() *VarCallIndex {
 		PrintMemStats("Memstats after creating auxiliary data structures")
 	}
 
+	// Initialize VarCallIndex object for calling variants
 	log.Printf("Initializing variant call data structure...")
-	//Initialize VarCallIndex object for calling variants
 	VarCall = make([]*VarProf, PARA.Proc_num)
 	for rid := 0; rid < PARA.Proc_num; rid++ {
 		VarCall[rid] = new(VarProf)
@@ -221,7 +223,7 @@ func NewVariantCaller() *VarCallIndex {
 				}
 			}
 		}
-		for _, b := range STD_BASES { //standard bases (without N) of DNA sequences
+		for _, b := range STD_BASES { // standard bases (only A, C, G, and T) of DNA sequences
 			if _, ok := VarCall[rid].VarProb[pos][b]; !ok {
 				VarCall[rid].VarProb[pos][b] = NEW_SNP_RATE
 			}
@@ -266,16 +268,16 @@ func (VC *VarCallIndex) CallVariants() {
 	log.Printf("Calling variants...")
 
 	start_time := time.Now()
-	//The channel read_signal is used for signaling between goroutines which run ReadReads and SearchVariants.
-	//When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
-	//to scan next reads.
+	// The channel read_signal is used for signaling between goroutines which run ReadReads and SearchVariants.
+	// When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
+	// to scan next reads.
 	read_signal := make(chan bool)
 
-	//Call a goroutine to read input reads
+	// Call a goroutine to read input reads
 	read_data := make(chan *ReadInfo, PARA.Proc_num)
 	go VC.ReadReads(read_data, read_signal)
 
-	//Call goroutines to search for variants, pass shared variable to each goroutine
+	// Call goroutines to search for variants, pass shared variable to each goroutine
 	var_info := make(chan *VarInfo)
 	uar_info := make(chan *UnAlnReadInfo)
 	var wg sync.WaitGroup
@@ -284,7 +286,7 @@ func (VC *VarCallIndex) CallVariants() {
 		go VC.SearchVariants(read_data, read_signal, var_info, uar_info, &wg)
 	}
 
-	//Reading unaligned reads and related info from channel and store them
+	// Reading unaligned reads and related info from channel and store them
 	go func() {
 		i := 0
 		for uar := range uar_info {
@@ -341,22 +343,22 @@ func (VC *VarCallIndex) ReadReads(read_data chan *ReadInfo, read_signal chan boo
 	for scanner1.Scan() && scanner2.Scan() {
 		read_info.Info1 = read_info.Info1[:len(scanner1.Bytes())]
 		read_info.Info2 = read_info.Info2[:len(scanner2.Bytes())]
-		copy(read_info.Info1, scanner1.Bytes()) //use 1st line in 1st FASTQ file
-		copy(read_info.Info2, scanner2.Bytes()) //use 1st line in 2nd FASTQ file
+		copy(read_info.Info1, scanner1.Bytes()) // use 1st line in 1st FASTQ file
+		copy(read_info.Info2, scanner2.Bytes()) // use 1st line in 2nd FASTQ file
 		scanner1.Scan()
 		scanner2.Scan()
 		read_info.Read1 = read_info.Read1[:len(scanner1.Bytes())]
 		read_info.Read2 = read_info.Read2[:len(scanner2.Bytes())]
-		copy(read_info.Read1, scanner1.Bytes()) //use 2nd line in 1st FASTQ file
-		copy(read_info.Read2, scanner2.Bytes()) //use 2nd line in 2nd FASTQ file
-		scanner1.Scan()                         //ignore 3rd line in 1st FASTQ file
-		scanner2.Scan()                         //ignore 3rd line in 2nd FASTQ file
+		copy(read_info.Read1, scanner1.Bytes()) // use 2nd line in 1st FASTQ file
+		copy(read_info.Read2, scanner2.Bytes()) // use 2nd line in 2nd FASTQ file
+		scanner1.Scan()                         // ignore 3rd line in 1st FASTQ file
+		scanner2.Scan()                         // ignore 3rd line in 2nd FASTQ file
 		scanner1.Scan()
 		scanner2.Scan()
 		read_info.Qual1 = read_info.Qual1[:len(scanner1.Bytes())]
 		read_info.Qual2 = read_info.Qual2[:len(scanner2.Bytes())]
-		copy(read_info.Qual1, scanner1.Bytes()) //use 4th line in 1st FASTQ file
-		copy(read_info.Qual2, scanner2.Bytes()) //use 4th line in 2nd FASTQ file
+		copy(read_info.Qual1, scanner1.Bytes()) // use 4th line in 1st FASTQ file
+		copy(read_info.Qual2, scanner2.Bytes()) // use 4th line in 2nd FASTQ file
 		if len(read_info.Read1) > 0 && len(read_info.Read2) > 0 {
 			read_num++
 			read_data <- read_info
@@ -381,7 +383,7 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 
 	defer wg.Done()
 
-	//Initialize inter-function share variables
+	// Initialize inter-function share variables
 	read_info := InitReadInfo(PARA.Read_len, PARA.Info_len)
 	edit_aln_info := InitEditAlnInfo(2 * PARA.Read_len)
 	seed_pos := make([][]int, 4)
@@ -421,24 +423,26 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 	rand_gen *rand.Rand, var_info chan *VarInfo, uar_info chan *UnAlnReadInfo) {
 
 	//-----------------------------------------------------------------------------------------------
-	//in case of simulated reads, get info with specific format of testing dataset
-	read_info1_tokens := bytes.Split(read_info.Info1, []byte{'_'})
+	// in case of simulated reads, get info with specific format of testing dataset
 	true_pos1, true_pos2 := 0, 0
-	var tmp int64
-	var err error
-	if read_info1_tokens[0][1] != 'r' && len(read_info1_tokens) >= 4 {
-		if tmp, err = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64); err != nil {
-			true_pos1 = int(tmp)
-		}
-		if tmp, err = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64); err != nil {
-			true_pos2 = int(tmp)
-		}
-	} else if len(read_info1_tokens) >= 3 {
-		if tmp, err = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64); err != nil {
-			true_pos1 = int(tmp)
-		}
-		if tmp, err = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64); err != nil {
-			true_pos2 = int(tmp)
+	if PARA.Debug_mode {
+		read_info1_tokens := bytes.Split(read_info.Info1, []byte{'_'})
+		var tmp int64
+		var err error
+		if read_info1_tokens[0][1] != 'r' && len(read_info1_tokens) >= 4 {
+			if tmp, err = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64); err != nil {
+				true_pos1 = int(tmp)
+			}
+			if tmp, err = strconv.ParseInt(string(read_info1_tokens[3]), 10, 64); err != nil {
+				true_pos2 = int(tmp)
+			}
+		} else if len(read_info1_tokens) >= 3 {
+			if tmp, err = strconv.ParseInt(string(read_info1_tokens[1]), 10, 64); err != nil {
+				true_pos1 = int(tmp)
+			}
+			if tmp, err = strconv.ParseInt(string(read_info1_tokens[2]), 10, 64); err != nil {
+				true_pos2 = int(tmp)
+			}
 		}
 	}
 	//-------------------------------------------------------------------------------------------------
@@ -465,13 +469,13 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 		}
 		c_num = 0
 		for p_idx = 0; p_idx < len(seed_info1.s_pos); p_idx++ {
-			//For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
-			//For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
-			//For mate-pair, they can be R-F (need to be confirmed)
+			// For conventional paired-end sequencing (i.e. Illumina) the directions should be F-R
+			// For other kinds of variants (e.g inversions) or other technologies, they can be F-F or R-R
+			// For mate-pair, they can be R-F (need to be confirmed)
 			if seed_info1.strand[p_idx] == seed_info2.strand[p_idx] {
 				continue
 			}
-			//Search variants for the first end
+			// Search variants for the first end
 			if seed_info1.strand[p_idx] == true {
 				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 					seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info)
@@ -479,7 +483,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 					seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info)
 			}
-			//Search variants for the second end
+			// Search variants for the second end
 			if seed_info2.strand[p_idx] == true {
 				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 					seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info)
@@ -487,20 +491,20 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 					seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info)
 			}
-			//Currently, variants can be called iff both read-ends can be aligned
+			// Currently, variants can be called iff both read-ends can be aligned
 			if aln_dist1 != -1 && aln_dist2 != -1 {
 				c_num++
 				ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_aln_pos1-l_aln_pos2))-400.0, 2.0) / (2 * 50 * 50)))
 				if paired_dist > aln_dist1+aln_dist2 {
 					paired_dist = aln_dist1 + aln_dist2
-					//PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
-					vars_get1 = make([]*VarInfo, len(vars1)) //need to reset vars_get1 here
-					vars_get2 = make([]*VarInfo, len(vars2)) //need to reset vars_get2 here
+					// PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
+					vars_get1 = make([]*VarInfo, len(vars1)) // need to reset vars_get1 here
+					vars_get2 = make([]*VarInfo, len(vars2)) // need to reset vars_get2 here
 					loop_has_cand = loop_num
 					for s_idx = 0; s_idx < len(vars1); s_idx++ {
 						vars_get1[s_idx] = vars1[s_idx]
 						if PARA.Debug_mode {
-							//Update vars_get1 with other info
+							// Update vars_get1 with other info
 							vars_get1[s_idx].CDis = l_aln_pos1 - l_aln_pos2
 							vars_get1[s_idx].CDiff = l_aln_pos1 - true_pos1
 							vars_get1[s_idx].AProb = aln_dist1
@@ -515,7 +519,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 					for s_idx = 0; s_idx < len(vars2); s_idx++ {
 						vars_get2[s_idx] = vars2[s_idx]
 						if PARA.Debug_mode {
-							//Update vars_get2 with other info
+							// Update vars_get2 with other info
 							vars_get2[s_idx].CDis = l_aln_pos1 - l_aln_pos2
 							vars_get2[s_idx].CDiff = l_aln_pos2 - true_pos2
 							vars_get2[s_idx].AProb = aln_dist2
@@ -531,12 +535,12 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 			}
 		}
 		cand_num = append(cand_num, c_num)
-		if paired_dist < PARA.Gap_open+PARA.Gap_ext { //in this case, it is likely the correct candidates
+		if paired_dist < PARA.Gap_open { // there are no gaps, in this case, the alignment is likely to be correct
 			break
 		}
 	}
 	if loop_has_cand != 0 {
-		map_qual := 1.0 / float64(cand_num[loop_has_cand-1])
+		map_qual := 1.0 / float64(cand_num[loop_has_cand-1]) // a simple mapping quality estimation, might be changed later
 		if PARA.Debug_mode {
 			PrintGetVariants("Final_var", paired_dist, aln_dist1, aln_dist2, vars_get1, vars_get2)
 		}
@@ -550,7 +554,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 		}
 		return
 	}
-	//Get unaligned paired-end reads
+	// Get unaligned paired-end reads
 	uar := new(UnAlnReadInfo)
 	if PARA.Debug_mode {
 		uar.read_info1 = read_info1
@@ -575,7 +579,7 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 	l_ref_pos_map := make([]int, 0)
 	l_aln_e_pos := m_pos - 1 + PARA.Seed_backup
 	i = l_aln_e_pos
-	j = 0 //to check length of l_ref_flank
+	j = 0 // to check length of l_ref_flank
 	for j < l_read_flank_len+PARA.Indel_backup && i >= 0 {
 		if _, is_var = VC.Variants[i]; is_var {
 			if del_len, is_del = VC.DelVar[i]; is_del {
@@ -595,7 +599,7 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 	}
 	l_aln_s_pos := i + 1
 
-	//Reverse l_ref_pos_map and l_ref_flank to get them in original direction
+	// Reverse l_ref_pos_map and l_ref_flank to get them in original direction
 	for i, j = 0, len(l_ref_pos_map)-1; i < j; i, j = i+1, j-1 {
 		l_ref_pos_map[i], l_ref_pos_map[j] = l_ref_pos_map[j], l_ref_pos_map[i]
 	}
@@ -694,7 +698,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	a := string(var_info.Bases)
 	t := var_info.Type
 	rid := PARA.Proc_num * int(pos) / VC.SeqLen
-	//if found new variant locations
+	// if found new variant locations
 	if _, var_prof_exist := VarCall[rid].VarProb[pos]; !var_prof_exist {
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
 		if t == 0 {
@@ -720,7 +724,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 			VarCall[rid].ReadInfo[pos] = make(map[string][][]byte)
 		}
 	}
-	//if found new variants at existing locations
+	// if found new variants at existing locations
 	var l float64
 	var b string
 	if _, var_exist := VarCall[rid].VarProb[pos][a]; !var_exist {
@@ -815,7 +819,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 	for _, pos := range Var_Pos {
 		var_pos = uint32(pos)
 		rid := PARA.Proc_num * pos / VC.SeqLen
-		//Get variant call by considering maximum prob
+		// Get variant call by considering maximum prob
 		var_call_prob = 0
 		for var_base, var_prob = range VarCall[rid].VarProb[var_pos] {
 			if var_call_prob < var_prob {
@@ -823,23 +827,23 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				var_call = var_base
 			}
 		}
-		//Start getting variant call info
+		// Start getting variant call info
 		line_aln = make([]string, 0)
-		//Get the largest ChrPos that is <= pos
+		// Get the largest ChrPos that is <= pos
 		for i = 0; i < len(VC.ChrPos) && VC.ChrPos[i] <= pos; i++ {
 		}
-		//#CHROM
+		// #CHROM
 		line_aln = append(line_aln, string(VC.ChrName[i-1]))
-		//POS
+		// POS
 		line_aln = append(line_aln, strconv.Itoa(pos+1-VC.ChrPos[i-1]))
-		//ID
+		// ID
 		line_aln = append(line_aln, ".")
-		//REF & ALT
+		// REF & ALT
 		if _, is_var = VC.Variants[pos]; is_var {
-			if var_call == string(VC.Variants[pos][0]) { //Do not report known variants which are same with the reference
+			if var_call == string(VC.Variants[pos][0]) { // do not report known variants which are same with the reference
 				continue
 			}
-			if VarCall[rid].VarRNum[var_pos][var_call] == 0 { //Do not report known variants at locations without aligned reads
+			if VarCall[rid].VarRNum[var_pos][var_call] == 0 { // do not report known variants at locations without aligned reads
 				continue
 			}
 			line_aln = append(line_aln, string(VC.Variants[pos][0]))
@@ -864,20 +868,20 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				continue
 			}
 		}
-		//QUAL
+		// QUAL
 		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob), 'f', 5, 64)
 		if str_qual != "+Inf" {
 			line_aln = append(line_aln, str_qual)
 		} else {
 			line_aln = append(line_aln, "1000")
 		}
-		//FILTER
+		// FILTER
 		line_aln = append(line_aln, ".")
-		//INFO
+		// INFO
 		line_aln = append(line_aln, ".")
-		//FORMAT
+		// FORMAT
 		line_aln = append(line_aln, ".")
-		//IVC-INFO
+		// IVC-INFO
 		line_aln = append(line_aln, strconv.FormatFloat(var_call_prob, 'f', 20, 64))
 		map_prob = 1.0
 		for _, p = range VarCall[rid].MapProb[var_pos][var_call] {
