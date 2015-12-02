@@ -9,6 +9,7 @@ package main
 import (
 	"flag"
 	"github.com/namsyvo/IVC"
+	"github.com/namsyvo/IVC/fmi"
 	"log"
 	"os"
 	"path"
@@ -78,8 +79,8 @@ func main() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Indexing multi-sequence...")
 	start_time = time.Now()
-	fmi := ivc.NewFMIndex(rev_multi_seq)
-	fmi.Save(rev_multi_seq_file_name)
+	fmindex := fmi.New(rev_multi_seq)
+	fmindex.Save(rev_multi_seq_file_name)
 	index_time := time.Since(start_time)
 	log.Printf("Time for indexing multi-sequence:\t%s", index_time)
 	if *debug_mode {

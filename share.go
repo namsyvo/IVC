@@ -10,7 +10,6 @@ import (
 	"bufio"
 	"bytes"
 	"log"
-	"math"
 	"os"
 	"path"
 	"runtime"
@@ -145,24 +144,6 @@ func Setup(input_para *ParaInfo) {
 	}
 	w.Flush()
 	f.Close()
-
-	//Initialize "local-global" variable which shared by all downstream functions from CallVariants function.
-	//May consider a better solution later.
-	Q2C = make(map[byte]float64)
-	Q2E = make(map[byte]float64)
-	Q2P = make(map[byte]float64)
-	L2E = make([]float64, PARA.Read_len) //maximum length of called indels
-	var q byte
-	for i := 33; i < 74; i++ {
-		q = byte(i)
-		//Phred-encoding factor (33) need to be estimated from input data
-		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
-		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
-		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
-	}
-	for i := 1; i < PARA.Read_len; i++ {
-		L2E[i] = math.Pow(INDEL_ERR_RATE, float64(i))
-	}
 
 	log.Printf("Finish checking input information and seting up parameters.")
 }

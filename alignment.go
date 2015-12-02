@@ -425,9 +425,6 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 			i++
 		}
 	}
-	if PARA.Debug_mode {
-		PrintVarInfo("LeftAlnitTraceBack, variant info", var_pos, var_base, var_qual)
-	}
 	return var_pos, var_base, var_qual, var_type
 }
 
@@ -844,9 +841,6 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 			read_ori_pos++
 			i++
 		}
-	}
-	if PARA.Debug_mode {
-		PrintVarInfo("RightAlnEditTraceBack, variant info", var_pos, var_base, var_qual)
 	}
 	return var_pos, var_base, var_qual, var_type
 }

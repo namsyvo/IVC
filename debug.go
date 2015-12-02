@@ -14,7 +14,7 @@ import (
 	"runtime"
 )
 
-//Global variable for turnning on/off info profiling
+// Global variable for turnning on/off info profiling
 var (
 	PRINT_MEMSTATS = false
 
@@ -26,14 +26,14 @@ var (
 	PRINT_UNALIGN_INFO     = false
 )
 
-//Global variable for memory profiling
+// Global variable for cpu and memory profiling
 var (
 	CPU_FILE  *os.File
 	MEM_FILE  *os.File
 	MEM_STATS *runtime.MemStats
 )
 
-//Printing memory information
+// Printing memory information
 func PrintMemStats(mesg string) {
 	if PRINT_MEMSTATS {
 		runtime.ReadMemStats(MEM_STATS)
@@ -44,9 +44,24 @@ func PrintMemStats(mesg string) {
 	}
 }
 
-//------------------------
+// Processing unaligned-reads info
+var UNALIGN_READ_INFO = make([]*UnAlnReadInfo, 0)
+
+func ProcessNoAlignReadInfo() {
+	if PRINT_UNALIGN_INFO {
+		fmt.Println("Processing noaligned read info...")
+		file, _ := os.Create(PARA.Var_call_file + ".unalign")
+		defer file.Close()
+		for _, uai := range UNALIGN_READ_INFO {
+			file.WriteString(string(uai.read_info1) + "\t" + string(uai.read_info2) + "\n")
+		}
+		fmt.Println("Finish processing noaligned read info.")
+	}
+}
+
+//--------------------------------------------------------------------------------------------------
 // Printing Alignment info
-//------------------------
+//--------------------------------------------------------------------------------------------------
 
 func PrintLoopTraceInfo(loop_num int, mess string) {
 	if PRINT_ALIGN_TRACE_INFO {
@@ -87,9 +102,9 @@ func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_var_pos []int
 	}
 }
 
-/*--------------------------
+//--------------------------------------------------------------------------------------------------
 //Printing variant calling info
----------------------------*/
+//--------------------------------------------------------------------------------------------------
 
 func PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank []byte) {
 	if PRINT_VAR_CALL_INFO {
@@ -122,9 +137,18 @@ func PrintGetVariants(mess string, paired_prob, prob1, prob2 float64, vars1, var
 	}
 }
 
-/*-------------------------------
-//Printing Dist calculation info
--------------------------------*/
+func PrintVarInfo(mess string, var_pos []int, var_val, var_qlt [][]byte) {
+	if PRINT_VAR_CALL_INFO {
+		fmt.Println(mess)
+		for i := 0; i < len(var_pos); i++ {
+			fmt.Println(var_pos[i], string(var_val[i]), string(var_qlt[i]))
+		}
+	}
+}
+
+//--------------------------------------------------------------------------------------------------
+//Printing edit distance calculation info
+//--------------------------------------------------------------------------------------------------
 
 func PrintEditDisInput(mess string, str_val ...[]byte) {
 	if PRINT_EDIT_DIST_INFO {
@@ -160,11 +184,9 @@ func PrintEditDisMat(mess string, D [][]float64, m, n int, read, ref []byte) {
 	}
 }
 
-/*
-BT[i][j][0]: direction, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j), 2: left arrow (back to i,j-1)
-BT[i][j][1]: matrix, can be 0: matrix for D, 1: matrix for IS, 2: matrix for IT
-BT[i][j][2]: number of shift (equal to length of called variant) at known variant loc, can be any integer number, for example 5 means back to i-5,j-1
-*/
+// BT[i][j][0]: direction, can be 0: diagonal arrow (back to i-1,j-1), 1: up arrow (back to i-1,j), 2: left arrow (back to i,j-1)
+// BT[i][j][1]: matrix, can be 0: matrix for D, 1: matrix for IS, 2: matrix for IT
+// BT[i][j][2]: number of shift (equal to length of called variant) at known variant loc, can be any integer number, for example 5 means back to i-5,j-1
 func PrintEditTraceMat(mess string, BT [][][]int, m, n int) {
 	if PRINT_EDIT_DIST_MAT_INFO {
 		fmt.Println(mess)
@@ -220,49 +242,5 @@ func PrintEditAlignInfo(mess string, aligned_read, aligned_qual, aligned_ref []b
 		fmt.Println(string(aligned_read))
 		fmt.Println(string(aligned_qual))
 		fmt.Println(string(aligned_ref))
-	}
-}
-
-func PrintVarInfo(mess string, var_pos []int, var_val, var_qlt [][]byte) {
-	if PRINT_EDIT_DIST_INFO {
-		fmt.Println(mess)
-		for i := 0; i < len(var_pos); i++ {
-			fmt.Println(var_pos[i], string(var_val[i]), string(var_qlt[i]))
-		}
-	}
-}
-
-//----------------------------------------
-// Process unaligned-reads info
-//----------------------------------------
-type UnAlnRead struct {
-	read_info1, read_info2 []byte
-}
-
-var (
-	UNALIGN_INFO_CHAN = make(chan UnAlnRead)
-	UNALIGN_INFO_ARR  = make([]UnAlnRead, 0)
-)
-
-//Reading noalign reads and related info from channel and store them
-func GetNoAlignReadInfo() {
-	if PRINT_UNALIGN_INFO {
-		for uai := range UNALIGN_INFO_CHAN {
-			UNALIGN_INFO_ARR = append(UNALIGN_INFO_ARR, uai)
-		}
-		log.Printf("Number of no-aligned reads:\t%d", len(UNALIGN_INFO_ARR))
-	}
-}
-
-//Processing noalign reads and related info
-func ProcessNoAlignReadInfo() {
-	if PRINT_UNALIGN_INFO {
-		fmt.Println("Processing noaligned read info...")
-		file, _ := os.Create(PARA.Var_call_file + ".unalign")
-		defer file.Close()
-		for _, uai := range UNALIGN_INFO_ARR {
-			file.WriteString(string(uai.read_info1) + "\t" + string(uai.read_info2) + "\n")
-		}
-		fmt.Println("Finish processing noaligned read info.")
 	}
 }
