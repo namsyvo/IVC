@@ -266,48 +266,57 @@ func NewVariantCaller() *VarCallIndex {
 func (VC *VarCallIndex) CallVariants() {
 	log.Printf("----------------------------------------------------------------------------------------")
 	log.Printf("Calling variants...")
-
 	start_time := time.Now()
+
+	read_data := make(chan *ReadInfo, PARA.Proc_num)
 	// The channel read_signal is used for signaling between goroutines which run ReadReads and SearchVariants.
 	// When a SearchVariants goroutine finish copying a read to its own memory, it signals ReadReads goroutine
 	// to scan next reads.
 	read_signal := make(chan bool)
 
-	// Call a goroutine to read input reads
-	read_data := make(chan *ReadInfo, PARA.Proc_num)
+	var_info := make([]chan *VarInfo, PARA.Proc_num)
+	for i := 0; i < PARA.Proc_num; i++ {
+		var_info[i] = make(chan *VarInfo)
+	}
+	uar_info := make(chan *UnAlnReadInfo)
+
+	// Read input reads
 	go VC.ReadReads(read_data, read_signal)
 
-	// Call goroutines to search for variants, pass shared variable to each goroutine
-	var_info := make(chan *VarInfo)
-	uar_info := make(chan *UnAlnReadInfo)
 	var wg sync.WaitGroup
+	// Search for variants
 	for i := 0; i < PARA.Proc_num; i++ {
 		wg.Add(1)
 		go VC.SearchVariants(read_data, read_signal, var_info, uar_info, &wg)
 	}
 
-	// Reading unaligned reads and related info from channel and store them
-	go func() {
-		i := 0
-		for uar := range uar_info {
-			i++
-			if PARA.Debug_mode {
-				UNALIGN_READ_INFO = append(UNALIGN_READ_INFO, uar)
+	//Collect variants from results channel and update variant probabilities
+	for i := 0; i < PARA.Proc_num; i++ {
+		go func(i int) {
+			for vi := range var_info[i] {
+				VC.UpdateVariantProb(vi)
 			}
-		}
-		log.Printf("Number of no-aligned reads:\t%d", i)
-	}()
+		}(i)
+	}
 
 	go func() {
 		wg.Wait()
+		for i := 0; i < PARA.Proc_num; i++ {
+			close(var_info[i])
+		}
 		close(uar_info)
-		close(var_info)
 	}()
 
-	//Collect variants from results channel and update variant probabilities
-	for vi := range var_info {
-		VC.UpdateVariantProb(vi)
+	// Get unaligned reads and related info
+	i := 0
+	for uar := range uar_info {
+		i++
+		if PARA.Debug_mode {
+			UNALIGN_READ_INFO = append(UNALIGN_READ_INFO, uar)
+		}
 	}
+	log.Printf("Number of no-aligned reads:\t%d", i)
+
 	if PARA.Debug_mode {
 		ProcessNoAlignReadInfo()
 		PrintMemStats("Memstats after calling variants")
@@ -365,7 +374,7 @@ func (VC *VarCallIndex) ReadReads(read_data chan *ReadInfo, read_signal chan boo
 			read_signal <- true
 		}
 		if read_num%100000 == 0 {
-			log.Println("Processed " + strconv.Itoa(read_num) + " reads")
+			log.Println("Processed " + strconv.Itoa(read_num) + " reads.")
 			if PARA.Debug_mode {
 				PrintMemStats("Memstats after distributing " + strconv.Itoa(read_num) + " reads")
 				pprof.WriteHeapProfile(MEM_FILE)
@@ -379,7 +388,7 @@ func (VC *VarCallIndex) ReadReads(read_data chan *ReadInfo, read_signal chan boo
 // SearchVariants takes data from data channel, searches for variants and put them into results channel.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal chan bool,
-	var_info chan *VarInfo, uar_info chan *UnAlnReadInfo, wg *sync.WaitGroup) {
+	var_info []chan *VarInfo, uar_info chan *UnAlnReadInfo, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
@@ -420,7 +429,7 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 // It uses seed-and-extend strategy and looks for the best alignment candidates through several iterations.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
-	rand_gen *rand.Rand, var_info chan *VarInfo, uar_info chan *UnAlnReadInfo) {
+	rand_gen *rand.Rand, var_info []chan *VarInfo, uar_info chan *UnAlnReadInfo) {
 
 	//-----------------------------------------------------------------------------------------------
 	// in case of simulated reads, get info with specific format of testing dataset
@@ -539,6 +548,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 			break
 		}
 	}
+	var rid int
 	if loop_has_cand != 0 {
 		map_qual := 1.0 / float64(cand_num[loop_has_cand-1]) // a simple mapping quality estimation, might be changed later
 		if PARA.Debug_mode {
@@ -546,11 +556,13 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 		}
 		for _, var1 := range vars_get1 {
 			var1.MProb = map_qual
-			var_info <- var1
+			rid = PARA.Proc_num * int(var1.Pos) / VC.SeqLen
+			var_info[rid] <- var1
 		}
 		for _, var2 := range vars_get2 {
 			var2.MProb = map_qual
-			var_info <- var2
+			rid = PARA.Proc_num * int(var2.Pos) / VC.SeqLen
+			var_info[rid] <- var2
 		}
 		return
 	}
@@ -695,18 +707,18 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	pos := var_info.Pos
-	a := string(var_info.Bases)
-	t := var_info.Type
+	vtype := var_info.Type
+	vbase := string(var_info.Bases)
 	rid := PARA.Proc_num * int(pos) / VC.SeqLen
 	// if found new variant locations
 	if _, var_prof_exist := VarCall[rid].VarProb[pos]; !var_prof_exist {
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
-		if t == 0 {
+		if vtype == 0 {
 			VarCall[rid].VarProb[pos][string(VC.Seq[int(pos)])] = 1 - NEW_SNP_RATE
-			VarCall[rid].VarProb[pos][a] = NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][vbase] = NEW_SNP_RATE
 		} else {
 			VarCall[rid].VarProb[pos][string(VC.Seq[int(pos)])] = 1 - NEW_INDEL_RATE
-			VarCall[rid].VarProb[pos][a] = NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase] = NEW_INDEL_RATE
 		}
 		VarCall[rid].VarType[pos] = make(map[string]int)
 		VarCall[rid].VarRNum[pos] = make(map[string]int)
@@ -727,34 +739,34 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	// if found new variants at existing locations
 	var l float64
 	var b string
-	if _, var_exist := VarCall[rid].VarProb[pos][a]; !var_exist {
+	if _, var_exist := VarCall[rid].VarProb[pos][vbase]; !var_exist {
 		l = float64(len(VarCall[rid].VarProb[pos]))
-		if t == 0 {
+		if vtype == 0 {
 			for b, _ = range VarCall[rid].VarProb[pos] {
 				VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (1/l)*NEW_SNP_RATE
 			}
-			VarCall[rid].VarProb[pos][a] = NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][vbase] = NEW_SNP_RATE
 		} else {
 			for b, _ = range VarCall[rid].VarProb[pos] {
 				VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (1/l)*NEW_INDEL_RATE
 			}
-			VarCall[rid].VarProb[pos][a] = NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase] = NEW_INDEL_RATE
 		}
 	}
-	VarCall[rid].VarType[pos][a] = t
-	VarCall[rid].VarRNum[pos][a] += 1
+	VarCall[rid].VarType[pos][vbase] = vtype
+	VarCall[rid].VarRNum[pos][vbase] += 1
 	if PARA.Debug_mode {
-		VarCall[rid].ChrDis[pos][a] = append(VarCall[rid].ChrDis[pos][a], var_info.CDis)
-		VarCall[rid].ChrDiff[pos][a] = append(VarCall[rid].ChrDiff[pos][a], var_info.CDiff)
-		VarCall[rid].MapProb[pos][a] = append(VarCall[rid].MapProb[pos][a], var_info.MProb)
-		VarCall[rid].AlnProb[pos][a] = append(VarCall[rid].AlnProb[pos][a], var_info.AProb)
-		VarCall[rid].ChrProb[pos][a] = append(VarCall[rid].ChrProb[pos][a], var_info.IProb)
-		VarCall[rid].StartPos1[pos][a] = append(VarCall[rid].StartPos1[pos][a], var_info.SPos1)
-		VarCall[rid].StartPos2[pos][a] = append(VarCall[rid].StartPos2[pos][a], var_info.SPos2)
-		VarCall[rid].Strand1[pos][a] = append(VarCall[rid].Strand1[pos][a], var_info.Strand1)
-		VarCall[rid].Strand2[pos][a] = append(VarCall[rid].Strand2[pos][a], var_info.Strand2)
-		VarCall[rid].VarBQual[pos][a] = append(VarCall[rid].VarBQual[pos][a], var_info.BQual)
-		VarCall[rid].ReadInfo[pos][a] = append(VarCall[rid].ReadInfo[pos][a], var_info.RInfo)
+		VarCall[rid].ChrDis[pos][vbase] = append(VarCall[rid].ChrDis[pos][vbase], var_info.CDis)
+		VarCall[rid].ChrDiff[pos][vbase] = append(VarCall[rid].ChrDiff[pos][vbase], var_info.CDiff)
+		VarCall[rid].MapProb[pos][vbase] = append(VarCall[rid].MapProb[pos][vbase], var_info.MProb)
+		VarCall[rid].AlnProb[pos][vbase] = append(VarCall[rid].AlnProb[pos][vbase], var_info.AProb)
+		VarCall[rid].ChrProb[pos][vbase] = append(VarCall[rid].ChrProb[pos][vbase], var_info.IProb)
+		VarCall[rid].StartPos1[pos][vbase] = append(VarCall[rid].StartPos1[pos][vbase], var_info.SPos1)
+		VarCall[rid].StartPos2[pos][vbase] = append(VarCall[rid].StartPos2[pos][vbase], var_info.SPos2)
+		VarCall[rid].Strand1[pos][vbase] = append(VarCall[rid].Strand1[pos][vbase], var_info.Strand1)
+		VarCall[rid].Strand2[pos][vbase] = append(VarCall[rid].Strand2[pos][vbase], var_info.Strand2)
+		VarCall[rid].VarBQual[pos][vbase] = append(VarCall[rid].VarBQual[pos][vbase], var_info.BQual)
+		VarCall[rid].ReadInfo[pos][vbase] = append(VarCall[rid].ReadInfo[pos][vbase], var_info.RInfo)
 	}
 
 	var q byte
@@ -770,11 +782,11 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	p_ab := make(map[string]float64)
 	_, is_known_var := VC.Variants[int(pos)]
 	for b, p_b = range VarCall[rid].VarProb[pos] {
-		if b == a {
+		if b == vbase {
 			p_ab[b] = p1
 		} else {
 			if !is_known_var && var_info.Type == 2 {
-				p_ab[b] = L2E[len(a)]
+				p_ab[b] = L2E[len(vbase)]
 			} else {
 				p_ab[b] = p2
 			}
@@ -810,11 +822,11 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		}
 	}
 	sort.Ints(Var_Pos)
-
+	log.Println("Var prof len", len(Var_Pos))
 	var var_base, var_call, str_qual, str_aln string
 	var line_aln, line_base, line_ivc []string
 	var p, var_prob, var_call_prob, map_prob float64
-	var i, var_num int
+	var i, chr_id, var_num int
 	var is_var bool
 	for _, pos := range Var_Pos {
 		var_pos = uint32(pos)
@@ -830,12 +842,12 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		// Start getting variant call info
 		line_aln = make([]string, 0)
 		// Get the largest ChrPos that is <= pos
-		for i = 0; i < len(VC.ChrPos) && VC.ChrPos[i] <= pos; i++ {
+		for chr_id = 0; chr_id < len(VC.ChrPos) && VC.ChrPos[chr_id] <= pos; chr_id++ {
 		}
 		// #CHROM
-		line_aln = append(line_aln, string(VC.ChrName[i-1]))
+		line_aln = append(line_aln, string(VC.ChrName[chr_id-1]))
 		// POS
-		line_aln = append(line_aln, strconv.Itoa(pos+1-VC.ChrPos[i-1]))
+		line_aln = append(line_aln, strconv.Itoa(pos+1-VC.ChrPos[chr_id-1]))
 		// ID
 		line_aln = append(line_aln, ".")
 		// REF & ALT
