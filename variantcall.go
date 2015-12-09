@@ -415,10 +415,8 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 		copy(read_info.Qual2, read.Qual2)
 		<-read_signal
 
-		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_read1, read_info.Rev_comp_read1,
-			read_info.Comp_read1, read_info.Rev_qual1)
-		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_read2, read_info.Rev_comp_read2,
-			read_info.Comp_read2, read_info.Rev_qual2)
+		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_comp_read1, read_info.Rev_qual1)
+		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_comp_read2, read_info.Rev_qual2)
 
 		VC.SearchVariantsPE(read_info, edit_aln_info, seed_pos, rand_gen, var_info, uar_info)
 	}
@@ -584,7 +582,7 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 	var i, j, del_len int
 	var is_var, is_del bool
 
-	l_read_flank_len := e_pos + PARA.Seed_backup
+	l_read_flank_len := s_pos + PARA.Seed_backup
 	l_read_flank, l_qual_flank := read[:l_read_flank_len], qual[:l_read_flank_len]
 
 	l_ref_flank := make([]byte, 0)
@@ -619,8 +617,8 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 		l_ref_flank[i], l_ref_flank[j] = l_ref_flank[j], l_ref_flank[i]
 	}
 
-	seed_len := s_pos - e_pos + 1
-	r_read_flank_len := len(read) - s_pos - 1 + PARA.Seed_backup
+	seed_len := e_pos - s_pos + 1
+	r_read_flank_len := len(read) - e_pos - 1 + PARA.Seed_backup
 	r_read_flank, r_qual_flank := read[len(read)-r_read_flank_len:], qual[len(read)-r_read_flank_len:]
 
 	r_ref_flank := make([]byte, 0)

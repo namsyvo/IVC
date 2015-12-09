@@ -12,22 +12,22 @@ import (
 )
 
 //--------------------------------------------------------------------------------------------------
-// BackwardSearchFrom searches for exact matches between a pattern and the reference using FM-index,
-// It starts to search from any position on the pattern.
+// ForwardSearchFrom searches for exact matches between a pattern and the reference using FM-index.
+// It starts to search forwardly on the pattern from any position to match backwardly on the reference.
 //--------------------------------------------------------------------------------------------------
-func (VC *VarCallIndex) BackwardSearchFrom(pattern []byte, start_pos int) (int, int, int) {
+func (VC *VarCallIndex) ForwardSearchFrom(pattern []byte, s_pos int) (int, int, int) {
 	var sp, ep, offset uint32
 	var ok bool
 
-	c := pattern[start_pos]
+	c := pattern[s_pos]
 	sp, ok = VC.RevFMI.C[c]
 	if !ok {
-		return 0, -1, -1
+		return -1, -1, -1
 	}
 	ep = VC.RevFMI.EP[c]
 	var sp0, ep0 uint32
-	var i int
-	for i = start_pos - 1; i >= 0 && i >= start_pos-PARA.Max_slen; i-- {
+	var i, L int
+	for i, L = s_pos+1, len(pattern); i < L && i <= s_pos+PARA.Max_slen; i++ {
 		c = pattern[i]
 		offset, ok = VC.RevFMI.C[c]
 		if ok {
@@ -37,40 +37,31 @@ func (VC *VarCallIndex) BackwardSearchFrom(pattern []byte, start_pos int) (int, 
 				sp = sp0
 				ep = ep0
 			} else {
-				return int(sp), int(ep), i + 1
+				return int(sp), int(ep), i - 1
 			}
 		} else {
-			return int(sp), int(ep), i + 1
+			return int(sp), int(ep), i - 1
 			//return 0, -1, -1
 		}
 	}
-	return int(sp), int(ep), i + 1
+	return int(sp), int(ep), i - 1
 }
 
 //--------------------------------------------------------------------------------------------------
 // SearchSeeds returns positions and distances of seeds between a read and the reference.
-// It uses both backward search and forward search
-// Forward search is backward search on reverse of the reference.
+// It searches forwardly on read to match backwardly on reverse of the reference.
 //--------------------------------------------------------------------------------------------------
-func (VC *VarCallIndex) SearchSeeds(read, rev_read []byte, p int, m_pos []int) (int, int, int, bool) {
+func (VC *VarCallIndex) SearchSeeds(read []byte, s_pos int, m_pos []int) (int, int, int, bool) {
 
-	var rev_sp, rev_ep int = 0, PARA.Max_snum
-	var rev_s_pos, rev_e_pos, s_pos, e_pos int
-
-	rev_s_pos = len(read) - 1 - p
-	rev_sp, rev_ep, rev_e_pos = VC.BackwardSearchFrom(rev_read, rev_s_pos)
-	if rev_e_pos >= 0 {
-		var idx int
-		// convert rev_e_pos in forward search to s_pos in backward search
-		s_pos = len(read) - 1 - rev_e_pos
-		e_pos = p
-		if rev_ep-rev_sp+1 <= PARA.Max_snum && s_pos-e_pos >= PARA.Min_slen {
-			for idx = rev_sp; idx <= rev_ep; idx++ {
-				m_pos[idx-rev_sp] = VC.SeqLen - 1 - int(VC.RevFMI.SA[idx]) - (s_pos - e_pos)
+	sp, ep, e_pos := VC.ForwardSearchFrom(read, s_pos)
+	if e_pos >= 0 {
+		if ep-sp+1 <= PARA.Max_snum && e_pos-s_pos >= PARA.Min_slen {
+			for idx := sp; idx <= ep; idx++ {
+				m_pos[idx-sp] = VC.SeqLen - 1 - int(VC.RevFMI.SA[idx]) - (e_pos - s_pos)
 			}
-			return s_pos, e_pos, rev_ep - rev_sp + 1, true
+			return s_pos, e_pos, ep - sp + 1, true
 		}
-		return s_pos, e_pos, rev_ep - rev_sp + 1, false
+		return s_pos, e_pos, ep - sp + 1, false
 	}
 	return -1, -1, -1, false // will be changed later
 }
@@ -107,47 +98,47 @@ func (VC *VarCallIndex) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, ran
 			PrintLoopTraceInfo(loop_num, "SearchSeedsFromPairedEnds, Second:\t"+string(read_info.Read2))
 		}
 		s_pos_r1_or, e_pos_r1_or, m_num_r1_or, has_seeds_r1_or =
-			VC.SearchSeeds(read_info.Read1, read_info.Rev_read1, r_pos_r1_or, seed_pos[0])
+			VC.SearchSeeds(read_info.Read1, r_pos_r1_or, seed_pos[0])
 		if PARA.Debug_mode {
-			PrintSeedTraceInfo("r1_or", e_pos_r1_or, s_pos_r1_or, read_info.Read1)
+			PrintSeedTraceInfo("r1_or", s_pos_r1_or, e_pos_r1_or, read_info.Read1)
 			if has_seeds_r1_or {
-				PrintExtendTraceInfo("r1_or", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
-					e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
+				PrintExtendTraceInfo("r1_or", read_info.Read1[s_pos_r1_or:e_pos_r1_or+1],
+					s_pos_r1_or, e_pos_r1_or, m_num_r1_or, seed_pos[0])
 			}
 		}
 		s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, has_seeds_r1_rc =
-			VC.SearchSeeds(read_info.Rev_comp_read1, read_info.Comp_read1, r_pos_r1_rc, seed_pos[1])
+			VC.SearchSeeds(read_info.Rev_comp_read1, r_pos_r1_rc, seed_pos[1])
 		if PARA.Debug_mode {
-			PrintSeedTraceInfo("r1_rc", e_pos_r1_rc, s_pos_r1_rc, read_info.Rev_comp_read1)
+			PrintSeedTraceInfo("r1_rc", s_pos_r1_rc, e_pos_r1_rc, read_info.Rev_comp_read1)
 			if has_seeds_r1_rc {
-				PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[e_pos_r1_rc:s_pos_r1_rc+1],
-					e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
+				PrintExtendTraceInfo("r1_rc", read_info.Rev_comp_read1[s_pos_r1_rc:e_pos_r1_rc+1],
+					s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, seed_pos[1])
 			}
 		}
 		s_pos_r2_or, e_pos_r2_or, m_num_r2_or, has_seeds_r2_or =
-			VC.SearchSeeds(read_info.Read2, read_info.Rev_read2, r_pos_r2_or, seed_pos[2])
+			VC.SearchSeeds(read_info.Read2, r_pos_r2_or, seed_pos[2])
 		if PARA.Debug_mode {
-			PrintSeedTraceInfo("r2_or", e_pos_r2_or, s_pos_r2_or, read_info.Read2)
+			PrintSeedTraceInfo("r2_or", s_pos_r2_or, e_pos_r2_or, read_info.Read2)
 			if has_seeds_r2_or {
-				PrintExtendTraceInfo("r2_or", read_info.Read1[e_pos_r2_or:s_pos_r2_or+1],
-					e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
+				PrintExtendTraceInfo("r2_or", read_info.Read1[s_pos_r2_or:e_pos_r2_or+1],
+					s_pos_r2_or, e_pos_r2_or, m_num_r2_or, seed_pos[2])
 			}
 		}
 		s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, has_seeds_r2_rc =
-			VC.SearchSeeds(read_info.Rev_comp_read2, read_info.Comp_read2, r_pos_r2_rc, seed_pos[3])
+			VC.SearchSeeds(read_info.Rev_comp_read2, r_pos_r2_rc, seed_pos[3])
 		if PARA.Debug_mode {
-			PrintSeedTraceInfo("r2_rc", e_pos_r2_rc, s_pos_r2_rc, read_info.Rev_comp_read2)
+			PrintSeedTraceInfo("r2_rc", s_pos_r2_rc, e_pos_r2_rc, read_info.Rev_comp_read2)
 			if has_seeds_r2_rc {
-				PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[e_pos_r2_rc:s_pos_r2_rc+1],
-					e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
+				PrintExtendTraceInfo("r2_rc", read_info.Rev_comp_read2[s_pos_r2_rc:e_pos_r2_rc+1],
+					s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, seed_pos[3])
 			}
 		}
 		if has_seeds_r1_or && has_seeds_r2_rc {
 			if PARA.Debug_mode {
-				PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[e_pos_r1_or:s_pos_r1_or+1],
-					e_pos_r1_or, s_pos_r1_or, m_num_r1_or, seed_pos[0])
-				PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[e_pos_r2_rc:s_pos_r2_rc+1],
-					e_pos_r2_rc, s_pos_r2_rc, m_num_r2_rc, seed_pos[3])
+				PrintExtendTraceInfo("r1_or(F1R2)", read_info.Read1[s_pos_r1_or:e_pos_r1_or+1],
+					s_pos_r1_or, e_pos_r1_or, m_num_r1_or, seed_pos[0])
+				PrintExtendTraceInfo("r2_rc(F1R2)", read_info.Read2[s_pos_r2_rc:e_pos_r2_rc+1],
+					s_pos_r2_rc, e_pos_r2_rc, m_num_r2_rc, seed_pos[3])
 			}
 			for i = 0; i < m_num_r1_or; i++ {
 				for j = 0; j < m_num_r2_rc; j++ {
@@ -171,10 +162,10 @@ func (VC *VarCallIndex) SearchSeedsPE(read_info *ReadInfo, seed_pos [][]int, ran
 		}
 		if has_seeds_r1_rc && has_seeds_r2_or {
 			if PARA.Debug_mode {
-				PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[e_pos_r1_rc:s_pos_r1_rc+1],
-					e_pos_r1_rc, s_pos_r1_rc, m_num_r1_rc, seed_pos[1])
-				PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[e_pos_r2_or:s_pos_r2_or+1],
-					e_pos_r2_or, s_pos_r2_or, m_num_r2_or, seed_pos[2])
+				PrintExtendTraceInfo("r1_rc (F2R1)", read_info.Read1[s_pos_r1_rc:e_pos_r1_rc+1],
+					s_pos_r1_rc, e_pos_r1_rc, m_num_r1_rc, seed_pos[1])
+				PrintExtendTraceInfo("r2_or (F2R1)", read_info.Read2[s_pos_r2_or:e_pos_r2_or+1],
+					s_pos_r2_or, e_pos_r2_or, m_num_r2_or, seed_pos[2])
 			}
 			for i = 0; i < m_num_r1_rc; i++ {
 				for j = 0; j < m_num_r2_or; j++ {

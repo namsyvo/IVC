@@ -308,30 +308,20 @@ func InitReadInfo(read_len, info_len int) *ReadInfo {
 //--------------------------------------------------------------------------------------------------
 // RevComp computes reverse, reverse complement, and complement of a read.
 //--------------------------------------------------------------------------------------------------
-func RevComp(read, qual []byte, rev_read, rev_comp_read, comp_read, rev_qual []byte) {
+func RevComp(read, qual []byte, rev_comp_read, rev_qual []byte) {
 	read_len := len(read)
 	for i, elem := range read {
 		rev_qual[i] = qual[read_len-1-i]
 		if elem == 'A' {
-			rev_read[read_len-1-i] = 'A'
 			rev_comp_read[read_len-1-i] = 'T'
-			comp_read[i] = 'T'
 		} else if elem == 'T' {
-			rev_read[read_len-1-i] = 'T'
 			rev_comp_read[read_len-1-i] = 'A'
-			comp_read[i] = 'A'
 		} else if elem == 'C' {
-			rev_read[read_len-1-i] = 'C'
 			rev_comp_read[read_len-1-i] = 'G'
-			comp_read[i] = 'G'
 		} else if elem == 'G' {
-			rev_read[read_len-1-i] = 'G'
 			rev_comp_read[read_len-1-i] = 'C'
-			comp_read[i] = 'C'
 		} else {
-			rev_read[read_len-1-i] = elem
 			rev_comp_read[read_len-1-i] = elem
-			comp_read[i] = elem
 		}
 	}
 }
