@@ -1,3 +1,12 @@
+v0.8.1 <Dec 9, 2015> <time-mem>
+Major changes:
+- Do parallel var prob update.
+- Add improved FM index code and make it as a sub-package.
+- Implement forward search on read (with backward search on reverse reference), so do not need to compute reverse read.
+Minor changes:
+- Store variant calls in a global variable.
+- Fix some bugs, clean code.
+
 v0.8.0 <Nov 19, 2015> <whole-genome>
 Major changes:
 - Working with whole genome.
