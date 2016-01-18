@@ -1,19 +1,23 @@
-(1) Improve running time and memory usage.
+(1) Working with diplod data (detect both homozygous and heterozygous variants)
+    + Generate data which capture diploid variants.
+    + Implement data structures which capture diplod variant profiles
+    + Implement Bayes's formula for diploid variants.
+
+(2) Improve running time and memory usage.
     + Working with Phred-scale values directly instead of probability.
     + Use base quality fully in alignment.
 
-(2) Other improvements.
+(3) Other improvements.
     + Make well-format output, adapt to full-info input.
     + Adjust quality of variants in output based on the best evaluation.
     + Filter indels at beginning and end of reads more carefully.
 
-(3) Future work
+(4) Future work
     + Add functions to allow IVC working with single-end reads.
     + Allow new alleles.
-    + Analyze hard-to-detect INDELs.
     + Working with some cancer datasets.
 
-(4) Integrate indexing and SNP calling phases:
+(5) Integrate indexing and SNP calling phases:
     (a) Create or load the index:
         + Create the index only if (A) it does not exist, or (B) it exists but there is an error loading it.
     (b) Call SNPs.
