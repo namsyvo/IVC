@@ -737,6 +737,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	// if found new variants at existing locations
 	var l float64
 	var b string
+	RW.Lock()
 	if _, var_exist := VarCall[rid].VarProb[pos][vbase]; !var_exist {
 		l = float64(len(VarCall[rid].VarProb[pos]))
 		if vtype == 0 {
@@ -766,6 +767,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 		VarCall[rid].VarBQual[pos][vbase] = append(VarCall[rid].VarBQual[pos][vbase], var_info.BQual)
 		VarCall[rid].ReadInfo[pos][vbase] = append(VarCall[rid].ReadInfo[pos][vbase], var_info.RInfo)
 	}
+	RW.Unlock()
 
 	var q byte
 	p1, p2 := 1.0, 1.0
@@ -793,9 +795,11 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 		p_ab[b] = p
 		p_a += p
 	}
+	RW.Lock()
 	for b, p_b = range VarCall[rid].VarProb[pos] {
 		VarCall[rid].VarProb[pos][b] = p_ab[b] / p_a
 	}
+	RW.Unlock()
 }
 
 //---------------------------------------------------------------------------------------------------

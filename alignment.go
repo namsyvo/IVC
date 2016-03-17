@@ -208,7 +208,9 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
+				RW.RLock()
 				var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[j-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[j-1])]
+				RW.RUnlock()
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
@@ -604,7 +606,9 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
+				RW.RLock()
 				var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[N-j]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-j])]
+				RW.RUnlock()
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
