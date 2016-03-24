@@ -154,6 +154,7 @@ func NewVariantCaller() *VarCallIndex {
 			VC.DelVar[var_pos] = var_len - 1
 		}
 	}
+
 	// Set up pre-calculated cost
 	// Notice: Phred-encoding factor is set to 33 here. It is better to be determined from input data.
 	Q2C = make(map[byte]float64)           // alignment cost based on Phred-scale quality
@@ -198,55 +199,27 @@ func NewVariantCaller() *VarCallIndex {
 			VarCall[rid].ReadInfo = make(map[uint32]map[string][][]byte)
 		}
 	}
+
+	//At this point, assume that all variants are biallelic
 	var pos uint32
-	//var var_bases []byte
-	//var i int
+	var rid int
 	c := 0
-	//STD_BASES := []string{"A", "C", "G", "T"}
 	for var_pos, var_prof := range VC.Variants {
 		pos = uint32(var_pos)
-		rid := PARA.Proc_num * var_pos / VC.SeqLen
+		rid = PARA.Proc_num * var_pos / VC.SeqLen
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
-		//At this point, assume that all variants are biallelic
-		/*
-			if len(var_prof[0]) == 1 && len(var_prof[1]) == 1 {
-				for i, var_bases = range var_prof {
-					VarCall[rid].VarProb[pos][string(var_bases)] = float64(VC.VarAF[var_pos][i]) - NEW_SNP_RATE
-					if VarCall[rid].VarProb[pos][string(var_bases)] < NEW_SNP_RATE {
-						VarCall[rid].VarProb[pos][string(var_bases)] = NEW_SNP_RATE
-					}
-				}
-			} else {
-				for i, var_bases = range var_prof {
-					VarCall[rid].VarProb[pos][string(var_bases)] = float64(VC.VarAF[var_pos][i]) - 1.5*NEW_SNP_RATE
-					if VarCall[rid].VarProb[pos][string(var_bases)] < NEW_SNP_RATE {
-						VarCall[rid].VarProb[pos][string(var_bases)] = NEW_SNP_RATE
-					}
-				}
-			}
-			for _, b := range STD_BASES { // standard bases (only A, C, G, and T) of DNA sequences
-				if _, ok := VarCall[rid].VarProb[pos][b]; !ok {
-					VarCall[rid].VarProb[pos][b] = NEW_SNP_RATE
-				}
-			}
-		*/
-		var rbase, vbase string
-		if _, del_flag = VC.DelVar[var_pos]; !del_flag {
-			rbase, vbase = string(var_prof[0]), string(var_prof[1])
-		} else {
-			rbase, vbase = string(var_prof[1]), string(var_prof[0])
+		rbase, vbase := string(var_prof[0]), string(var_prof[1])
+		VarCall[rid].VarProb[pos][rbase+"|"+rbase] = float64(VC.VarAF[var_pos][0]) - NEW_SNP_RATE
+		VarCall[rid].VarProb[pos][rbase+"|"+vbase] = float64(VC.VarAF[var_pos][1])/2 - NEW_SNP_RATE
+		VarCall[rid].VarProb[pos][vbase+"|"+vbase] = float64(VC.VarAF[var_pos][1])/2 - NEW_SNP_RATE
+		if VarCall[rid].VarProb[pos][rbase+"|"+rbase] < NEW_SNP_RATE {
+			VarCall[rid].VarProb[pos][rbase+"|"+rbase] = NEW_SNP_RATE
 		}
-		VarCall[rid].VarProb[pos][rbase+rbase] = float64(VC.VarAF[var_pos][0]) - NEW_SNP_RATE
-		VarCall[rid].VarProb[pos][rbase+vbase] = float64(VC.VarAF[var_pos][1])/2 - NEW_SNP_RATE
-		VarCall[rid].VarProb[pos][vbase+vbase] = float64(VC.VarAF[var_pos][1])/2 - NEW_SNP_RATE
-		if VarCall[rid].VarProb[pos][rbase+rbase] < NEW_SNP_RATE {
-			VarCall[rid].VarProb[pos][rbase+rbase] = NEW_SNP_RATE
+		if VarCall[rid].VarProb[pos][rbase+"|"+vbase] < NEW_SNP_RATE {
+			VarCall[rid].VarProb[pos][rbase+"|"+vbase] = NEW_SNP_RATE
 		}
-		if VarCall[rid].VarProb[pos][rbase+vbase] < NEW_SNP_RATE {
-			VarCall[rid].VarProb[pos][rbase+vbase] = NEW_SNP_RATE
-		}
-		if VarCall[rid].VarProb[pos][vbase+vbase] < NEW_SNP_RATE {
-			VarCall[rid].VarProb[pos][vbase+vbase] = NEW_SNP_RATE
+		if VarCall[rid].VarProb[pos][vbase+"|"+vbase] < NEW_SNP_RATE {
+			VarCall[rid].VarProb[pos][vbase+"|"+vbase] = NEW_SNP_RATE
 		}
 		VarCall[rid].VarType[pos] = make(map[string]int)
 		VarCall[rid].VarRNum[pos] = make(map[string]int)
@@ -734,20 +707,20 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
 		rbase := string(VC.Seq[int(pos)])
 		if vtype == 0 { // SUB
-			VarCall[rid].VarProb[pos][rbase+rbase] = 1 - 1.5*NEW_SNP_RATE
-			VarCall[rid].VarProb[pos][rbase+vbase] = NEW_SNP_RATE
-			VarCall[rid].VarProb[pos][vbase+vbase] = 0.5 * NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][rbase+"|"+rbase] = 1 - 1.5*NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][rbase+"|"+vbase] = NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][vbase+"|"+vbase] = 0.5 * NEW_SNP_RATE
 		} else { // INDEL
-			VarCall[rid].VarProb[pos][rbase+rbase] = 1 - 1.5*NEW_INDEL_RATE
-			VarCall[rid].VarProb[pos][rbase+vbase] = NEW_INDEL_RATE
-			VarCall[rid].VarProb[pos][vbase+vbase] = 0.5 * NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][rbase+"|"+rbase] = 1 - 1.5*NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][rbase+"|"+vbase] = NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase+"|"+vbase] = 0.5 * NEW_INDEL_RATE
 		}
 		VarCall[rid].VarType[pos] = make(map[string]int)
-		VarCall[rid].VarType[pos][rbase+vbase] = vtype
-		VarCall[rid].VarType[pos][vbase+vbase] = vtype
+		VarCall[rid].VarType[pos][rbase+"|"+vbase] = vtype
+		VarCall[rid].VarType[pos][vbase+"|"+vbase] = vtype
 		VarCall[rid].VarRNum[pos] = make(map[string]int)
-		VarCall[rid].VarRNum[pos][rbase+vbase] += 1
-		VarCall[rid].VarRNum[pos][vbase+vbase] += 1
+		VarCall[rid].VarRNum[pos][rbase+"|"+vbase] += 1
+		VarCall[rid].VarRNum[pos][vbase+"|"+vbase] += 1
 		if PARA.Debug_mode {
 			VarCall[rid].ChrDis[pos] = make(map[string][]int)
 			VarCall[rid].ChrDiff[pos] = make(map[string][]int)
@@ -764,9 +737,11 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	} else { // if existing variant locations
 		var l1, l2 float64
 		var b, nt string
+		var nt_arr []string
 		nt_map := make(map[string]bool)
 		for b, _ = range VarCall[rid].VarProb[pos] {
-			nt_map[string(b[0])], nt_map[string(b[1:])] = true, true
+			nt_arr = strings.Split(b, "|")
+			nt_map[nt_arr[0]], nt_map[nt_arr[1]] = true, true
 		}
 		// if new variants at existing locations
 		if _, var_exist := nt_map[vbase]; !var_exist {
@@ -777,25 +752,25 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*NEW_SNP_RATE
 				}
 				for nt, _ = range nt_map {
-					VarCall[rid].VarProb[pos][nt+vbase] = NEW_SNP_RATE
-					VarCall[rid].VarType[pos][nt+vbase] = vtype
-					VarCall[rid].VarRNum[pos][nt+vbase] += 1
+					VarCall[rid].VarProb[pos][nt+"|"+vbase] = NEW_SNP_RATE
+					VarCall[rid].VarType[pos][nt+"|"+vbase] = vtype
+					VarCall[rid].VarRNum[pos][nt+"|"+vbase] += 1
 				}
-				VarCall[rid].VarProb[pos][vbase+vbase] = NEW_SNP_RATE
-				VarCall[rid].VarType[pos][vbase+vbase] = vtype
-				VarCall[rid].VarRNum[pos][vbase+vbase] += 1
+				VarCall[rid].VarProb[pos][vbase+"|"+vbase] = NEW_SNP_RATE
+				VarCall[rid].VarType[pos][vbase+"|"+vbase] = vtype
+				VarCall[rid].VarRNum[pos][vbase+"|"+vbase] += 1
 			} else {
 				for b, _ = range VarCall[rid].VarProb[pos] {
 					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*NEW_INDEL_RATE
 				}
 				for nt, _ = range nt_map {
-					VarCall[rid].VarProb[pos][nt+vbase] = NEW_INDEL_RATE
-					VarCall[rid].VarType[pos][nt+vbase] = vtype
-					VarCall[rid].VarRNum[pos][nt+vbase] += 1
+					VarCall[rid].VarProb[pos][nt+"|"+vbase] = NEW_INDEL_RATE
+					VarCall[rid].VarType[pos][nt+"|"+vbase] = vtype
+					VarCall[rid].VarRNum[pos][nt+"|"+vbase] += 1
 				}
-				VarCall[rid].VarProb[pos][vbase+vbase] = NEW_INDEL_RATE
-				VarCall[rid].VarType[pos][vbase+vbase] = vtype
-				VarCall[rid].VarRNum[pos][vbase+vbase] += 1
+				VarCall[rid].VarProb[pos][vbase+"|"+vbase] = NEW_INDEL_RATE
+				VarCall[rid].VarType[pos][vbase+"|"+vbase] = vtype
+				VarCall[rid].VarRNum[pos][vbase+"|"+vbase] += 1
 			}
 		} else { //if existing variants
 			for b, _ = range VarCall[rid].VarProb[pos] {
@@ -888,6 +863,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				var_call = var_base
 			}
 		}
+		nt_arr := strings.Split(var_call, "|")
 		// Start getting variant call info
 		line_aln = make([]string, 0)
 		// Get the largest ChrPos that is <= pos
@@ -901,8 +877,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		line_aln = append(line_aln, ".")
 		// REF & ALT
 		if _, is_var = VC.Variants[pos]; is_var {
-			//log.Println("K", pos, string(var_call), string(VC.Variants[pos][0]), VarCall[rid].VarRNum[var_pos][var_call], string(var_call[0]), string(var_call[1]))
-			if string(var_call[0]) == string(VC.Variants[pos][0]) && string(var_call[1]) == string(VC.Variants[pos][0]) { // do not report known variants which are same with the reference
+			if nt_arr[0] == string(VC.Variants[pos][0]) && nt_arr[1] == string(VC.Variants[pos][0]) { // do not report known variants which are same with the reference
 				continue
 			}
 			if VarCall[rid].VarRNum[var_pos][var_call] == 0 { // do not report known variants at locations without aligned reads
@@ -911,7 +886,6 @@ func (VC *VarCallIndex) OutputVarCalls() {
 			line_aln = append(line_aln, string(VC.Variants[pos][0]))
 			line_aln = append(line_aln, var_call)
 		} else {
-			//log.Println("U", pos, string(var_call), string(VC.Seq[pos]), VarCall[rid].VarRNum[var_pos][var_call], string(var_call[0]), string(var_call[1]))
 			if VarCall[rid].VarType[var_pos][var_call] >= 0 {
 				if VarCall[rid].VarType[var_pos][var_call] == 2 { //DEL
 					line_aln = append(line_aln, var_call)
@@ -921,7 +895,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 					line_aln = append(line_aln, var_call)
 				} else { //SUB
 					//Ignore variants that are identical with ref
-					if string(var_call[0]) == string(VC.Seq[pos]) && string(var_call[1]) == string(VC.Seq[pos]) {
+					if nt_arr[0] == string(VC.Seq[pos]) && nt_arr[1] == string(VC.Seq[pos]) {
 						continue
 					}
 					line_aln = append(line_aln, string(VC.Seq[pos]))
