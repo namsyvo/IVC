@@ -12,11 +12,15 @@ import (
 )
 
 //-------------------------------------------------------------------------------------------------
-// AlignCostKnownLoci calculates cost of alignment between a read and the reference at known loci.
+// AlignCostVarLoci calculates cost of alignment between a read and the reference at known loci.
 //-------------------------------------------------------------------------------------------------
-func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
+func AlignCostVarLoci(read, ref, qual []byte, prob float64) float64 {
 	p := 0.0
-	for i := 0; i < len(read); i++ {
+	l := len(read)
+	if l > len(ref) {
+		l = len(ref)
+	}
+	for i := 0; i < l; i++ {
 		if read[i] != ref[i] {
 			return math.MaxFloat64
 		} else {
@@ -88,11 +92,13 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 			m--
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
+			MUT.Lock()
 			var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[n-1])]
+			MUT.Unlock()
 			min_p = math.MaxFloat64
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
-					p = AlignCostKnownLoci(read[m-var_len:m], []byte(var_str), qual[m-var_len:m], var_prob)
+					p = AlignCostVarLoci(read[m-var_len:m], []byte(var_str), qual[m-var_len:m], var_prob)
 					if min_p > p {
 						min_p = p
 					}
@@ -208,14 +214,14 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
-				RW.RLock()
+				MUT.Lock()
 				var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[j-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[j-1])]
-				RW.RUnlock()
+				MUT.Unlock()
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
 					if i-var_len >= 0 {
-						prob_i = AlignCostKnownLoci(read[i-var_len:i], []byte(var_str),
+						prob_i = AlignCostVarLoci(read[i-var_len:i], []byte(var_str),
 							qual[i-var_len:i], var_prob)
 						if D[i][j] > D[i-var_len][j-1]+prob_i {
 							D[i][j] = D[i-var_len][j-1] + prob_i
@@ -493,10 +499,12 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
 			min_p = math.MaxFloat64
+			MUT.Lock()
 			var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-n])]
+			MUT.Unlock()
 			for var_str, var_prob = range var_prof {
 				if m >= var_len {
-					p = AlignCostKnownLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
+					p = AlignCostVarLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
 					if min_p > p {
 						min_p = p
 					}
@@ -606,14 +614,14 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				selected_var_len = 0
-				RW.RLock()
+				MUT.Lock()
 				var_prof, _ = VarCall[PARA.Proc_num*ref_pos_map[N-j]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-j])]
-				RW.RUnlock()
+				MUT.Unlock()
 				for var_str, var_prob = range var_prof {
 					var_len = len(var_str)
 					//One possible case: i - var_len < 0 for all k
 					if i-var_len >= 0 {
-						prob_i = AlignCostKnownLoci(read[M-i:M-i+var_len], []byte(var_str),
+						prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], []byte(var_str),
 							qual[M-i:M-i+var_len], var_prob)
 						if D[i][j] > D[i-var_len][j-1]+prob_i {
 							D[i][j] = D[i-var_len][j-1] + prob_i

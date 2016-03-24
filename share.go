@@ -30,12 +30,12 @@ const (
 // Global variables for calculating variant quality.
 //--------------------------------------------------------------------------------------------------
 var (
-	PARA *ParaInfo         // all parameters of the program
-	L2E  []float64         // indel error rate corresponding to lengths of indels
-	Q2C  map[byte]float64  // alignment cost based on Phred-scale quality
-	Q2E  map[byte]float64  // error probability based on Phred-scale quality
-	Q2P  map[byte]float64  // non-error probability based on Phred-scale quality
-	RW   = &sync.RWMutex{} // mutex lock for reading/writing from/to the map of variant calls
+	PARA *ParaInfo        // all parameters of the program
+	L2E  []float64        // indel error rate corresponding to lengths of indels
+	Q2C  map[byte]float64 // alignment cost based on Phred-scale quality
+	Q2E  map[byte]float64 // error probability based on Phred-scale quality
+	Q2P  map[byte]float64 // non-error probability based on Phred-scale quality
+	MUT  = &sync.Mutex{}  // mutex lock for reading/writing from/to the map of variant calls
 )
 
 //--------------------------------------------------------------------------------------------------
