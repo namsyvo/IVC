@@ -18,12 +18,13 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 	p := 0.0
 	for i := 0; i < len(read); i++ {
 		if read[i] != ref[i] {
-			return math.MaxFloat64
+			p = p - math.Log10(prob)
+			//return math.MaxFloat64
 		} else {
 			p = p + 0.0 //Q2C[qual[i]]
 		}
 	}
-	return p - math.Log10(prob)
+	return p
 }
 
 //-------------------------------------------------------------------------------------------------
