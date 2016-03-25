@@ -14,6 +14,7 @@ import (
 	"path"
 	"runtime"
 	"runtime/pprof"
+	"sync"
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -34,6 +35,7 @@ var (
 	Q2C  map[byte]float64 // alignment cost based on Phred-scale quality
 	Q2E  map[byte]float64 // error probability based on Phred-scale quality
 	Q2P  map[byte]float64 // non-error probability based on Phred-scale quality
+	MUT  = &sync.Mutex{}  // mutex lock for reading/writing from/to the map of variant calls
 )
 
 //--------------------------------------------------------------------------------------------------

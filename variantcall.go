@@ -708,6 +708,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	vtype := var_info.Type
 	vbase := string(var_info.Bases)
 	rid := PARA.Proc_num * int(pos) / VC.SeqLen
+	MUT.Lock()
 	// if found new variant locations
 	if _, var_prof_exist := VarCall[rid].VarProb[pos]; !var_prof_exist {
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
@@ -796,6 +797,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	for b, p_b = range VarCall[rid].VarProb[pos] {
 		VarCall[rid].VarProb[pos][b] = p_ab[b] / p_a
 	}
+	MUT.Unlock()
 }
 
 //---------------------------------------------------------------------------------------------------
