@@ -801,13 +801,14 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	for _, q := range var_info.BQual {
 		p2 *= Q2E[q]
 	}
-	var p float64
+	var p, c float64
 	p_a := 0.0
 	p_ab := make(map[string]float64)
 	_, is_known_var := VC.Variants[int(pos)]
 	for b, p_b := range VarCall[rid].VarProb[pos] {
-		if strings.Contains(b, vbase) {
-			p_ab[b] = p1 * float64(strings.Count(b, vbase)) / 2.0
+		c = float64(strings.Count(b, vbase))
+		if c > 0.0 {
+			p_ab[b] = p1 * c/2.0
 		} else {
 			if !is_known_var && vtype == 2 {
 				p_ab[b] = L2E[len(vbase)]
