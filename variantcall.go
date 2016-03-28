@@ -161,7 +161,7 @@ func NewVariantCaller() *VarCallIndex {
 	Q2P = make(map[byte]float64)         // non-error probability based on Phred-scale quality
 	L2E = make([]float64, PARA.Read_len) // indel-error rate based on indel-length
 	var q byte
-	for i := 33; i < 74; i++ {
+	for i := 33; i < 105; i++ {
 		q = byte(i)
 		Q2C[q] = -math.Log10(1.0 - math.Pow(10, -(float64(q)-33)/10.0))
 		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
