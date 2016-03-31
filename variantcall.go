@@ -308,7 +308,7 @@ func (VC *VarCallIndex) CallVariants() {
 			UNALIGN_READ_INFO = append(UNALIGN_READ_INFO, uar)
 		}
 	}
-	log.Printf("Number of no-aligned reads:\t%d", i)
+	log.Printf("Number of un-aligned reads:\t%d", i)
 
 	if PARA.Debug_mode {
 		ProcessNoAlignReadInfo()
@@ -374,6 +374,7 @@ func (VC *VarCallIndex) ReadReads(read_data chan *ReadInfo, read_signal chan boo
 			}
 		}
 	}
+	log.Printf("Number of reads:\t%d", read_num)
 	close(read_data)
 }
 
@@ -806,9 +807,16 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	p_ab := make(map[string]float64)
 	_, is_known_var := VC.Variants[int(pos)]
 	for b, p_b := range VarCall[rid].VarProb[pos] {
-		c = float64(strings.Count(b, vbase))
+		d := strings.Split(b, "|")
+		if d[0] == vbase && d[1] == vbase {
+			c = 2.0
+		} else if d[0] != vbase && d[1] != vbase {
+			c = 0.0
+		} else {
+			c = 1.0
+		}
 		if c > 0.0 {
-			p_ab[b] = p1 * c/2.0
+			p_ab[b] = p1 * c / 2.0
 		} else {
 			if !is_known_var && vtype == 2 {
 				p_ab[b] = L2E[len(vbase)]
