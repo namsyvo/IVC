@@ -21,9 +21,9 @@ import (
 // Global constants
 //--------------------------------------------------------------------------------------------------
 const (
-	NEW_SNP_RATE   = 0.00001   // probability of new alleles
-	NEW_INDEL_RATE = 0.000001  // probability of new indels
-	INDEL_ERR_RATE = 0.0000001 // probability of indel error
+	NEW_SNP_RATE   = 0.001  // probability of new alleles
+	NEW_INDEL_RATE = 0.0001 // probability of new indels
+	INDEL_ERR_RATE = 0.0001 // probability of indel error
 )
 
 //--------------------------------------------------------------------------------------------------
@@ -342,6 +342,7 @@ type SeedInfo struct {
 // Alignment information, served as shared variables between functions for alignment process
 //--------------------------------------------------------------------------------------------------
 type EditAlnInfo struct {
+	l_Trace_K, r_Trace_K              [][][]byte  //backtrace matrix for known locations
 	l_Dist_D, l_Dist_IS, l_Dist_IT    [][]float64 // distance matrix for backward alignment
 	l_Trace_D, l_Trace_IS, l_Trace_IT [][][]int   // backtrace matrix for backward alignment
 	r_Dist_D, r_Dist_IS, r_Dist_IT    [][]float64 // distance matrix for forward alignment
@@ -353,6 +354,7 @@ type EditAlnInfo struct {
 //--------------------------------------------------------------------------------------------------
 func InitEditAlnInfo(arr_len int) *EditAlnInfo {
 	aln_info := new(EditAlnInfo)
+	aln_info.l_Trace_K, aln_info.r_Trace_K = InitTraceKMat(arr_len), InitTraceKMat(arr_len)
 	aln_info.l_Dist_D, aln_info.l_Trace_D = InitEditAlnMat(arr_len)
 	aln_info.l_Dist_IS, aln_info.l_Trace_IS = InitEditAlnMat(arr_len)
 	aln_info.l_Dist_IT, aln_info.l_Trace_IT = InitEditAlnMat(arr_len)
@@ -360,6 +362,20 @@ func InitEditAlnInfo(arr_len int) *EditAlnInfo {
 	aln_info.r_Dist_IS, aln_info.r_Trace_IS = InitEditAlnMat(arr_len)
 	aln_info.r_Dist_IT, aln_info.r_Trace_IT = InitEditAlnMat(arr_len)
 	return aln_info
+}
+
+//--------------------------------------------------------------------------------------------------
+// InitEditAlnMat initializes variables for computing distance and alignment between reads and multi-genomes.
+//--------------------------------------------------------------------------------------------------
+func InitTraceKMat(arr_len int) [][][]byte {
+	trace_mat := make([][][]byte, arr_len+1)
+	for i := 0; i <= arr_len; i++ {
+		trace_mat[i] = make([][]byte, arr_len+1)
+		for j := 0; j <= arr_len; j++ {
+			trace_mat[i][j] = make([]byte, 0)
+		}
+	}
+	return trace_mat
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -374,7 +390,7 @@ func InitEditAlnMat(arr_len int) ([][]float64, [][][]int) {
 	for i := 0; i <= arr_len; i++ {
 		trace_mat[i] = make([][]int, arr_len+1)
 		for j := 0; j <= arr_len; j++ {
-			trace_mat[i][j] = make([]int, 3)
+			trace_mat[i][j] = make([]int, 2)
 		}
 	}
 	return dis_mat, trace_mat

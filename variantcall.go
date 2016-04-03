@@ -168,7 +168,7 @@ func NewVariantCaller() *VarCallIndex {
 		Q2E[q] = math.Pow(10, -(float64(q)-33)/10.0) / 3.0
 		Q2P[q] = 1.0 - math.Pow(10, -(float64(q)-33)/10.0)
 	}
-	for i := 1; i < PARA.Read_len+1; i++ {
+	for i := 0; i < PARA.Read_len+1; i++ {
 		L2E[i] = math.Pow(INDEL_ERR_RATE, float64(i))
 	}
 
@@ -209,18 +209,9 @@ func NewVariantCaller() *VarCallIndex {
 		rid = PARA.Proc_num * var_pos / VC.SeqLen
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
 		rbase, vbase := string(var_prof[0]), string(var_prof[1])
-		VarCall[rid].VarProb[pos][rbase+"|"+rbase] = float64(VC.VarAF[var_pos][0]) - NEW_SNP_RATE
-		VarCall[rid].VarProb[pos][rbase+"|"+vbase] = float64(VC.VarAF[var_pos][1])/2 - NEW_SNP_RATE
-		VarCall[rid].VarProb[pos][vbase+"|"+vbase] = float64(VC.VarAF[var_pos][1])/2 - NEW_SNP_RATE
-		if VarCall[rid].VarProb[pos][rbase+"|"+rbase] < NEW_SNP_RATE {
-			VarCall[rid].VarProb[pos][rbase+"|"+rbase] = NEW_SNP_RATE
-		}
-		if VarCall[rid].VarProb[pos][rbase+"|"+vbase] < NEW_SNP_RATE {
-			VarCall[rid].VarProb[pos][rbase+"|"+vbase] = NEW_SNP_RATE
-		}
-		if VarCall[rid].VarProb[pos][vbase+"|"+vbase] < NEW_SNP_RATE {
-			VarCall[rid].VarProb[pos][vbase+"|"+vbase] = NEW_SNP_RATE
-		}
+		VarCall[rid].VarProb[pos][rbase+"|"+rbase] = float64(VC.VarAF[var_pos][0]) * 2.0 / 3.0
+		VarCall[rid].VarProb[pos][rbase+"|"+vbase] = float64(VC.VarAF[var_pos][0])/3.0 + float64(VC.VarAF[var_pos][1])/3.0
+		VarCall[rid].VarProb[pos][vbase+"|"+vbase] = float64(VC.VarAF[var_pos][1]) * 2.0 / 3.0
 		VarCall[rid].VarType[pos] = make(map[string]int)
 		VarCall[rid].VarRNum[pos] = make(map[string]int)
 		if PARA.Debug_mode {
@@ -451,7 +442,6 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 	read_info1, read_info2 := make([]byte, len(read_info.Info1)), make([]byte, len(read_info.Info2))
 	copy(read_info1, read_info.Info1)
 	copy(read_info2, read_info.Info2)
-
 	var vars1, vars2, vars_get1, vars_get2 []*VarInfo
 	var l_aln_pos1, l_aln_pos2 int
 	var seed_info1, seed_info2 *SeedInfo
@@ -642,16 +632,16 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 	}
 	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
 		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_aln_s_pos, edit_aln_info.l_Dist_D, edit_aln_info.l_Dist_IS,
-			edit_aln_info.l_Dist_IT, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, l_ref_pos_map)
+			edit_aln_info.l_Dist_IT, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, edit_aln_info.l_Trace_K, l_ref_pos_map)
 	r_Ham_dist, r_Edit_dist, r_bt_mat, r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type :=
 		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank, r_aln_s_pos, edit_aln_info.r_Dist_D, edit_aln_info.r_Dist_IS,
-			edit_aln_info.r_Dist_IT, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
+			edit_aln_info.r_Dist_IT, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, edit_aln_info.r_Trace_K, r_ref_pos_map)
 
 	aln_dist := l_Ham_dist + l_Edit_dist + r_Ham_dist + r_Edit_dist
 	if aln_dist <= PARA.Dist_thres {
 		if l_m > 0 && l_n > 0 {
 			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n,
-				l_aln_s_pos, l_bt_mat, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, l_ref_pos_map)
+				l_aln_s_pos, l_bt_mat, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, edit_aln_info.l_Trace_K, l_ref_pos_map)
 			if PARA.Debug_mode {
 				PrintVarInfo("LeftAlnitTraceBack, variant info", l_pos, l_base, l_qual)
 			}
@@ -665,7 +655,7 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 		}
 		if r_m > 0 && r_n > 0 {
 			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n,
-				r_aln_s_pos, r_bt_mat, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, r_ref_pos_map)
+				r_aln_s_pos, r_bt_mat, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, edit_aln_info.r_Trace_K, r_ref_pos_map)
 			if PARA.Debug_mode {
 				PrintVarInfo("RightAlnEditTraceBack, variant info", r_pos, r_base, r_qual)
 			}
@@ -699,29 +689,44 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	pos := var_info.Pos
-	vtype := var_info.Type
-	vbase := string(var_info.Bases)
+	//vtype := var_info.Type
+	vbase := strings.Split(string(var_info.Bases), "|")
 	rid := PARA.Proc_num * int(pos) / VC.SeqLen
 	MUT.Lock()
 	// if new variant locations
 	if _, var_call_exist := VarCall[rid].VarProb[pos]; !var_call_exist {
 		VarCall[rid].VarProb[pos] = make(map[string]float64)
-		rbase := string(VC.Seq[int(pos)])
-		if vtype == 0 { // SUB
-			VarCall[rid].VarProb[pos][rbase+"|"+rbase] = 1 - 1.5*NEW_SNP_RATE
-			VarCall[rid].VarProb[pos][rbase+"|"+vbase] = NEW_SNP_RATE
-			VarCall[rid].VarProb[pos][vbase+"|"+vbase] = 0.5 * NEW_SNP_RATE
-		} else { // INDEL
-			VarCall[rid].VarProb[pos][rbase+"|"+rbase] = 1 - 1.5*NEW_INDEL_RATE
-			VarCall[rid].VarProb[pos][rbase+"|"+vbase] = NEW_INDEL_RATE
-			VarCall[rid].VarProb[pos][vbase+"|"+vbase] = 0.5 * NEW_INDEL_RATE
+		if len(vbase[0]) == len(vbase[1]) { // SUB
+			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[0]] = 1 - 1.5*NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[1]] = NEW_SNP_RATE
+			VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = 0.5 * NEW_SNP_RATE
+		} else if len(vbase[0]) < len(vbase[1]) { // INS
+			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[0]] = 1 - 1.5*NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[1]] = NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = 0.5 * NEW_INDEL_RATE
+		} else {
+			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[0]] = 0.5 * NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[1]] = NEW_INDEL_RATE
+			VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = 1 - 1.5*NEW_INDEL_RATE
 		}
 		VarCall[rid].VarType[pos] = make(map[string]int)
-		VarCall[rid].VarType[pos][rbase+"|"+vbase] = vtype
-		VarCall[rid].VarType[pos][vbase+"|"+vbase] = vtype
+		if len(vbase[0]) == len(vbase[1]) { //SUB
+			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[0]] = 0
+			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[1]] = 0
+			VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 0
+		} else if len(vbase[0]) < len(vbase[1]) { //INS
+			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[0]] = 0
+			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[1]] = 1
+			VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 1
+		} else { //DEL
+			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[0]] = 2
+			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[1]] = 2
+			VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 0
+		}
 		VarCall[rid].VarRNum[pos] = make(map[string]int)
-		VarCall[rid].VarRNum[pos][rbase+"|"+vbase] += 1
-		VarCall[rid].VarRNum[pos][vbase+"|"+vbase] += 1
+		VarCall[rid].VarRNum[pos][vbase[0]+"|"+vbase[0]] = 0
+		VarCall[rid].VarRNum[pos][vbase[0]+"|"+vbase[1]] = 1
+		VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] = 1
 		if PARA.Debug_mode {
 			VarCall[rid].ChrDis[pos] = make(map[string][]int)
 			VarCall[rid].ChrDiff[pos] = make(map[string][]int)
@@ -737,99 +742,114 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 		}
 	} else { // if existing variant locations
 		var l1, l2 float64
-		var b, nt string
-		var nt_arr []string
-		nt_map := make(map[string]bool)
+		var b, hap string
+		hap_map := make(map[string]bool)
 		for b, _ = range VarCall[rid].VarProb[pos] {
-			nt_arr = strings.Split(b, "|")
-			nt_map[nt_arr[0]], nt_map[nt_arr[1]] = true, true
+			hap_arr := strings.Split(b, "|")
+			hap_map[hap_arr[0]], hap_map[hap_arr[1]] = true, true
 		}
 		// if new variants at existing locations
-		if _, var_exist := nt_map[vbase]; !var_exist {
-			l1 = float64(len(nt_map) + 1)
+		if _, var_exist := hap_map[vbase[1]]; !var_exist {
+			l1 = float64(len(hap_map) + 1)
 			l2 = float64(len(VarCall[rid].VarProb[pos]))
-			if vtype == 0 {
+			min_prob := 1.0
+			for b, _ = range VarCall[rid].VarProb[pos] {
+				if min_prob > VarCall[rid].VarProb[pos][b] {
+					min_prob = VarCall[rid].VarProb[pos][b]
+				}
+			}
+			if len(vbase[0]) == len(vbase[1]) {
 				for b, _ = range VarCall[rid].VarProb[pos] {
-					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*NEW_SNP_RATE
+					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*min_prob*NEW_SNP_RATE
 				}
-				for nt, _ = range nt_map {
-					VarCall[rid].VarProb[pos][nt+"|"+vbase] = NEW_SNP_RATE
-					VarCall[rid].VarType[pos][nt+"|"+vbase] = vtype
-					VarCall[rid].VarRNum[pos][nt+"|"+vbase] += 1
+				for hap, _ = range hap_map {
+					VarCall[rid].VarProb[pos][hap+"|"+vbase[1]] = min_prob * NEW_SNP_RATE
+					VarCall[rid].VarRNum[pos][hap+"|"+vbase[1]] += 1
 				}
-				VarCall[rid].VarProb[pos][vbase+"|"+vbase] = NEW_SNP_RATE
-				VarCall[rid].VarType[pos][vbase+"|"+vbase] = vtype
-				VarCall[rid].VarRNum[pos][vbase+"|"+vbase] += 1
+				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_SNP_RATE
+				VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] += 1
+			} else if len(vbase[0]) < len(vbase[1]) {
+				for b, _ = range VarCall[rid].VarProb[pos] {
+					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*min_prob*NEW_INDEL_RATE
+				}
+				for hap, _ = range hap_map {
+					VarCall[rid].VarProb[pos][hap+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
+					VarCall[rid].VarRNum[pos][hap+"|"+vbase[1]] += 1
+					VarCall[rid].VarType[pos][hap+"|"+vbase[1]] = 1
+				}
+				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
+				VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] += 1
+				VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 1
 			} else {
 				for b, _ = range VarCall[rid].VarProb[pos] {
-					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*NEW_INDEL_RATE
+					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*min_prob*NEW_INDEL_RATE
 				}
-				for nt, _ = range nt_map {
-					VarCall[rid].VarProb[pos][nt+"|"+vbase] = NEW_INDEL_RATE
-					VarCall[rid].VarType[pos][nt+"|"+vbase] = vtype
-					VarCall[rid].VarRNum[pos][nt+"|"+vbase] += 1
+				for hap, _ = range hap_map {
+					VarCall[rid].VarProb[pos][hap+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
+					VarCall[rid].VarRNum[pos][hap+"|"+vbase[1]] += 1
+					VarCall[rid].VarType[pos][hap+"|"+vbase[1]] = 2
 				}
-				VarCall[rid].VarProb[pos][vbase+"|"+vbase] = NEW_INDEL_RATE
-				VarCall[rid].VarType[pos][vbase+"|"+vbase] = vtype
-				VarCall[rid].VarRNum[pos][vbase+"|"+vbase] += 1
+				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
+				VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] += 1
+				VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 2
 			}
 		} else { //if existing variants
 			for b, _ = range VarCall[rid].VarProb[pos] {
-				if strings.Contains(b, vbase) {
-					VarCall[rid].VarType[pos][b] = vtype
+				if strings.Contains(b, vbase[1]) {
 					VarCall[rid].VarRNum[pos][b] += 1
 				}
 			}
 		}
 	}
 	if PARA.Debug_mode {
-		VarCall[rid].ChrDis[pos][vbase] = append(VarCall[rid].ChrDis[pos][vbase], var_info.CDis)
-		VarCall[rid].ChrDiff[pos][vbase] = append(VarCall[rid].ChrDiff[pos][vbase], var_info.CDiff)
-		VarCall[rid].MapProb[pos][vbase] = append(VarCall[rid].MapProb[pos][vbase], var_info.MProb)
-		VarCall[rid].AlnProb[pos][vbase] = append(VarCall[rid].AlnProb[pos][vbase], var_info.AProb)
-		VarCall[rid].ChrProb[pos][vbase] = append(VarCall[rid].ChrProb[pos][vbase], var_info.IProb)
-		VarCall[rid].StartPos1[pos][vbase] = append(VarCall[rid].StartPos1[pos][vbase], var_info.SPos1)
-		VarCall[rid].StartPos2[pos][vbase] = append(VarCall[rid].StartPos2[pos][vbase], var_info.SPos2)
-		VarCall[rid].Strand1[pos][vbase] = append(VarCall[rid].Strand1[pos][vbase], var_info.Strand1)
-		VarCall[rid].Strand2[pos][vbase] = append(VarCall[rid].Strand2[pos][vbase], var_info.Strand2)
-		VarCall[rid].VarBQual[pos][vbase] = append(VarCall[rid].VarBQual[pos][vbase], var_info.BQual)
-		VarCall[rid].ReadInfo[pos][vbase] = append(VarCall[rid].ReadInfo[pos][vbase], var_info.RInfo)
+		var_str := string(var_info.Bases)
+		VarCall[rid].ChrDis[pos][var_str] = append(VarCall[rid].ChrDis[pos][var_str], var_info.CDis)
+		VarCall[rid].ChrDiff[pos][var_str] = append(VarCall[rid].ChrDiff[pos][var_str], var_info.CDiff)
+		VarCall[rid].MapProb[pos][var_str] = append(VarCall[rid].MapProb[pos][var_str], var_info.MProb)
+		VarCall[rid].AlnProb[pos][var_str] = append(VarCall[rid].AlnProb[pos][var_str], var_info.AProb)
+		VarCall[rid].ChrProb[pos][var_str] = append(VarCall[rid].ChrProb[pos][var_str], var_info.IProb)
+		VarCall[rid].StartPos1[pos][var_str] = append(VarCall[rid].StartPos1[pos][var_str], var_info.SPos1)
+		VarCall[rid].StartPos2[pos][var_str] = append(VarCall[rid].StartPos2[pos][var_str], var_info.SPos2)
+		VarCall[rid].Strand1[pos][var_str] = append(VarCall[rid].Strand1[pos][var_str], var_info.Strand1)
+		VarCall[rid].Strand2[pos][var_str] = append(VarCall[rid].Strand2[pos][var_str], var_info.Strand2)
+		VarCall[rid].VarBQual[pos][var_str] = append(VarCall[rid].VarBQual[pos][var_str], var_info.BQual)
+		VarCall[rid].ReadInfo[pos][var_str] = append(VarCall[rid].ReadInfo[pos][var_str], var_info.RInfo)
 	}
-	p1, p2 := 1.0, 1.0
+
+	pm := 1.0
 	for _, q := range var_info.BQual {
-		p1 *= Q2P[q]
+		pm *= Q2P[q]
 	}
+	pi := 1.0
 	for _, q := range var_info.BQual {
-		p2 *= Q2E[q]
+		pi *= Q2E[q]
 	}
-	var p, c float64
+	pd := L2E[len(vbase[0])-1]
 	p_a := 0.0
 	p_ab := make(map[string]float64)
-	_, is_known_var := VC.Variants[int(pos)]
 	for b, p_b := range VarCall[rid].VarProb[pos] {
 		d := strings.Split(b, "|")
-		if d[0] == vbase && d[1] == vbase {
-			c = 2.0
-		} else if d[0] != vbase && d[1] != vbase {
-			c = 0.0
-		} else {
-			c = 1.0
-		}
-		if c > 0.0 {
-			p_ab[b] = p1 * c / 2.0
-		} else {
-			if !is_known_var && vtype == 2 {
-				p_ab[b] = L2E[len(vbase)]
+		if len(vbase[0]) > len(vbase[1]) { //DEL
+			if vbase[0] == d[0] && vbase[0] == d[1] {
+				p_ab[b] = pm
+			} else if vbase[0] != d[0] && vbase[0] != d[1] {
+				p_ab[b] = pd
 			} else {
-				p_ab[b] = p2
+				p_ab[b] = pm/2.0 + pd/2.0
+			}
+		} else { //SUB or INS
+			if vbase[1] == d[0] && vbase[1] == d[1] {
+				p_ab[b] = pm
+			} else if vbase[1] != d[0] && vbase[1] != d[1] {
+				p_ab[b] = pi
+			} else {
+				p_ab[b] = pm/2.0 + pi/2.0
 			}
 		}
-		p = p_b * p_ab[b]
-		p_ab[b] = p
-		p_a += p
+		p_a += p_b * p_ab[b]
 	}
-	for b, _ := range VarCall[rid].VarProb[pos] {
-		VarCall[rid].VarProb[pos][b] = p_ab[b] / p_a
+	for b, p_b := range VarCall[rid].VarProb[pos] {
+		VarCall[rid].VarProb[pos][b] = p_b * p_ab[b] / p_a
 	}
 	MUT.Unlock()
 }
