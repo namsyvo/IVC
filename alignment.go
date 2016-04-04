@@ -45,7 +45,6 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 	}
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
-	var ref_base []byte
 	var_pos_trace := make(map[int]bool)
 	for m > 0 && n > 0 {
 		indel_backup_pos = ref_pos_map[n-1] - PARA.Indel_backup
@@ -97,7 +96,6 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 						p = AlignCostVarLoci(read[m-var_len:m], []byte(var_str), qual[m-var_len:m], var_prob)
 						if min_p > p {
 							min_p = p
-							ref_base = []byte(var_str)
 						}
 					}
 				}
@@ -107,7 +105,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				var_pos_trace[n-1] = true
 				var_pos = append(var_pos, ref_pos_map[n-1])
 				v, q := make([]byte, 2*var_len+1), make([]byte, var_len)
-				copy(v[:var_len], ref_base)
+				copy(v[:var_len], VC.Variants[ref_pos_map[n-1]][0])
 				copy(v[var_len:var_len+1], []byte{'|'})
 				copy(v[var_len+1:], read[m-var_len:m])
 				copy(q, qual[m-var_len:m])
@@ -459,7 +457,6 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 	var p, min_p, var_prob float64
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
-	var ref_base []byte
 
 	if PARA.Debug_mode {
 		PrintEditDisInput("RightAlign input: read, qual, ref", read, qual, ref)
@@ -518,7 +515,6 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 						p = AlignCostVarLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
 						if min_p > p {
 							min_p = p
-							ref_base = []byte(var_str)
 						}
 					}
 				}
@@ -528,7 +524,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				var_pos_trace[N-n] = true
 				var_pos = append(var_pos, ref_pos_map[N-n])
 				v, q := make([]byte, 2*var_len+1), make([]byte, var_len)
-				copy(v[:var_len], ref_base)
+				copy(v[:var_len], VC.Variants[ref_pos_map[N-n]][0])
 				copy(v[var_len:var_len+1], []byte{'|'})
 				copy(v[var_len+1:], read[M-m:M-(m-var_len)])
 				copy(q, qual[M-m:M-(m-var_len)])
