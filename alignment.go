@@ -18,7 +18,7 @@ import (
 func AlignCostVarLoci(read, ref, qual []byte, prob float64) float64 {
 	//do not consider qual at this time
 	if string(read) == string(ref) {
-		return 0.0
+		return -0.1*math.Log10(prob)
 	} else {
 		return math.MaxFloat64
 	}
@@ -176,6 +176,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 
 	var sel_var, var_val []byte
 	var prob_i, sub_i, mis_i float64
+	var is_del bool
 	for i = 1; i <= m; i++ {
 		mis_i = PARA.Sub_cost // + Q2C[qual[i-1]]
 		for j = 1; j <= n; j++ {
@@ -222,7 +223,11 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 						var_len = len(var_str)
 						var_val = []byte(var_str)
 						if i-var_len >= 0 {
-							prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], var_prob)
+							if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del {
+								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], 1.0 - var_prob)
+							} else {
+								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], var_prob)
+							}
 							if D[i][j] > D[i-var_len][j-1]+prob_i {
 								D[i][j] = D[i-var_len][j-1] + prob_i
 								BT_D[i][j][0], BT_D[i][j][1] = 0, 0
@@ -592,6 +597,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 
 	var sel_var, var_val []byte
 	var prob_i, sub_i, mis_i float64
+	var is_del bool
 	for i = 1; i <= m; i++ {
 		mis_i = PARA.Sub_cost // + Q2C[qual[M-i]]
 		for j = 1; j <= n; j++ {
@@ -635,7 +641,11 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 						var_len = len(var_str)
 						var_val = []byte(var_str)
 						if i-var_len >= 0 {
-							prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], var_prob)
+							if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del {
+								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], 1.0 - var_prob)
+							} else {
+								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], var_prob)
+							}
 							if D[i][j] > D[i-var_len][j-1]+prob_i {
 								D[i][j] = D[i-var_len][j-1] + prob_i
 								BT_D[i][j][0], BT_D[i][j][1] = 0, 0
