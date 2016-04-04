@@ -839,7 +839,17 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 				p_ab[b] = pm/2.0 + pd/2.0
 			}
 		} else {
-			if !is_known_del { //SUB or INS
+			if is_known_del { //Known DEL
+				if len(vbase[0]) == len(vbase[1]) {
+					if string(vbase[0][0]) == d[0] && string(vbase[0][0]) == d[1] {
+						p_ab[b] = pm
+					} else if string(vbase[1][0]) != d[0] && string(vbase[1][0]) != d[1] {
+						p_ab[b] = pd
+					} else {
+						p_ab[b] = pm/2.0 + pd/2.0
+					}
+				}
+			} else {
 				if vbase[1] == d[0] && vbase[1] == d[1] {
 					p_ab[b] = pm
 				} else if vbase[1] != d[0] && vbase[1] != d[1] {
@@ -847,15 +857,6 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 				} else {
 					p_ab[b] = pm/2.0 + pi/2.0
 				}
-			} else { //Known DEL
-				if string(vbase[1][0]) == d[0] && string(vbase[1][0]) == d[1] {
-					p_ab[b] = pm
-				} else if string(vbase[1][0]) != d[0] && string(vbase[1][0]) != d[1] {
-					p_ab[b] = pd
-				} else {
-					p_ab[b] = pm/2.0 + pd/2.0
-				}
-
 			}
 		}
 		p_a += p_b * p_ab[b]
@@ -919,18 +920,18 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		// ID
 		line_aln = append(line_aln, ".")
 		// REF & ALT
-		nt_arr := strings.Split(var_call, "|")
+		hap_arr := strings.Split(var_call, "|")
 		if _, is_known_var = VC.Variants[pos]; is_known_var {
 			if _, is_known_del = VC.DelVar[pos]; is_known_del {
 				//Do not report known variants which are identical with the reference
-				if nt_arr[0] == string(VC.Variants[pos][0][0]) && nt_arr[1] == string(VC.Variants[pos][0][0]) {
+				if hap_arr[0] == string(VC.Variants[pos][0][0]) && hap_arr[1] == string(VC.Variants[pos][0][0]) {
 					continue
 				}
 				line_aln = append(line_aln, var_call)
 				line_aln = append(line_aln, string(VC.Variants[pos][1]))
 			} else {
 				//Do not report known variants which are identical with the reference
-				if nt_arr[0] == string(VC.Variants[pos][0]) && nt_arr[1] == string(VC.Variants[pos][0]) {
+				if hap_arr[0] == string(VC.Variants[pos][0]) && hap_arr[1] == string(VC.Variants[pos][0]) {
 					continue
 				}
 				line_aln = append(line_aln, string(VC.Variants[pos][0]))
@@ -938,17 +939,14 @@ func (VC *VarCallIndex) OutputVarCalls() {
 			}
 		} else {
 			//Do not report variants which are identical with the reference
-			if nt_arr[0] == string(VC.Seq[pos]) && nt_arr[1] == string(VC.Seq[pos]) {
+			if hap_arr[0] == string(VC.Seq[pos]) && hap_arr[1] == string(VC.Seq[pos]) {
 				continue
 			}
 			if VarCall[rid].VarType[var_pos][var_call] >= 0 {
 				if VarCall[rid].VarType[var_pos][var_call] == 2 { //DEL
 					line_aln = append(line_aln, var_call)
 					line_aln = append(line_aln, string(VC.Seq[pos]))
-				} else if VarCall[rid].VarType[var_pos][var_call] == 1 { //INS
-					line_aln = append(line_aln, string(VC.Seq[pos]))
-					line_aln = append(line_aln, var_call)
-				} else { //SUB
+				} else { //SUB or INS
 					line_aln = append(line_aln, string(VC.Seq[pos]))
 					line_aln = append(line_aln, var_call)
 				}
