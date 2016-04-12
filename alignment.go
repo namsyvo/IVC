@@ -18,7 +18,7 @@ import (
 func AlignCostVarLoci(read, ref, qual []byte, prob float64) float64 {
 	//do not consider qual at this time
 	if string(read) == string(ref) {
-		return -0.1*math.Log10(prob)
+		return -0.1 * math.Log10(prob)
 	} else {
 		return math.MaxFloat64
 	}
@@ -41,7 +41,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 	m, n := len(read), len(ref)
 
 	if PARA.Debug_mode {
-		PrintEditDisInput("LeftAlign input: read, qual, ref", read, qual, ref)
+		PrintEditDisInput("LeftAlign input: read, qual, ref", pos, read, qual, ref)
 	}
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
@@ -131,7 +131,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 	if PARA.Debug_mode {
-		PrintEditDisInput("LeftAlnEdit: read, qual, ref", read[:m], qual[:m], ref[:n])
+		PrintEditDisInput("LeftAlnEdit: read, qual, ref", pos, read[:m], qual[:m], ref[:n])
 	}
 	/*
 		Backtrace info matrices:
@@ -224,7 +224,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 						var_val = []byte(var_str)
 						if i-var_len >= 0 {
 							if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del {
-								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], 1.0 - var_prob)
+								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], 1.0-var_prob)
 							} else {
 								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], var_prob)
 							}
@@ -291,7 +291,7 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
 	if PARA.Debug_mode {
-		PrintEditDisInput("LeftAlnEditTraceBack, read, qual, ref", read[:m], qual[:m], ref[:n])
+		PrintEditDisInput("LeftAlnEditTraceBack, read, qual, ref", pos, read[:m], qual[:m], ref[:n])
 	}
 	aln_read, aln_qual, aln_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	bt_mat := BT_Mat
@@ -402,7 +402,7 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 				v = append(v, aln_read[j])
 				q = append(q, aln_qual[j])
 			}
-			if j < len(aln_ref)-5 && read_ori_pos > 1 {
+			if j < len(aln_ref)-1 && read_ori_pos > 1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -417,7 +417,7 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 			for j = i; j < len(aln_read) && aln_read[j] == '-'; j++ {
 				v = append(v, aln_ref[j])
 			}
-			if j < len(aln_read)-1 && read_ori_pos < m-5 {
+			if j < len(aln_read)-1 && read_ori_pos < m-1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				v = append(v, '|')
 				v = append(v, aln_read[i-1])
@@ -431,7 +431,7 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 			read_ori_pos++
 			i++
 		} else {
-			if aln_read[i] == aln_ref[i] && i+5 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
+			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
 					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
@@ -464,7 +464,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 	var var_base, var_qual [][]byte
 
 	if PARA.Debug_mode {
-		PrintEditDisInput("RightAlign input: read, qual, ref", read, qual, ref)
+		PrintEditDisInput("RightAlign input: read, qual, ref", pos, read, qual, ref)
 	}
 	aln_dist := 0.0
 	M, N := len(read), len(ref)
@@ -555,7 +555,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
 	}
 	if PARA.Debug_mode {
-		PrintEditDisInput("RightAlnEdit: read, qual, ref", read[M-m:M], qual[M-m:M], ref[N-n:N])
+		PrintEditDisInput("RightAlnEdit: read, qual, ref", pos, read[M-m:M], qual[M-m:M], ref[N-n:N])
 	}
 	//	Backtrace info matrices:
 	//	BT_K[i][j]: represents number of shifted bases (equal to length of called variants) at known variant locations,
@@ -642,7 +642,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 						var_val = []byte(var_str)
 						if i-var_len >= 0 {
 							if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del {
-								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], 1.0 - var_prob)
+								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], 1.0-var_prob)
 							} else {
 								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], var_prob)
 							}
@@ -712,7 +712,7 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
 
 	if PARA.Debug_mode {
-		PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", read, qual, ref)
+		PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", pos, read, qual, ref)
 	}
 	var var_len, ref_len int
 	var var_pos, var_type []int
@@ -838,7 +838,7 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 				v = append(v, aln_read[j])
 				q = append(q, aln_qual[j])
 			}
-			if j < len(aln_ref)-1 && read_ori_pos+j-i < M-5 && read_ori_pos > M-m+1 {
+			if j < len(aln_ref)-1 && read_ori_pos+j-i < M-1 && read_ori_pos > M-m+1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				var_base = append(var_base, v)
 				var_qual = append(var_qual, q)
@@ -854,7 +854,7 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 			for j = i; j < len(aln_read) && aln_read[j] == '-'; j++ {
 				v = append(v, aln_ref[j])
 			}
-			if j < len(aln_read)-1 && read_ori_pos < M-5 && read_ori_pos > M-m+1 {
+			if j < len(aln_read)-1 && read_ori_pos < M-1 && read_ori_pos > M-m+1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
 				v = append(v, '|')
 				v = append(v, aln_read[i-1])
@@ -868,7 +868,7 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 			read_ori_pos++
 			i++
 		} else {
-			if aln_read[i] == aln_ref[i] && i+5 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
+			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
 					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])

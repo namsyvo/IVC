@@ -12,6 +12,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"strconv"
 )
 
 // Global variable for turnning on/off info profiling
@@ -150,9 +151,10 @@ func PrintVarInfo(mess string, var_pos []int, var_val, var_qlt [][]byte) {
 //Printing edit distance calculation info
 //--------------------------------------------------------------------------------------------------
 
-func PrintEditDisInput(mess string, str_val ...[]byte) {
+func PrintEditDisInput(mess string, pos int, str_val ...[]byte) {
 	if PRINT_EDIT_DIST_INFO {
 		fmt.Println(mess)
+		fmt.Println(strconv.Itoa(pos))
 		if str_val != nil {
 			for _, v := range str_val {
 				fmt.Println(string(v))
