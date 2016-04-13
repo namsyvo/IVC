@@ -53,8 +53,15 @@ func BuildMultiGenome(genome_file, var_prof_file string, debug_mode bool) (chr_p
 	for i, pos := range chr_pos {
 		contig_name = string(chr_name[i])
 		if _, name_check = var_prof[contig_name]; name_check {
-			for key, _ := range var_prof[contig_name] {
-				seq[pos+key] = '*'
+			var_pos := make([]int, 0)
+			for p, _ := range var_prof[contig_name] {
+				var_pos = append(var_pos, p)
+			}
+			sort.Ints(var_pos)
+			for j, p := range var_pos {
+				if j < len(var_pos) - 1 && p + len(var_prof[contig_name][p].Variant[0]) <= var_pos[j+1] {
+					seq[pos+p] = '*'
+				}
 			}
 		} else {
 			log.Println("Warning: Contig or chromosome " + contig_name + " in the reference genome is not exist in the variant profile.")
@@ -200,12 +207,14 @@ func SaveVarProf(file_name string, chr_pos []int, chr_name [][]byte, var_prof ma
 			var_pos = append(var_pos, pos)
 		}
 		sort.Sort(sort.IntSlice(var_pos))
-		for _, pos := range var_pos {
-			w.WriteString(strconv.Itoa(chr_pos[i]+pos) + "\t")
-			for idx, val := range var_prof_chr[pos].Variant {
-				w.WriteString(string(val) + "\t" + strconv.FormatFloat(float64(var_prof_chr[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
+		for j, pos := range var_pos {
+			if j < len(var_pos) - 1 && pos + len(var_prof_chr[pos].Variant[0]) <= var_pos[j+1] {
+				w.WriteString(strconv.Itoa(chr_pos[i]+pos) + "\t")
+				for idx, val := range var_prof_chr[pos].Variant {
+					w.WriteString(string(val) + "\t" + strconv.FormatFloat(float64(var_prof_chr[pos].AleFreq[idx]), 'f', 10, 32) + "\t")
+				}
+				w.WriteString("\n")
 			}
-			w.WriteString("\n")
 		}
 	}
 	w.Flush()
