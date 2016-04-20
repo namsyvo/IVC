@@ -488,7 +488,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 				ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_aln_pos1-l_aln_pos2))-400.0, 2.0) / (2 * 50 * 50)))
 				if paired_dist > aln_dist1+aln_dist2 {
 					paired_dist = aln_dist1 + aln_dist2
-					// PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
+					//PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
 					vars_get1 = make([]*VarInfo, len(vars1)) // need to reset vars_get1 here
 					vars_get2 = make([]*VarInfo, len(vars2)) // need to reset vars_get2 here
 					loop_has_cand = loop_num
@@ -828,6 +828,12 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	p_a := 0.0
 	p_ab := make(map[string]float64)
 	_, is_known_del := VC.DelVar[int(pos)]
+	if PARA.Debug_mode {
+		check_pos := uint32(234535446)
+		if pos == check_pos {
+			log.Println("Before: var_prof, vbase, pm, pi, pd", VarCall[rid].VarProb[pos], vbase, pm, pi, pd, string(var_info.RInfo))
+		}
+	}
 	for b, p_b := range VarCall[rid].VarProb[pos] {
 		d := strings.Split(b, "|")
 		if len(vbase[0]) > len(vbase[1]) { //DEL
@@ -860,9 +866,20 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 			}
 		}
 		p_a += p_b * p_ab[b]
+		if PARA.Debug_mode {
+			if pos == check_pos {
+				log.Println("Update: b, p_b, p_ab[b], p_a", b, p_b, p_ab[b], p_a)
+			}
+		}
 	}
 	for b, p_b := range VarCall[rid].VarProb[pos] {
 		VarCall[rid].VarProb[pos][b] = p_b * p_ab[b] / p_a
+	}
+	if PARA.Debug_mode {
+		if pos == check_pos {
+			log.Println("After:", VarCall[rid].VarProb[pos])
+			log.Println()
+		}
 	}
 	MUT.Unlock()
 }

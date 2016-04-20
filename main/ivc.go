@@ -40,7 +40,7 @@ func ReadInputInfo() *ivc.ParaInfo {
 	var read_file_1 = flag.String("1", "", "pairend read file, first end")
 	var read_file_2 = flag.String("2", "", "pairend read file, second end")
 	var var_call_file = flag.String("O", "", "variant call output file")
-	var search_mode = flag.Int("mode", 0, "searching mode for finding seeds (1: random, 2: deterministic)")
+	var search_mode = flag.Int("mode", 0, "searching mode for finding seeds (1: random (default), 2: deterministic)")
 	var start_pos = flag.Int("start", 0, "starting position on reads for finding seeds")
 	var search_step = flag.Int("step", 0, "step for searching in deterministic mode")
 	var max_snum = flag.Int("maxs", 0, "maximum number of seeds")

@@ -165,7 +165,7 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 	s.Scan()
 	header := s.Bytes()
 	if len(header) > 0 {
-		para.Info_len = len(header) + 20 //there might be longer header
+		para.Info_len = len(header) + 20 //there might be longer header, is that case, ignore the longer part
 	} else {
 		para.Info_len = 100
 		log.Printf("Possibly missing header")
@@ -179,9 +179,9 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 	}
 	f.Close()
 
-	// 700 is maximum insert size of paired-end testing reads
-	// will be estimated based on input reads
-	para.Max_ins = 700
+	// 1500 is asigned based on insert size of paired-end testing reads
+	// will be estimated based on input reads (= 3*avg_ins_size)
+	para.Max_ins = 1500
 
 	// 0.0015 is maximum sequencing error rate of testing reads, 0.01 is mutation rate of testing data,
 	// will be set up based on input reads
@@ -192,7 +192,7 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 	para.Mut_var_factor = 2
 	para.Iter_num_factor = 2
 
-	para.Seed_backup = 6
+	para.Seed_backup = 10
 	para.Ham_backup = 15
 	para.Indel_backup = 30
 
@@ -202,16 +202,16 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 		log.Printf("No or invalid input for searching mode, use default strategy (randomizaion).")
 	} else if input_para.Search_mode == 1 {
 		if input_para.Start_pos == 0 {
-			para.Start_pos = 512
+			para.Start_pos = 5
 			log.Printf("Deterministic search mode: no or invalid input for start postion on reads to find seeds, use default value (%d).", para.Start_pos)
 		}
 		if input_para.Search_step == 0 {
-			para.Search_step = 512
+			para.Search_step = 5
 			log.Printf("Deterministic search mode: no or invalid input for searching step, use default value (%d).", para.Search_step)
 		}
 	}
 	if input_para.Max_snum == 0 {
-		para.Max_snum = 512
+		para.Max_snum = 4096
 		log.Printf("No or invalid input for maximum number of seeds, use default value (%d).", para.Max_snum)
 	}
 	if input_para.Max_psnum == 0 {
