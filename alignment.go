@@ -29,7 +29,8 @@ func AlignCostVarLoci(read, ref, qual []byte, prob float64) float64 {
 // The read include standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
-	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
+	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) (float64, float64,
+	int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
 	var variants, var_str string
@@ -223,7 +224,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 						var_len = len(var_str)
 						var_val = []byte(var_str)
 						if i-var_len >= 0 {
-							if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del {
+							if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del && del_ref {
 								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], 1.0-var_prob)
 							} else {
 								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], var_prob)
@@ -283,8 +284,8 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 // LeftAlignEditTraceBack constructs alignment between a read and a ref from LeftAlign.
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
-func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int, BT_Mat int,
-	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
+func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
+	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) ([]int, [][]byte, [][]byte, []int) {
 
 	var var_len, ref_len int
 	var var_pos, var_type []int
@@ -331,11 +332,20 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 				var_len = len(BT_K[i][j])
 				var_pos = append(var_pos, ref_pos_map[j-1])
 				ref_len = len(VC.Variants[ref_pos_map[j-1]][0])
-				v, q := make([]byte, ref_len+var_len+1), make([]byte, var_len)
-				copy(v[:ref_len], VC.Variants[ref_pos_map[j-1]][0])
-				copy(v[ref_len:ref_len+1], []byte{'|'})
-				copy(v[ref_len+1:], BT_K[i][j])
+				var v []byte
+				if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del && !del_ref { //known DEL with non-reduced ref
+					v = make([]byte, ref_len+ref_len+1)
+					copy(v[:ref_len], VC.Variants[ref_pos_map[j-1]][0])
+					copy(v[ref_len:ref_len+1], []byte{'|'})
+					copy(v[ref_len+1:], VC.Variants[ref_pos_map[j-1]][0])
+				} else {
+					v = make([]byte, ref_len+var_len+1)
+					copy(v[:ref_len], VC.Variants[ref_pos_map[j-1]][0])
+					copy(v[ref_len:ref_len+1], []byte{'|'})
+					copy(v[ref_len+1:], BT_K[i][j])
+				}
 				var_base = append(var_base, v)
+				q := make([]byte, var_len)
 				copy(q, qual[i-var_len:i])
 				var_qual = append(var_qual, q)
 				if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del {
@@ -454,7 +464,8 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 // The read includes standard bases, the ref includes standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
-	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int) (float64, float64, int, int, int, []int, [][]byte, [][]byte, []int) {
+	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) (float64, float64,
+	int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
 	var is_var, is_same_len_var bool
@@ -641,7 +652,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 						var_len = len(var_str)
 						var_val = []byte(var_str)
 						if i-var_len >= 0 {
-							if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del {
+							if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del && del_ref { //convert prob with reduced-ref for known DEL
 								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], 1.0-var_prob)
 							} else {
 								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], var_prob)
@@ -709,7 +720,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
-	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int) ([]int, [][]byte, [][]byte, []int) {
+	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) ([]int, [][]byte, [][]byte, []int) {
 
 	if PARA.Debug_mode {
 		PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", pos, read, qual, ref)
@@ -759,12 +770,21 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 					var_len = len(BT_K[i][j])
 					var_pos = append(var_pos, ref_pos_map[N-j])
 					ref_len = len(VC.Variants[ref_pos_map[N-j]][0])
-					v, q := make([]byte, ref_len+var_len+1), make([]byte, var_len)
-					copy(v[:ref_len], VC.Variants[ref_pos_map[N-j]][0])
-					copy(v[ref_len:ref_len+1], []byte{'|'})
-					copy(v[ref_len+1:], BT_K[i][j])
-					copy(q, qual[M-i:M-(i-var_len)])
+					var v []byte
+					if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del && !del_ref { //known DEL with non-reduced ref
+						v = make([]byte, ref_len+ref_len+1)
+						copy(v[:ref_len], VC.Variants[ref_pos_map[N-j]][0])
+						copy(v[ref_len:ref_len+1], []byte{'|'})
+						copy(v[ref_len+1:], VC.Variants[ref_pos_map[N-j]][0])
+					} else {
+						v = make([]byte, ref_len+var_len+1)
+						copy(v[:ref_len], VC.Variants[ref_pos_map[N-j]][0])
+						copy(v[ref_len:ref_len+1], []byte{'|'})
+						copy(v[ref_len+1:], BT_K[i][j])
+					}
 					var_base = append(var_base, v)
+					q := make([]byte, var_len)
+					copy(q, qual[M-i:M-(i-var_len)])
 					var_qual = append(var_qual, q)
 					if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del {
 						var_type = append(var_type, 2)

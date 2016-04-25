@@ -379,7 +379,8 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 
 	// Initialize inter-function share variables
 	read_info := InitReadInfo(PARA.Read_len, PARA.Info_len)
-	edit_aln_info := InitEditAlnInfo(2 * PARA.Read_len)
+	edit_aln_info_1 := InitEditAlnInfo(2 * PARA.Read_len)
+	edit_aln_info_2 := InitEditAlnInfo(2 * PARA.Read_len)
 	seed_pos := make([][]int, 4)
 	for i := 0; i < 4; i++ {
 		seed_pos[i] = make([]int, PARA.Max_snum)
@@ -403,7 +404,7 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_comp_read1, read_info.Rev_qual1)
 		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_comp_read2, read_info.Rev_qual2)
 
-		VC.SearchVariantsPE(read_info, edit_aln_info, seed_pos, rand_gen, var_info, uar_info)
+		VC.SearchVariantsPE(read_info, edit_aln_info_1, edit_aln_info_2, seed_pos, rand_gen, var_info, uar_info)
 	}
 }
 
@@ -411,7 +412,7 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 // SearchVariantsPE searches for variants from alignment between pair-end reads and the multigenome.
 // It uses seed-and-extend strategy and looks for the best alignment candidates through several iterations.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *EditAlnInfo, seed_pos [][]int,
+func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, edit_aln_info_2 *EditAlnInfo, seed_pos [][]int,
 	rand_gen *rand.Rand, var_info []chan *VarInfo, uar_info chan *UnAlnReadInfo) {
 
 	//-----------------------------------------------------------------------------------------------
@@ -469,18 +470,18 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 			// Search variants for the first end
 			if seed_info1.strand[p_idx] == true {
 				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
-					seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info)
+					seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info_1, edit_aln_info_2)
 			} else {
 				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
-					seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info)
+					seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info_1, edit_aln_info_2)
 			}
 			// Search variants for the second end
 			if seed_info2.strand[p_idx] == true {
 				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
-					seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info)
+					seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info_1, edit_aln_info_2)
 			} else {
 				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
-					seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info)
+					seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info_1, edit_aln_info_2)
 			}
 			// Currently, variants can be called iff both read-ends can be aligned
 			if aln_dist1 != -1 && aln_dist2 != -1 {
@@ -561,7 +562,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info *Edi
 // ExtendSeeds performs alignment between extensions from seeds on reads and multigenomes
 // and determines variants from the alignment of both left and right extensions.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info *EditAlnInfo) ([]*VarInfo, int, int, float64) {
+func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info_1, edit_aln_info_2 *EditAlnInfo) ([]*VarInfo, int, int, float64) {
 
 	var i, j, del_len int
 	var is_var, is_del bool
@@ -569,57 +570,75 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 	l_read_flank_len := s_pos + PARA.Seed_backup
 	l_read_flank, l_qual_flank := read[:l_read_flank_len], qual[:l_read_flank_len]
 
-	l_ref_flank := make([]byte, 0)
-	l_ref_pos_map := make([]int, 0)
-	l_aln_e_pos := m_pos - 1 + PARA.Seed_backup
-	i = l_aln_e_pos
-	j = 0 // to check length of l_ref_flank
+	l_ref_flank_del := make([]byte, 0)
+	l_ref_pos_del_map := make([]int, 0)
+	i = m_pos - 1 + PARA.Seed_backup
+	j = 0 // to check length of l_ref_flank_del
 	for j < l_read_flank_len+PARA.Indel_backup && i >= 0 {
 		if _, is_var = VC.Variants[i]; is_var {
 			if del_len, is_del = VC.DelVar[i]; is_del {
-				if del_len < j && del_len < len(l_ref_flank) {
-					l_ref_flank = l_ref_flank[:len(l_ref_flank)-del_len]
-					l_ref_pos_map = l_ref_pos_map[:len(l_ref_pos_map)-del_len]
+				if del_len < j && del_len < len(l_ref_flank_del) {
+					l_ref_flank_del = l_ref_flank_del[:len(l_ref_flank_del)-del_len]
+					l_ref_pos_del_map = l_ref_pos_del_map[:len(l_ref_pos_del_map)-del_len]
 					j -= del_len
 				} else {
 					return nil, -1, -1, -1
 				}
 			}
 		}
-		l_ref_pos_map = append(l_ref_pos_map, i)
-		l_ref_flank = append(l_ref_flank, VC.Seq[i])
+		l_ref_pos_del_map = append(l_ref_pos_del_map, i)
+		l_ref_flank_del = append(l_ref_flank_del, VC.Seq[i])
 		j++
 		i--
 	}
-	l_aln_s_pos := i + 1
-
-	// Reverse l_ref_pos_map and l_ref_flank to get them in original direction
-	for i, j = 0, len(l_ref_pos_map)-1; i < j; i, j = i+1, j-1 {
-		l_ref_pos_map[i], l_ref_pos_map[j] = l_ref_pos_map[j], l_ref_pos_map[i]
+	l_aln_s_pos_del := i + 1
+	// Reverse l_ref_pos_del_map and l_ref_flank_del to get them in original direction
+	for i, j = 0, len(l_ref_pos_del_map)-1; i < j; i, j = i+1, j-1 {
+		l_ref_pos_del_map[i], l_ref_pos_del_map[j] = l_ref_pos_del_map[j], l_ref_pos_del_map[i]
 	}
-	for i, j = 0, len(l_ref_flank)-1; i < j; i, j = i+1, j-1 {
-		l_ref_flank[i], l_ref_flank[j] = l_ref_flank[j], l_ref_flank[i]
+	for i, j = 0, len(l_ref_flank_del)-1; i < j; i, j = i+1, j-1 {
+		l_ref_flank_del[i], l_ref_flank_del[j] = l_ref_flank_del[j], l_ref_flank_del[i]
+	}
+
+	l_ref_flank_ori := make([]byte, 0)
+	l_ref_pos_ori_map := make([]int, 0)
+	l_aln_e_pos_ori := m_pos - 1 + PARA.Seed_backup
+	i = l_aln_e_pos_ori
+	j = 0 // to check length of l_ref_flank_ori
+	for j < l_read_flank_len+PARA.Indel_backup && i >= 0 {
+		l_ref_pos_ori_map = append(l_ref_pos_ori_map, i)
+		l_ref_flank_ori = append(l_ref_flank_ori, VC.Seq[i])
+		j++
+		i--
+	}
+	l_aln_s_pos_ori := i + 1
+	// Reverse l_ref_pos_ori_map and l_ref_flank_ori to get them in original direction
+	for i, j = 0, len(l_ref_pos_ori_map)-1; i < j; i, j = i+1, j-1 {
+		l_ref_pos_ori_map[i], l_ref_pos_ori_map[j] = l_ref_pos_ori_map[j], l_ref_pos_ori_map[i]
+	}
+	for i, j = 0, len(l_ref_flank_ori)-1; i < j; i, j = i+1, j-1 {
+		l_ref_flank_ori[i], l_ref_flank_ori[j] = l_ref_flank_ori[j], l_ref_flank_ori[i]
 	}
 
 	seed_len := e_pos - s_pos + 1
 	r_read_flank_len := len(read) - e_pos - 1 + PARA.Seed_backup
 	r_read_flank, r_qual_flank := read[len(read)-r_read_flank_len:], qual[len(read)-r_read_flank_len:]
 
-	r_ref_flank := make([]byte, 0)
-	r_ref_pos_map := make([]int, 0)
-	r_aln_s_pos := m_pos + seed_len - PARA.Seed_backup
-	i = r_aln_s_pos
-	j = 0 //to check length of r_ref_flank
+	r_ref_flank_del := make([]byte, 0)
+	r_ref_pos_del_map := make([]int, 0)
+	r_aln_s_pos_del := m_pos + seed_len - PARA.Seed_backup
+	i = r_aln_s_pos_del
+	j = 0 //to check length of r_ref_flank_del
 	for j < r_read_flank_len+PARA.Indel_backup && i < VC.SeqLen {
-		r_ref_pos_map = append(r_ref_pos_map, i)
-		r_ref_flank = append(r_ref_flank, VC.Seq[i])
+		r_ref_pos_del_map = append(r_ref_pos_del_map, i)
+		r_ref_flank_del = append(r_ref_flank_del, VC.Seq[i])
 		if _, is_var = VC.Variants[i]; is_var {
 			if del_len, is_del = VC.DelVar[i]; is_del {
 				if del_len < r_read_flank_len-j && i+del_len < VC.SeqLen {
 					i += del_len
 				} else {
 					//continue to align without remaning part of read and ref
-					r_ref_flank = r_ref_flank[:len(r_ref_flank)-1]
+					r_ref_flank_del = r_ref_flank_del[:len(r_ref_flank_del)-1]
 					break
 				}
 			}
@@ -627,21 +646,57 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 		j++
 		i++
 	}
-	if PARA.Debug_mode {
-		PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank)
+	r_ref_flank_ori := make([]byte, 0)
+	r_ref_pos_ori_map := make([]int, 0)
+	r_aln_s_pos_ori := m_pos + seed_len - PARA.Seed_backup
+	i = r_aln_s_pos_ori
+	j = 0 //to check length of r_ref_flank_ori
+	for j < r_read_flank_len+PARA.Indel_backup && i < VC.SeqLen {
+		r_ref_pos_ori_map = append(r_ref_pos_ori_map, i)
+		r_ref_flank_ori = append(r_ref_flank_ori, VC.Seq[i])
+		j++
+		i++
 	}
-	l_Ham_dist, l_Edit_dist, l_bt_mat, l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type :=
-		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank, l_aln_s_pos, edit_aln_info.l_Dist_D, edit_aln_info.l_Dist_IS,
-			edit_aln_info.l_Dist_IT, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, edit_aln_info.l_Trace_K, l_ref_pos_map)
-	r_Ham_dist, r_Edit_dist, r_bt_mat, r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type :=
-		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank, r_aln_s_pos, edit_aln_info.r_Dist_D, edit_aln_info.r_Dist_IS,
-			edit_aln_info.r_Dist_IT, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, edit_aln_info.r_Trace_K, r_ref_pos_map)
 
-	aln_dist := l_Ham_dist + l_Edit_dist + r_Ham_dist + r_Edit_dist
+	if PARA.Debug_mode {
+		PrintComparedReadRef(l_read_flank, l_ref_flank_del, r_read_flank, r_ref_flank_del)
+		PrintComparedReadRef(l_read_flank, l_ref_flank_ori, r_read_flank, r_ref_flank_ori)
+	}
+	l_Ham_dist_1, l_Edit_dist_1, l_bt_mat_1, l_m_1, l_n_1, l_var_pos_1, l_var_base_1, l_var_qual_1, l_var_type_1 :=
+		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank_del, l_aln_s_pos_del, edit_aln_info_1.l_Dist_D, edit_aln_info_1.l_Dist_IS, edit_aln_info_1.l_Dist_IT,
+			edit_aln_info_1.l_Trace_D, edit_aln_info_1.l_Trace_IS, edit_aln_info_1.l_Trace_IT, edit_aln_info_1.l_Trace_K, l_ref_pos_del_map, true)
+	r_Ham_dist_1, r_Edit_dist_1, r_bt_mat_1, r_m_1, r_n_1, r_var_pos_1, r_var_base_1, r_var_qual_1, r_var_type_1 :=
+		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank_del, r_aln_s_pos_del, edit_aln_info_1.r_Dist_D, edit_aln_info_1.r_Dist_IS, edit_aln_info_1.r_Dist_IT,
+			edit_aln_info_1.r_Trace_D, edit_aln_info_1.r_Trace_IS, edit_aln_info_1.r_Trace_IT, edit_aln_info_1.r_Trace_K, r_ref_pos_del_map, true)
+
+	l_Ham_dist_2, l_Edit_dist_2, l_bt_mat_2, l_m_2, l_n_2, l_var_pos_2, l_var_base_2, l_var_qual_2, l_var_type_2 :=
+		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank_ori, l_aln_s_pos_ori, edit_aln_info_2.l_Dist_D, edit_aln_info_2.l_Dist_IS, edit_aln_info_2.l_Dist_IT,
+			edit_aln_info_2.l_Trace_D, edit_aln_info_2.l_Trace_IS, edit_aln_info_2.l_Trace_IT, edit_aln_info_2.l_Trace_K, l_ref_pos_ori_map, false)
+	r_Ham_dist_2, r_Edit_dist_2, r_bt_mat_2, r_m_2, r_n_2, r_var_pos_2, r_var_base_2, r_var_qual_2, r_var_type_2 :=
+		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank_ori, r_aln_s_pos_ori, edit_aln_info_2.r_Dist_D, edit_aln_info_2.r_Dist_IS, edit_aln_info_2.r_Dist_IT,
+			edit_aln_info_2.r_Trace_D, edit_aln_info_2.r_Trace_IS, edit_aln_info_2.r_Trace_IT, edit_aln_info_2.r_Trace_K, r_ref_pos_ori_map, false)
+
+	aln_dist := l_Ham_dist_1 + l_Edit_dist_1 + r_Ham_dist_1 + r_Edit_dist_1
+	del_ref := true
+	edit_aln_info := edit_aln_info_1
+	l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type := l_m_1, l_n_1, l_var_pos_1, l_var_base_1, l_var_qual_1, l_var_type_1
+	l_bt_mat, l_ref_flank, l_ref_pos_map, l_aln_s_pos := l_bt_mat_1, l_ref_flank_del, l_ref_pos_del_map, l_aln_s_pos_del
+	r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type := r_m_1, r_n_1, r_var_pos_1, r_var_base_1, r_var_qual_1, r_var_type_1
+	r_bt_mat, r_ref_flank, r_ref_pos_map, r_aln_s_pos := r_bt_mat_1, r_ref_flank_del, r_ref_pos_del_map, r_aln_s_pos_del
+
+	if aln_dist >= l_Ham_dist_2+l_Edit_dist_2+r_Ham_dist_2+r_Edit_dist_2 {
+		aln_dist = l_Ham_dist_2 + l_Edit_dist_2 + r_Ham_dist_2 + r_Edit_dist_2
+		del_ref = false
+		edit_aln_info = edit_aln_info_2
+		l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type = l_m_2, l_n_2, l_var_pos_2, l_var_base_2, l_var_qual_2, l_var_type_2
+		l_bt_mat, l_ref_flank, l_ref_pos_map, l_aln_s_pos = l_bt_mat_2, l_ref_flank_ori, l_ref_pos_ori_map, l_aln_s_pos_ori
+		r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type = r_m_2, r_n_2, r_var_pos_2, r_var_base_2, r_var_qual_2, r_var_type_2
+		r_bt_mat, r_ref_flank, r_ref_pos_map, r_aln_s_pos = r_bt_mat_2, r_ref_flank_ori, r_ref_pos_ori_map, r_aln_s_pos_ori
+	}
 	if aln_dist <= PARA.Dist_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n,
-				l_aln_s_pos, l_bt_mat, edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, edit_aln_info.l_Trace_K, l_ref_pos_map)
+			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_aln_s_pos, l_bt_mat,
+				edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, edit_aln_info.l_Trace_K, l_ref_pos_map, del_ref)
 			if PARA.Debug_mode {
 				PrintVarInfo("LeftAlnitTraceBack, variant info", l_pos, l_base, l_qual)
 			}
@@ -654,8 +709,8 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 			PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
 		}
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n,
-				r_aln_s_pos, r_bt_mat, edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, edit_aln_info.r_Trace_K, r_ref_pos_map)
+			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_aln_s_pos, r_bt_mat,
+				edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, edit_aln_info.r_Trace_K, r_ref_pos_map, del_ref)
 			if PARA.Debug_mode {
 				PrintVarInfo("RightAlnEditTraceBack, variant info", r_pos, r_base, r_qual)
 			}
@@ -829,7 +884,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	p_ab := make(map[string]float64)
 	_, is_known_del := VC.DelVar[int(pos)]
 	if PARA.Debug_mode {
-		log.Println("Before: var_prof, vbase, pm, pi, pd", VarCall[rid].VarProb[pos], vbase, pm, pi, pd, string(var_info.RInfo))
+		log.Println("Before: pos, var_prof, vbase, pm, pi, pd", pos, VarCall[rid].VarProb[pos], vbase, pm, pi, pd, string(var_info.RInfo))
 	}
 	for b, p_b := range VarCall[rid].VarProb[pos] {
 		d := strings.Split(b, "|")
@@ -843,8 +898,8 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 			}
 		} else {
 			if is_known_del { //Known DEL
-				if len(vbase[0]) == len(vbase[1]) {
-					if string(vbase[0][0]) == d[0] && string(vbase[0][0]) == d[1] {
+				if len(vbase[0]) == len(vbase[1]) { //got SNP
+					if string(vbase[1][0]) == d[0] && string(vbase[1][0]) == d[1] {
 						p_ab[b] = pm
 					} else if string(vbase[1][0]) != d[0] && string(vbase[1][0]) != d[1] {
 						p_ab[b] = pd
@@ -1001,7 +1056,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		}
 		line_aln = append(line_aln, strconv.Itoa(read_depth))
 		str_aln = strings.Join(line_aln, "\t")
-		if PARA.Debug_mode == false {
+		if !PARA.Debug_mode {
 			w.WriteString(str_aln + "\n")
 		} else {
 			line_base = make([]string, 0)
