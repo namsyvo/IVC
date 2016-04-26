@@ -9,7 +9,6 @@ package ivc
 
 import (
 	"math"
-	"strings"
 )
 
 //-------------------------------------------------------------------------------------------------
@@ -33,10 +32,9 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 	int, int, int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
-	var variants, var_str string
+	var var_val []byte
 	var is_var, is_same_len_var bool
 	var p, min_p, var_prob float64
-	//var var_prof map[string]float64
 
 	aln_dist := 0.0
 	m, n := len(read), len(ref)
@@ -47,6 +45,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
 	var_pos_trace := make(map[int]bool)
+	var k int
 	for m > 0 && n > 0 {
 		indel_backup_pos = ref_pos_map[n-1] - PARA.Indel_backup
 		if indel_backup_pos < 0 {
@@ -87,17 +86,13 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 			m--
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
-			MUT.Lock()
-			var_prof, _ := VarCall[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[n-1])]
-			MUT.Unlock()
 			min_p = math.MaxFloat64
-			for variants, var_prob = range var_prof {
-				for _, var_str = range strings.Split(variants, "|") {
-					if m >= var_len {
-						p = AlignCostVarLoci(read[m-var_len:m], []byte(var_str), qual[m-var_len:m], var_prob)
-						if min_p > p {
-							min_p = p
-						}
+			for k, var_val = range VC.Variants[ref_pos_map[n-1]] {
+				var_prob = float64(VC.VarAF[ref_pos_map[n-1]][k])
+				if m >= var_len {
+					p = AlignCostVarLoci(read[m-var_len:m], var_val, qual[m-var_len:m], var_prob)
+					if min_p > p {
+						min_p = p
 					}
 				}
 			}
@@ -175,7 +170,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 		BT_IT[0][j][0], BT_IT[0][j][1] = 2, 2
 	}
 
-	var sel_var, var_val []byte
+	var sel_var []byte
 	var prob_i, sub_i, mis_i float64
 	var is_del bool
 	for i = 1; i <= m; i++ {
@@ -216,34 +211,29 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				IS[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				sel_var = nil
-				MUT.Lock()
-				var_prof, _ := VarCall[PARA.Proc_num*ref_pos_map[j-1]/VC.SeqLen].VarProb[uint32(ref_pos_map[j-1])]
-				MUT.Unlock()
-				for variants, var_prob = range var_prof {
-					for _, var_str = range strings.Split(variants, "|") {
-						var_len = len(var_str)
-						var_val = []byte(var_str)
-						if i-var_len >= 0 {
-							if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del && del_ref {
-								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], 1.0-var_prob)
-							} else {
-								prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], var_prob)
-							}
-							if D[i][j] > D[i-var_len][j-1]+prob_i {
-								D[i][j] = D[i-var_len][j-1] + prob_i
-								BT_D[i][j][0], BT_D[i][j][1] = 0, 0
-								sel_var = var_val
-							}
-							if D[i][j] > IS[i-var_len][j-1]+prob_i {
-								D[i][j] = IS[i-var_len][j-1] + prob_i
-								BT_D[i][j][0], BT_D[i][j][1] = 0, 1
-								sel_var = var_val
-							}
-							if D[i][j] > IT[i-var_len][j-1]+prob_i {
-								D[i][j] = IT[i-var_len][j-1] + prob_i
-								BT_D[i][j][0], BT_D[i][j][1] = 0, 2
-								sel_var = var_val
-							}
+				for k, var_val = range VC.Variants[ref_pos_map[j-1]] {
+					var_prob = float64(VC.VarAF[ref_pos_map[j-1]][k])
+					var_len = len(var_val)
+					if i-var_len >= 0 {
+						if _, is_del = VC.DelVar[ref_pos_map[j-1]]; is_del && del_ref {
+							prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], 1.0-var_prob)
+						} else {
+							prob_i = AlignCostVarLoci(read[i-var_len:i], var_val, qual[i-var_len:i], var_prob)
+						}
+						if D[i][j] > D[i-var_len][j-1]+prob_i {
+							D[i][j] = D[i-var_len][j-1] + prob_i
+							BT_D[i][j][0], BT_D[i][j][1] = 0, 0
+							sel_var = var_val
+						}
+						if D[i][j] > IS[i-var_len][j-1]+prob_i {
+							D[i][j] = IS[i-var_len][j-1] + prob_i
+							BT_D[i][j][0], BT_D[i][j][1] = 0, 1
+							sel_var = var_val
+						}
+						if D[i][j] > IT[i-var_len][j-1]+prob_i {
+							D[i][j] = IT[i-var_len][j-1] + prob_i
+							BT_D[i][j][0], BT_D[i][j][1] = 0, 2
+							sel_var = var_val
 						}
 					}
 				}
@@ -469,10 +459,11 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 
 	var var_len, indel_backup_pos int
 	var is_var, is_same_len_var bool
-	var variants, var_str string
+	var var_val []byte
 	var p, min_p, var_prob float64
 	var var_pos, var_type []int
 	var var_base, var_qual [][]byte
+	var k int
 
 	if PARA.Debug_mode {
 		PrintEditDisInput("RightAlign input: read, qual, ref", pos, read, qual, ref)
@@ -522,16 +513,12 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
 			min_p = math.MaxFloat64
-			MUT.Lock()
-			var_prof, _ := VarCall[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-n])]
-			MUT.Unlock()
-			for variants, var_prob = range var_prof {
-				for _, var_str = range strings.Split(variants, "|") {
-					if m >= var_len {
-						p = AlignCostVarLoci(read[M-m:M-m+var_len], []byte(var_str), qual[M-m:M-m+var_len], var_prob)
-						if min_p > p {
-							min_p = p
-						}
+			for k, var_val = range VC.Variants[ref_pos_map[N-n]] {
+				var_prob = float64(VC.VarAF[ref_pos_map[N-n]][k])
+				if m >= var_len {
+					p = AlignCostVarLoci(read[M-m:M-m+var_len], var_val, qual[M-m:M-m+var_len], var_prob)
+					if min_p > p {
+						min_p = p
 					}
 				}
 			}
@@ -606,7 +593,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 		BT_IT[0][j][0], BT_IT[0][j][1] = 2, 2
 	}
 
-	var sel_var, var_val []byte
+	var sel_var []byte
 	var prob_i, sub_i, mis_i float64
 	var is_del bool
 	for i = 1; i <= m; i++ {
@@ -644,36 +631,31 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				D[i][j] = float64(math.MaxFloat32)
 				IT[i][j] = float64(math.MaxFloat32)
 				sel_var = nil
-				MUT.Lock()
-				var_prof, _ := VarCall[PARA.Proc_num*ref_pos_map[N-j]/VC.SeqLen].VarProb[uint32(ref_pos_map[N-j])]
-				MUT.Unlock()
-				for variants, var_prob = range var_prof {
-					for _, var_str = range strings.Split(variants, "|") {
-						var_len = len(var_str)
-						var_val = []byte(var_str)
-						if i-var_len >= 0 {
-							if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del && del_ref { //convert prob with reduced-ref for known DEL
-								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], 1.0-var_prob)
-							} else {
-								prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], var_prob)
-							}
-							if D[i][j] > D[i-var_len][j-1]+prob_i {
-								D[i][j] = D[i-var_len][j-1] + prob_i
-								BT_D[i][j][0], BT_D[i][j][1] = 0, 0
+				for k, var_val = range VC.Variants[ref_pos_map[N-j]] {
+					var_prob = float64(VC.VarAF[ref_pos_map[N-j]][k])
+					var_len = len(var_val)
+					if i-var_len >= 0 {
+						if _, is_del = VC.DelVar[ref_pos_map[N-j]]; is_del && del_ref { //convert prob with reduced-ref for known DEL
+							prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], 1.0-var_prob)
+						} else {
+							prob_i = AlignCostVarLoci(read[M-i:M-i+var_len], var_val, qual[M-i:M-i+var_len], var_prob)
+						}
+						if D[i][j] > D[i-var_len][j-1]+prob_i {
+							D[i][j] = D[i-var_len][j-1] + prob_i
+							BT_D[i][j][0], BT_D[i][j][1] = 0, 0
+							sel_var = var_val
+						}
+						/*
+							if D[i][j] > IS[i - var_len][j - 1] + prob_i {
+								D[i][j] = IS[i - var_len][j - 1] + prob_i
+								BT_D[i][j][0], BT_D[i][j][1] = 0, 1
 								sel_var = var_val
 							}
-							/*
-								if D[i][j] > IS[i - var_len][j - 1] + prob_i {
-									D[i][j] = IS[i - var_len][j - 1] + prob_i
-									BT_D[i][j][0], BT_D[i][j][1] = 0, 1
-									sel_var = var_val
-								}
-							*/
-							if D[i][j] > IT[i-var_len][j-1]+prob_i {
-								D[i][j] = IT[i-var_len][j-1] + prob_i
-								BT_D[i][j][0], BT_D[i][j][1] = 0, 2
-								sel_var = var_val
-							}
+						*/
+						if D[i][j] > IT[i-var_len][j-1]+prob_i {
+							D[i][j] = IT[i-var_len][j-1] + prob_i
+							BT_D[i][j][0], BT_D[i][j][1] = 0, 2
+							sel_var = var_val
 						}
 					}
 				}
