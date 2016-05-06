@@ -213,7 +213,6 @@ func NewVariantCaller() *VarCallIndex {
 		VarCall[rid].VarProb[pos][rbase+"|"+vbase] = float64(VC.VarAF[var_pos][0])/3.0 + float64(VC.VarAF[var_pos][1])/3.0
 		VarCall[rid].VarProb[pos][vbase+"|"+vbase] = float64(VC.VarAF[var_pos][1]) * 2.0 / 3.0
 		VarCall[rid].VarType[pos] = make(map[string]int)
-		VarCall[rid].VarRNum[pos] = make(map[string]int)
 		if PARA.Debug_mode {
 			VarCall[rid].ChrDis[pos] = make(map[string][]int)
 			VarCall[rid].ChrDiff[pos] = make(map[string][]int)
@@ -778,10 +777,6 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[1]] = 2
 			VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 0
 		}
-		VarCall[rid].VarRNum[pos] = make(map[string]int)
-		VarCall[rid].VarRNum[pos][vbase[0]+"|"+vbase[0]] = 0
-		VarCall[rid].VarRNum[pos][vbase[0]+"|"+vbase[1]] = 1
-		VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] = 1
 		if PARA.Debug_mode {
 			VarCall[rid].ChrDis[pos] = make(map[string][]int)
 			VarCall[rid].ChrDiff[pos] = make(map[string][]int)
@@ -819,21 +814,17 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 				}
 				for hap, _ = range hap_map {
 					VarCall[rid].VarProb[pos][hap+"|"+vbase[1]] = min_prob * NEW_SNP_RATE
-					VarCall[rid].VarRNum[pos][hap+"|"+vbase[1]] += 1
 				}
 				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_SNP_RATE
-				VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] += 1
 			} else if len(vbase[0]) < len(vbase[1]) {
 				for b, _ = range VarCall[rid].VarProb[pos] {
 					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*min_prob*NEW_INDEL_RATE
 				}
 				for hap, _ = range hap_map {
 					VarCall[rid].VarProb[pos][hap+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
-					VarCall[rid].VarRNum[pos][hap+"|"+vbase[1]] += 1
 					VarCall[rid].VarType[pos][hap+"|"+vbase[1]] = 1
 				}
 				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
-				VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] += 1
 				VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 1
 			} else {
 				for b, _ = range VarCall[rid].VarProb[pos] {
@@ -841,21 +832,17 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 				}
 				for hap, _ = range hap_map {
 					VarCall[rid].VarProb[pos][hap+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
-					VarCall[rid].VarRNum[pos][hap+"|"+vbase[1]] += 1
 					VarCall[rid].VarType[pos][hap+"|"+vbase[1]] = 2
 				}
 				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
-				VarCall[rid].VarRNum[pos][vbase[1]+"|"+vbase[1]] += 1
 				VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 2
-			}
-		} else { //if existing variants
-			for b, _ = range VarCall[rid].VarProb[pos] {
-				if strings.Contains(b, vbase[1]) {
-					VarCall[rid].VarRNum[pos][b] += 1
-				}
 			}
 		}
 	}
+	if _, var_num_exist := VarCall[rid].VarRNum[pos]; !var_num_exist {
+		VarCall[rid].VarRNum[pos] = make(map[string]int)
+	}
+	VarCall[rid].VarRNum[pos][string(var_info.Bases)] += 1
 	if PARA.Debug_mode {
 		var_str := string(var_info.Bases)
 		VarCall[rid].ChrDis[pos][var_str] = append(VarCall[rid].ChrDis[pos][var_str], var_info.CDis)
@@ -884,7 +871,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 	p_ab := make(map[string]float64)
 	_, is_known_del := VC.DelVar[int(pos)]
 	if PARA.Debug_mode {
-		log.Println("Before: pos, var_prof, vbase, pm, pi, pd", pos, VarCall[rid].VarProb[pos], vbase, pm, pi, pd, string(var_info.RInfo))
+		//log.Println("Before: pos, var_prof, vbase, pm, pi, pd", pos, VarCall[rid].VarProb[pos], vbase, pm, pi, pd, string(var_info.RInfo))
 	}
 	for b, p_b := range VarCall[rid].VarProb[pos] {
 		d := strings.Split(b, "|")
@@ -919,15 +906,15 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 		}
 		p_a += p_b * p_ab[b]
 		if PARA.Debug_mode {
-			log.Println("Update: b, p_b, p_ab[b], p_a", b, p_b, p_ab[b], p_a)
+			//log.Println("Update: b, p_b, p_ab[b], p_a", b, p_b, p_ab[b], p_a)
 		}
 	}
 	for b, p_b := range VarCall[rid].VarProb[pos] {
 		VarCall[rid].VarProb[pos][b] = p_b * p_ab[b] / p_a
 	}
 	if PARA.Debug_mode {
-		log.Println("After:", VarCall[rid].VarProb[pos])
-		log.Println()
+		//log.Println("After:", VarCall[rid].VarProb[pos])
+		//log.Println()
 	}
 	MUT.Unlock()
 }
@@ -970,7 +957,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				var_call = var_base
 			}
 		}
-		if VarCall[rid].VarRNum[var_pos][var_call] == 0 { // do not report variants without aligned reads (happen at known locations)
+		if _, var_num_exist := VarCall[rid].VarRNum[var_pos]; !var_num_exist { // do not report variants without aligned reads (happen at known locations)
 			continue
 		}
 		// Start getting variant call info

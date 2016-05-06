@@ -19,7 +19,7 @@ func AlignCostVarLoci(read, ref, qual []byte, prob float64) float64 {
 	if string(read) == string(ref) {
 		return -0.1 * math.Log10(prob)
 	} else {
-		return math.MaxFloat64
+		return -float64(len(ref)) * math.Log10(INDEL_ERR_RATE)
 	}
 }
 
