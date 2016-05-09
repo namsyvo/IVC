@@ -942,9 +942,10 @@ func (VC *VarCallIndex) OutputVarCalls() {
 	}
 	sort.Ints(Var_Pos)
 	var var_base, var_call, str_qual, str_aln string
+	var var_arr, hap_arr []string
 	var line_aln, line_base, line_ivc []string
 	var p, var_prob, var_call_prob, map_prob float64
-	var i, chr_id, var_num int
+	var i, chr_id, var_num, var_depth, read_depth int
 	var is_known_var, is_known_del bool
 	for _, pos := range Var_Pos {
 		var_pos = uint32(pos)
@@ -972,7 +973,7 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		// ID
 		line_aln = append(line_aln, ".")
 		// REF & ALT
-		hap_arr := strings.Split(var_call, "|")
+		hap_arr = strings.Split(var_call, "|")
 		if _, is_known_var = VC.Variants[pos]; is_known_var {
 			if _, is_known_del = VC.DelVar[pos]; is_known_del {
 				//Do not report known variants which are identical with the reference
@@ -1036,11 +1037,26 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		} else {
 			line_aln = append(line_aln, "1000")
 		}
-		line_aln = append(line_aln, strconv.Itoa(VarCall[rid].VarRNum[var_pos][var_call]))
-		read_depth := 0
+		read_depth = 0
+		var_depth = math.MaxInt64
 		for var_base, var_num = range VarCall[rid].VarRNum[var_pos] {
 			read_depth += var_num
+			var_arr = strings.Split(var_base, "|")
+			if len(var_arr[0]) > len(var_arr[1]) { //DEL
+				if var_arr[0] == hap_arr[0] || var_arr[0] == hap_arr[1] {
+					if var_depth > var_num {
+						var_depth = var_num
+					}
+				}
+			} else {
+				if var_arr[1] == hap_arr[0] || var_arr[1] == hap_arr[1] {
+					if var_depth > var_num {
+						var_depth = var_num
+					}
+				}
+			}
 		}
+		line_aln = append(line_aln, strconv.Itoa(var_depth))
 		line_aln = append(line_aln, strconv.Itoa(read_depth))
 		str_aln = strings.Join(line_aln, "\t")
 		if !PARA.Debug_mode {
