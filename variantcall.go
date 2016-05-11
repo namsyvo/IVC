@@ -858,15 +858,17 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 		VarCall[rid].ReadInfo[pos][var_str] = append(VarCall[rid].ReadInfo[pos][var_str], var_info.RInfo)
 	}
 
-	pm := 1.0
+	pm := 0.0
 	for _, q := range var_info.BQual {
-		pm *= Q2P[q]
+		pm += Q2P[q]
 	}
-	pi := 1.0
+	pm = pm / float64(len(var_info.BQual))
+	pi := 0.0
 	for _, q := range var_info.BQual {
-		pi *= Q2E[q]
+		pi += Q2E[q]
 	}
-	pd := L2E[len(vbase[0])-1]
+	pi = pi / float64(len(var_info.BQual))
+	pd := L2E[1]
 	p_a := 0.0
 	p_ab := make(map[string]float64)
 	_, is_known_del := VC.DelVar[int(pos)]
