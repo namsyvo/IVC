@@ -1,3 +1,7 @@
+(1) Implement two-phase variant calling to reduce false positives.
+    + Record all matches and gaps at locations that are not in collected variants during alignment process (phase1).
+    + Use recorded matches and gaps to update variant profile after phase1 to recover all aligned bases at variant locations (phase2).
+
 (2) Improve running time and memory usage.
     + Working with Phred-scale values directly instead of probability.
     + Use base quality fully in alignment.
