@@ -1,3 +1,15 @@
+v0.9.0 <May 13, 2016> <dip-var>
+Major changes:
+- Detect both homozygous and heterozygous variants.
+- Detect new alleles at known locations.
+- Change calculation of INDEL prob update.
+- Detect variants with locations covered by the known DEL.
+- Use initial variant prob (taken from input, not the updated variant prob) for performing alignment (testing).
+Minor changes:
+- Fix a bug of getting wrong prob for known DEL.
+- Fix a bug of crashes caused by reading/writing with multiple goroutines.
+- Fix some minor bugs and make some code clean. Change default value of some parameters.
+
 v0.8.1 <Dec 9, 2015> <time-mem>
 Major changes:
 - Do parallel var prob update.

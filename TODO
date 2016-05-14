@@ -1,8 +1,3 @@
-(1) Working with diplod data (detect both homozygous and heterozygous variants)
-    + Generate data which capture diploid variants.
-    + Implement data structures which capture diplod variant profiles
-    + Implement Bayes's formula for diploid variants.
-
 (2) Improve running time and memory usage.
     + Working with Phred-scale values directly instead of probability.
     + Use base quality fully in alignment.
@@ -14,7 +9,6 @@
 
 (4) Future work
     + Add functions to allow IVC working with single-end reads.
-    + Allow new alleles.
     + Working with some cancer datasets.
 
 (5) Integrate indexing and SNP calling phases:
