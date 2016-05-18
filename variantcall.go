@@ -97,6 +97,8 @@ type UnAlnReadInfo struct {
 //---------------------------------------------------------------------------------------------------
 var VarCall []*VarProf // number of elements will be set equal to number of cores to run parallel updates
 
+var VarRecord []*VarInfo //Record of non-variant aligned bases during phase 1 of variant calling
+
 //---------------------------------------------------------------------------------------------------
 // NewVariantCaller creates an instance of VarCallIndex and sets up its variables.
 // This function will be called from the main program.
@@ -200,6 +202,8 @@ func NewVariantCaller() *VarCallIndex {
 		}
 	}
 
+	VarRecord = make([]*VarInfo, 0)
+
 	//At this point, assume that all variants are biallelic
 	var pos uint32
 	var rid int
@@ -299,6 +303,13 @@ func (VC *VarCallIndex) CallVariants() {
 		}
 	}
 	log.Printf("Number of un-aligned reads:\t%d", i)
+	//Phase2: collect non-variant aligned bases from phase 1 and update variant probabilities
+	for _, vi := range VarRecord {
+		rid := PARA.Proc_num * int(vi.Pos) / VC.SeqLen
+		if _, var_call_exist := VarCall[rid].VarProb[vi.Pos]; var_call_exist {
+			VC.UpdateVariantProb(vi)
+		}
+	}
 
 	if PARA.Debug_mode {
 		ProcessNoAlignReadInfo()
@@ -443,6 +454,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 	copy(read_info1, read_info.Info1)
 	copy(read_info2, read_info.Info2)
 	var vars1, vars2, vars_get1, vars_get2 []*VarInfo
+	var vars1_2, vars2_2, vars_get1_2, vars_get2_2 []*VarInfo
 	var l_aln_pos1, l_aln_pos2 int
 	var seed_info1, seed_info2 *SeedInfo
 	var has_seeds bool
@@ -468,27 +480,30 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 			}
 			// Search variants for the first end
 			if seed_info1.strand[p_idx] == true {
-				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
+				vars1, vars1_2, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 					seed_info1.m_pos[p_idx], read_info.Read1, read_info.Qual1, edit_aln_info_1, edit_aln_info_2)
 			} else {
-				vars1, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
+				vars1, vars1_2, _, _, aln_dist1 = VC.ExtendSeeds(seed_info1.s_pos[p_idx], seed_info1.e_pos[p_idx],
 					seed_info1.m_pos[p_idx], read_info.Rev_comp_read1, read_info.Rev_qual1, edit_aln_info_1, edit_aln_info_2)
 			}
 			// Search variants for the second end
 			if seed_info2.strand[p_idx] == true {
-				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
+				vars2, vars2_2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 					seed_info2.m_pos[p_idx], read_info.Read2, read_info.Qual2, edit_aln_info_1, edit_aln_info_2)
 			} else {
-				vars2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
+				vars2, vars2_2, _, _, aln_dist2 = VC.ExtendSeeds(seed_info2.s_pos[p_idx], seed_info2.e_pos[p_idx],
 					seed_info2.m_pos[p_idx], read_info.Rev_comp_read2, read_info.Rev_qual2, edit_aln_info_1, edit_aln_info_2)
 			}
+			PrintGetVariants("before_Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
 			// Currently, variants can be called iff both read-ends can be aligned
 			if aln_dist1 != -1 && aln_dist2 != -1 {
 				c_num++
 				ins_prob := -math.Log10(math.Exp(-math.Pow(math.Abs(float64(l_aln_pos1-l_aln_pos2))-400.0, 2.0) / (2 * 50 * 50)))
 				if paired_dist > aln_dist1+aln_dist2 {
 					paired_dist = aln_dist1 + aln_dist2
-					//PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
+					if PARA.Debug_mode {
+						PrintGetVariants("Find_min", paired_dist, aln_dist1, aln_dist2, vars1, vars2)
+					}
 					vars_get1 = make([]*VarInfo, len(vars1)) // need to reset vars_get1 here
 					vars_get2 = make([]*VarInfo, len(vars2)) // need to reset vars_get2 here
 					loop_has_cand = loop_num
@@ -522,11 +537,19 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 							vars_get2[s_idx].RInfo = read_info2
 						}
 					}
+					vars_get1_2 = make([]*VarInfo, len(vars1_2)) // need to reset vars_get1 here
+					vars_get2_2 = make([]*VarInfo, len(vars2_2)) // need to reset vars_get2 here
+					for s_idx = 0; s_idx < len(vars1_2); s_idx++ {
+						vars_get1_2[s_idx] = vars1_2[s_idx]
+					}
+					for s_idx = 0; s_idx < len(vars2_2); s_idx++ {
+						vars_get2_2[s_idx] = vars2_2[s_idx]
+					}
 				}
 			}
 		}
 		cand_num = append(cand_num, c_num)
-		if paired_dist < PARA.Gap_open { // there are no gaps, in this case, the alignment is likely to be correct
+		if paired_dist < PARA.Gap_open { // there is at most one mismatch and no gaps, in this case, the alignment is likely to be correct
 			break
 		}
 	}
@@ -546,6 +569,17 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 			rid = PARA.Proc_num * int(var2.Pos) / VC.SeqLen
 			var_info[rid] <- var2
 		}
+		MUT.Lock()
+		//Record non-variant aligned based for phase 2
+		for _, var1_2 := range vars_get1_2 {
+			var1_2.MProb = map_qual
+			VarRecord = append(VarRecord, var1_2)
+		}
+		for _, var2_2 := range vars_get2_2 {
+			var2_2.MProb = map_qual
+			VarRecord = append(VarRecord, var2_2)
+		}
+		MUT.Unlock()
 		return
 	}
 	// Get unaligned paired-end reads
@@ -561,7 +595,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 // ExtendSeeds performs alignment between extensions from seeds on reads and multigenomes
 // and determines variants from the alignment of both left and right extensions.
 //---------------------------------------------------------------------------------------------------
-func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info_1, edit_aln_info_2 *EditAlnInfo) ([]*VarInfo, int, int, float64) {
+func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info_1, edit_aln_info_2 *EditAlnInfo) ([]*VarInfo, []*VarInfo, int, int, float64) {
 
 	var i, j, del_len int
 	var is_var, is_del bool
@@ -581,7 +615,7 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 					l_ref_pos_del_map = l_ref_pos_del_map[:len(l_ref_pos_del_map)-del_len]
 					j -= del_len
 				} else {
-					return nil, -1, -1, -1
+					return nil, nil, -1, -1, -1
 				}
 			}
 		}
@@ -661,40 +695,40 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 		PrintComparedReadRef(l_read_flank, l_ref_flank_del, r_read_flank, r_ref_flank_del)
 		PrintComparedReadRef(l_read_flank, l_ref_flank_ori, r_read_flank, r_ref_flank_ori)
 	}
-	l_Ham_dist_1, l_Edit_dist_1, l_bt_mat_1, l_m_1, l_n_1, l_var_pos_1, l_var_base_1, l_var_qual_1, l_var_type_1 :=
+	l_Ham_dist_1, l_Edit_dist_1, l_bt_mat_1, l_m_1, l_n_1, l_var_pos_1, l_var_base_1, l_var_qual_1, l_var_type_1, l_var_pos2_1, l_var_base2_1, l_var_qual2_1, l_var_type2_1 :=
 		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank_del, l_aln_s_pos_del, edit_aln_info_1.l_Dist_D, edit_aln_info_1.l_Dist_IS, edit_aln_info_1.l_Dist_IT,
 			edit_aln_info_1.l_Trace_D, edit_aln_info_1.l_Trace_IS, edit_aln_info_1.l_Trace_IT, edit_aln_info_1.l_Trace_K, l_ref_pos_del_map, true)
-	r_Ham_dist_1, r_Edit_dist_1, r_bt_mat_1, r_m_1, r_n_1, r_var_pos_1, r_var_base_1, r_var_qual_1, r_var_type_1 :=
+	r_Ham_dist_1, r_Edit_dist_1, r_bt_mat_1, r_m_1, r_n_1, r_var_pos_1, r_var_base_1, r_var_qual_1, r_var_type_1, r_var_pos2_1, r_var_base2_1, r_var_qual2_1, r_var_type2_1 :=
 		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank_del, r_aln_s_pos_del, edit_aln_info_1.r_Dist_D, edit_aln_info_1.r_Dist_IS, edit_aln_info_1.r_Dist_IT,
 			edit_aln_info_1.r_Trace_D, edit_aln_info_1.r_Trace_IS, edit_aln_info_1.r_Trace_IT, edit_aln_info_1.r_Trace_K, r_ref_pos_del_map, true)
 
-	l_Ham_dist_2, l_Edit_dist_2, l_bt_mat_2, l_m_2, l_n_2, l_var_pos_2, l_var_base_2, l_var_qual_2, l_var_type_2 :=
+	l_Ham_dist_2, l_Edit_dist_2, l_bt_mat_2, l_m_2, l_n_2, l_var_pos_2, l_var_base_2, l_var_qual_2, l_var_type_2, l_var_pos2_2, l_var_base2_2, l_var_qual2_2, l_var_type2_2 :=
 		VC.LeftAlign(l_read_flank, l_qual_flank, l_ref_flank_ori, l_aln_s_pos_ori, edit_aln_info_2.l_Dist_D, edit_aln_info_2.l_Dist_IS, edit_aln_info_2.l_Dist_IT,
 			edit_aln_info_2.l_Trace_D, edit_aln_info_2.l_Trace_IS, edit_aln_info_2.l_Trace_IT, edit_aln_info_2.l_Trace_K, l_ref_pos_ori_map, false)
-	r_Ham_dist_2, r_Edit_dist_2, r_bt_mat_2, r_m_2, r_n_2, r_var_pos_2, r_var_base_2, r_var_qual_2, r_var_type_2 :=
+	r_Ham_dist_2, r_Edit_dist_2, r_bt_mat_2, r_m_2, r_n_2, r_var_pos_2, r_var_base_2, r_var_qual_2, r_var_type_2, r_var_pos2_2, r_var_base2_2, r_var_qual2_2, r_var_type2_2 :=
 		VC.RightAlign(r_read_flank, r_qual_flank, r_ref_flank_ori, r_aln_s_pos_ori, edit_aln_info_2.r_Dist_D, edit_aln_info_2.r_Dist_IS, edit_aln_info_2.r_Dist_IT,
 			edit_aln_info_2.r_Trace_D, edit_aln_info_2.r_Trace_IS, edit_aln_info_2.r_Trace_IT, edit_aln_info_2.r_Trace_K, r_ref_pos_ori_map, false)
 
 	aln_dist := l_Ham_dist_1 + l_Edit_dist_1 + r_Ham_dist_1 + r_Edit_dist_1
 	del_ref := true
 	edit_aln_info := edit_aln_info_1
-	l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type := l_m_1, l_n_1, l_var_pos_1, l_var_base_1, l_var_qual_1, l_var_type_1
+	l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type, l_var_pos2, l_var_base2, l_var_qual2, l_var_type2 := l_m_1, l_n_1, l_var_pos_1, l_var_base_1, l_var_qual_1, l_var_type_1, l_var_pos2_1, l_var_base2_1, l_var_qual2_1, l_var_type2_1
 	l_bt_mat, l_ref_flank, l_ref_pos_map, l_aln_s_pos := l_bt_mat_1, l_ref_flank_del, l_ref_pos_del_map, l_aln_s_pos_del
-	r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type := r_m_1, r_n_1, r_var_pos_1, r_var_base_1, r_var_qual_1, r_var_type_1
+	r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type, r_var_pos2, r_var_base2, r_var_qual2, r_var_type2 := r_m_1, r_n_1, r_var_pos_1, r_var_base_1, r_var_qual_1, r_var_type_1, r_var_pos2_1, r_var_base2_1, r_var_qual2_1, r_var_type2_1
 	r_bt_mat, r_ref_flank, r_ref_pos_map, r_aln_s_pos := r_bt_mat_1, r_ref_flank_del, r_ref_pos_del_map, r_aln_s_pos_del
 
 	if aln_dist >= l_Ham_dist_2+l_Edit_dist_2+r_Ham_dist_2+r_Edit_dist_2 {
 		aln_dist = l_Ham_dist_2 + l_Edit_dist_2 + r_Ham_dist_2 + r_Edit_dist_2
 		del_ref = false
 		edit_aln_info = edit_aln_info_2
-		l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type = l_m_2, l_n_2, l_var_pos_2, l_var_base_2, l_var_qual_2, l_var_type_2
+		l_m, l_n, l_var_pos, l_var_base, l_var_qual, l_var_type, l_var_pos2, l_var_base2, l_var_qual2, l_var_type2 = l_m_2, l_n_2, l_var_pos_2, l_var_base_2, l_var_qual_2, l_var_type_2, l_var_pos2_2, l_var_base2_2, l_var_qual2_2, l_var_type2_2
 		l_bt_mat, l_ref_flank, l_ref_pos_map, l_aln_s_pos = l_bt_mat_2, l_ref_flank_ori, l_ref_pos_ori_map, l_aln_s_pos_ori
-		r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type = r_m_2, r_n_2, r_var_pos_2, r_var_base_2, r_var_qual_2, r_var_type_2
+		r_m, r_n, r_var_pos, r_var_base, r_var_qual, r_var_type, r_var_pos2, r_var_base2, r_var_qual2, r_var_type2 = r_m_2, r_n_2, r_var_pos_2, r_var_base_2, r_var_qual_2, r_var_type_2, r_var_pos2_2, r_var_base2_2, r_var_qual2_2, r_var_type2_2
 		r_bt_mat, r_ref_flank, r_ref_pos_map, r_aln_s_pos = r_bt_mat_2, r_ref_flank_ori, r_ref_pos_ori_map, r_aln_s_pos_ori
 	}
 	if aln_dist <= PARA.Dist_thres {
 		if l_m > 0 && l_n > 0 {
-			l_pos, l_base, l_qual, l_type := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_aln_s_pos, l_bt_mat,
+			l_pos, l_base, l_qual, l_type, l_pos2, l_base2, l_qual2, l_type2 := VC.LeftAlignEditTraceBack(l_read_flank, l_qual_flank, l_ref_flank, l_m, l_n, l_aln_s_pos, l_bt_mat,
 				edit_aln_info.l_Trace_D, edit_aln_info.l_Trace_IS, edit_aln_info.l_Trace_IT, edit_aln_info.l_Trace_K, l_ref_pos_map, del_ref)
 			if PARA.Debug_mode {
 				PrintVarInfo("LeftAlnitTraceBack, variant info", l_pos, l_base, l_qual)
@@ -703,12 +737,16 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 			l_var_base = append(l_var_base, l_base...)
 			l_var_qual = append(l_var_qual, l_qual...)
 			l_var_type = append(l_var_type, l_type...)
+			l_var_pos2 = append(l_var_pos2, l_pos2...)
+			l_var_base2 = append(l_var_base2, l_base2...)
+			l_var_qual2 = append(l_var_qual2, l_qual2...)
+			l_var_type2 = append(l_var_type2, l_type2...)
 		}
 		if PARA.Debug_mode {
 			PrintMatchTraceInfo(m_pos, l_aln_s_pos, aln_dist, l_var_pos, read)
 		}
 		if r_m > 0 && r_n > 0 {
-			r_pos, r_base, r_qual, r_type := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_aln_s_pos, r_bt_mat,
+			r_pos, r_base, r_qual, r_type, r_pos2, r_base2, r_qual2, r_type2 := VC.RightAlignEditTraceBack(r_read_flank, r_qual_flank, r_ref_flank, r_m, r_n, r_aln_s_pos, r_bt_mat,
 				edit_aln_info.r_Trace_D, edit_aln_info.r_Trace_IS, edit_aln_info.r_Trace_IT, edit_aln_info.r_Trace_K, r_ref_pos_map, del_ref)
 			if PARA.Debug_mode {
 				PrintVarInfo("RightAlnEditTraceBack, variant info", r_pos, r_base, r_qual)
@@ -717,25 +755,39 @@ func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, 
 			r_var_base = append(r_var_base, r_base...)
 			r_var_qual = append(r_var_qual, r_qual...)
 			r_var_type = append(r_var_type, r_type...)
+			r_var_pos2 = append(r_var_pos2, r_pos2...)
+			r_var_base2 = append(r_var_base2, r_base2...)
+			r_var_qual2 = append(r_var_qual2, r_qual2...)
+			r_var_type2 = append(r_var_type2, r_type2...)
 		}
 		if PARA.Debug_mode {
 			PrintMatchTraceInfo(m_pos, r_aln_s_pos, aln_dist, r_var_pos, read)
 		}
 		var k int
-		var vars_arr []*VarInfo
+		var vars_arr, vars_arr2 []*VarInfo
 		for k = 0; k < len(l_var_pos); k++ {
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(l_var_pos[k]), l_var_base[k], l_var_qual[k], l_var_type[k]
 			vars_arr = append(vars_arr, var_info)
+		}
+		for k = 0; k < len(l_var_pos2); k++ {
+			var_info2 := new(VarInfo)
+			var_info2.Pos, var_info2.Bases, var_info2.BQual, var_info2.Type = uint32(l_var_pos2[k]), l_var_base2[k], l_var_qual2[k], l_var_type2[k]
+			vars_arr2 = append(vars_arr2, var_info2)
 		}
 		for k = 0; k < len(r_var_pos); k++ {
 			var_info := new(VarInfo)
 			var_info.Pos, var_info.Bases, var_info.BQual, var_info.Type = uint32(r_var_pos[k]), r_var_base[k], r_var_qual[k], r_var_type[k]
 			vars_arr = append(vars_arr, var_info)
 		}
-		return vars_arr, l_aln_s_pos, r_aln_s_pos, aln_dist
+		for k = 0; k < len(r_var_pos2); k++ {
+			var_info2 := new(VarInfo)
+			var_info2.Pos, var_info2.Bases, var_info2.BQual, var_info2.Type = uint32(r_var_pos2[k]), r_var_base2[k], r_var_qual2[k], r_var_type2[k]
+			vars_arr2 = append(vars_arr2, var_info2)
+		}
+		return vars_arr, vars_arr2, l_aln_s_pos, r_aln_s_pos, aln_dist
 	}
-	return nil, -1, -1, -1
+	return nil, nil, -1, -1, -1
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -960,7 +1012,11 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				var_call = var_base
 			}
 		}
-		if _, var_num_exist := VarCall[rid].VarRNum[var_pos]; !var_num_exist { // do not report variants without aligned reads (happen at known locations)
+		if _, is_var := VarCall[rid].VarRNum[var_pos]; !is_var { // do not report variants without aligned reads (happen at known locations)
+			continue
+		}
+		hap_arr = strings.Split(var_call, "|")
+		if hap_arr[0] == "-" || hap_arr[1] == "-" {
 			continue
 		}
 		// Start getting variant call info
@@ -975,7 +1031,6 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		// ID
 		line_aln = append(line_aln, ".")
 		// REF & ALT
-		hap_arr = strings.Split(var_call, "|")
 		if _, is_known_var = VC.Variants[pos]; is_known_var {
 			if _, is_known_del = VC.DelVar[pos]; is_known_del {
 				//Do not report known variants which are identical with the reference

@@ -29,12 +29,12 @@ func AlignCostVarLoci(read, ref, qual []byte, prob float64) float64 {
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) (float64, float64,
-	int, int, int, []int, [][]byte, [][]byte, []int) {
+	int, int, int, []int, [][]byte, [][]byte, []int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
 	var var_val []byte
-	var is_var, is_same_len_var bool
 	var p, min_p, var_prob float64
+	var is_var, is_same_len_var bool
 
 	aln_dist := 0.0
 	m, n := len(read), len(ref)
@@ -42,8 +42,8 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 	if PARA.Debug_mode {
 		PrintEditDisInput("LeftAlign input: read, qual, ref", pos, read, qual, ref)
 	}
-	var var_pos, var_type []int
-	var var_base, var_qual [][]byte
+	var var_pos, var_type, var_pos2, var_type2 []int
+	var var_base, var_qual, var_base2, var_qual2 [][]byte
 	var_pos_trace := make(map[int]bool)
 	var k int
 	for m > 0 && n > 0 {
@@ -58,18 +58,23 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				break
 			}
 		}
-		if VC.Seq[ref_pos_map[n-1]] != '*' {
+		if ref[n-1] != '*' {
 			if read[m-1] != ref[n-1] {
 				backup_num := PARA.Ham_backup
 				if backup_num >= len(read)-m {
 					backup_num = len(read) - m
 				}
 				for i := 0; i < backup_num; i++ {
-					if _, is_var = var_pos_trace[n+i]; is_var {
+					if var_pos_trace[n+i] {
 						var_pos = var_pos[:len(var_pos)-1]
 						var_base = var_base[:len(var_base)-1]
 						var_qual = var_qual[:len(var_qual)-1]
 						var_type = var_type[:len(var_type)-1]
+					} else {
+						var_pos2 = var_pos2[:len(var_pos2)-1]
+						var_base2 = var_base2[:len(var_base2)-1]
+						var_qual2 = var_qual2[:len(var_qual2)-1]
+						var_type2 = var_type2[:len(var_type2)-1]
 					}
 				}
 				m += backup_num
@@ -82,6 +87,11 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				var_base = append(var_base, []byte{ref[n-1], '|', read[m-1]})
 				var_qual = append(var_qual, []byte{qual[m-1]})
 				var_type = append(var_type, 0)
+			} else {
+				var_pos2 = append(var_pos2, ref_pos_map[n-1])
+				var_base2 = append(var_base2, []byte{ref[n-1], '|', read[m-1]})
+				var_qual2 = append(var_qual2, []byte{qual[m-1]})
+				var_type2 = append(var_type2, 0)
 			}
 			m--
 			n--
@@ -117,14 +127,14 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 			break
 		}
 		if aln_dist > PARA.Dist_thres {
-			return PARA.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+			return PARA.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 		}
 	}
 	if PARA.Debug_mode {
 		PrintDisInfo("LeftAlnHam dis", m, n, aln_dist)
 	}
 	if m == 0 || n == 0 {
-		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 	}
 	if PARA.Debug_mode {
 		PrintEditDisInput("LeftAlnEdit: read, qual, ref", pos, read[:m], qual[:m], ref[:n])
@@ -176,7 +186,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 	for i = 1; i <= m; i++ {
 		mis_i = PARA.Sub_cost // + Q2C[qual[i-1]]
 		for j = 1; j <= n; j++ {
-			if VC.Seq[ref_pos_map[j-1]] != '*' {
+			if ref[j-1] != '*' {
 				if read[i-1] == ref[j-1] {
 					sub_i = 0.0
 				} else {
@@ -267,7 +277,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 		bt_mat = 2
 	}
 
-	return aln_dist, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type
+	return aln_dist, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -275,12 +285,12 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
-	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) ([]int, [][]byte, [][]byte, []int) {
+	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) ([]int, [][]byte, [][]byte, []int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, ref_len int
-	var var_pos, var_type []int
-	var var_base, var_qual [][]byte
 	var is_same_len_var, is_del bool
+	var var_pos, var_type, var_pos2, var_type2 []int
+	var var_base, var_qual, var_base2, var_qual2 [][]byte
 	if PARA.Debug_mode {
 		PrintEditDisInput("LeftAlnEditTraceBack, read, qual, ref", pos, read[:m], qual[:m], ref[:n])
 	}
@@ -288,7 +298,7 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 	bt_mat := BT_Mat
 	i, j, k := m, n, 0
 	for i > 0 || j > 0 {
-		if j == 0 || VC.Seq[ref_pos_map[j-1]] != '*' { //unknown VARIANT location
+		if j == 0 || ref[j-1] != '*' { //unknown VARIANT location
 			if bt_mat == 0 {
 				if read[i-1] != ref[j-1] {
 					var_pos = append(var_pos, ref_pos_map[j-1])
@@ -380,8 +390,15 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 	ref_ori_pos := 0
 	read_ori_pos := 0
 	i = 0
+	var is_var bool
 	for i < len(aln_ref) {
 		if aln_read[i] == '-' && aln_ref[i] != '-' {
+			if aln_ref[i] != '*' && aln_ref[i] != '+' {
+				var_pos2 = append(var_pos2, ref_pos_map[ref_ori_pos])
+				var_base2 = append(var_base2, []byte{aln_ref[i], '|', aln_read[i]})
+				var_qual2 = append(var_qual2, []byte{'I'}) // a tmp value
+				var_type2 = append(var_type2, 2)
+			}
 			ref_ori_pos++
 			i++
 		} else if aln_read[i] != '-' && aln_ref[i] == '-' {
@@ -416,6 +433,12 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 			q = append(q, aln_qual[i-1]) //A temporary solution, need to get quality in a proper way in this case!!!
 			for j = i; j < len(aln_read) && aln_read[j] == '-'; j++ {
 				v = append(v, aln_ref[j])
+				if aln_ref[j] != '*' && aln_ref[j] != '+' {
+					var_pos2 = append(var_pos2, ref_pos_map[ref_ori_pos+j-i])
+					var_base2 = append(var_base2, []byte{aln_ref[j], '|', aln_read[j]})
+					var_qual2 = append(var_qual2, []byte{aln_qual[j]})
+					var_type2 = append(var_type2, 2)
+				}
 			}
 			if j < len(aln_read)-1 && read_ori_pos < m-1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
@@ -433,11 +456,18 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
-					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
+					if _, is_var = VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
 						var_base = append(var_base, []byte{aln_ref[i], '|', aln_read[i]})
 						var_qual = append(var_qual, []byte{aln_qual[i]})
 						var_type = append(var_type, 0)
+					} else {
+						if aln_ref[i] != '*' && aln_ref[i] != '+' {
+							var_pos2 = append(var_pos2, ref_pos_map[ref_ori_pos])
+							var_base2 = append(var_base2, []byte{aln_ref[i], '|', aln_read[i]})
+							var_qual2 = append(var_qual2, []byte{aln_qual[i]})
+							var_type2 = append(var_type2, 0)
+						}
 					}
 				}
 			}
@@ -446,7 +476,7 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 			i++
 		}
 	}
-	return var_pos, var_base, var_qual, var_type
+	return var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -455,14 +485,14 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT [][]float64,
 	BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) (float64, float64,
-	int, int, int, []int, [][]byte, [][]byte, []int) {
+	int, int, int, []int, [][]byte, [][]byte, []int, []int, [][]byte, [][]byte, []int) {
 
 	var var_len, indel_backup_pos int
 	var is_var, is_same_len_var bool
 	var var_val []byte
 	var p, min_p, var_prob float64
-	var var_pos, var_type []int
-	var var_base, var_qual [][]byte
+	var var_pos, var_type, var_pos2, var_type2 []int
+	var var_base, var_qual, var_base2, var_qual2 [][]byte
 	var k int
 
 	if PARA.Debug_mode {
@@ -484,18 +514,23 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				break
 			}
 		}
-		if VC.Seq[ref_pos_map[N-n]] != '*' {
+		if ref[N-n] != '*' {
 			if read[M-m] != ref[N-n] {
 				backup_num := 2 * PARA.Ham_backup
 				if backup_num >= M-m {
 					backup_num = M - m
 				}
 				for i := 0; i < backup_num; i++ {
-					if _, is_var = var_pos_trace[N-(n+i+1)]; is_var {
+					if var_pos_trace[N-(n+i+1)] {
 						var_pos = var_pos[:len(var_pos)-1]
 						var_base = var_base[:len(var_base)-1]
 						var_qual = var_qual[:len(var_qual)-1]
 						var_type = var_type[:len(var_type)-1]
+					} else {
+						var_pos2 = var_pos2[:len(var_pos2)-1]
+						var_base2 = var_base2[:len(var_base2)-1]
+						var_qual2 = var_qual2[:len(var_qual2)-1]
+						var_type2 = var_type2[:len(var_type2)-1]
 					}
 				}
 				m += backup_num
@@ -508,6 +543,11 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				var_base = append(var_base, []byte{ref[N-n], '|', read[M-m]})
 				var_qual = append(var_qual, []byte{qual[M-m]})
 				var_type = append(var_type, 0)
+			} else {
+				var_pos2 = append(var_pos2, ref_pos_map[N-n])
+				var_base2 = append(var_base2, []byte{ref[N-n], '|', read[M-m]})
+				var_qual2 = append(var_qual2, []byte{qual[M-m]})
+				var_type2 = append(var_type2, 0)
 			}
 			m--
 			n--
@@ -543,14 +583,14 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 			break
 		}
 		if aln_dist > PARA.Dist_thres {
-			return PARA.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+			return PARA.Dist_thres + 1, 0, -1, m, n, var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 		}
 	}
 	if PARA.Debug_mode {
 		PrintDisInfo("RightAlnHam dis", m, n, aln_dist)
 	}
 	if m == 0 || n == 0 {
-		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type
+		return aln_dist, 0, -1, m, n, var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 	}
 	if PARA.Debug_mode {
 		PrintEditDisInput("RightAlnEdit: read, qual, ref", pos, read[M-m:M], qual[M-m:M], ref[N-n:N])
@@ -599,7 +639,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 	for i = 1; i <= m; i++ {
 		mis_i = PARA.Sub_cost // + Q2C[qual[M-i]]
 		for j = 1; j <= n; j++ {
-			if VC.Seq[ref_pos_map[N-j]] != '*' {
+			if ref[N-j] != '*' {
 				if read[M-i] == ref[N-j] {
 					sub_i = 0.0
 				} else {
@@ -694,7 +734,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 		min_dist = IT[m][n]
 		bt_mat = 2
 	}
-	return aln_dist, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type
+	return aln_dist, min_dist, bt_mat, m, n, var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -702,15 +742,15 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 // The read includes standard bases, the ref include standard bases and "*" characters.
 //-------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int, pos int,
-	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) ([]int, [][]byte, [][]byte, []int) {
+	BT_Mat int, BT_D, BT_IS, BT_IT [][][]int, BT_K [][][]byte, ref_pos_map []int, del_ref bool) ([]int, [][]byte, [][]byte, []int, []int, [][]byte, [][]byte, []int) {
 
 	if PARA.Debug_mode {
 		PrintEditDisInput("RightAlnEditTraceBack, read, qual, ref", pos, read, qual, ref)
 	}
 	var var_len, ref_len int
-	var var_pos, var_type []int
-	var var_base, var_qual [][]byte
-	var is_same_len_var, is_del bool
+	var is_var, is_same_len_var, is_del bool
+	var var_pos, var_type, var_pos2, var_type2 []int
+	var var_base, var_qual, var_base2, var_qual2 [][]byte
 
 	aln_read, aln_qual, aln_ref := make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	M, N := len(read), len(ref)
@@ -820,6 +860,12 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 	i = 0
 	for i < len(aln_ref) {
 		if aln_read[i] == '-' && aln_ref[i] != '-' {
+			if aln_ref[i] != '*' && aln_ref[i] != '+' {
+				var_pos2 = append(var_pos2, ref_pos_map[ref_ori_pos])
+				var_base2 = append(var_base2, []byte{aln_ref[i], '|', aln_read[i]})
+				var_qual2 = append(var_qual2, []byte{'I'}) // a tmp value
+				var_type2 = append(var_type2, 2)
+			}
 			ref_ori_pos++
 			i++
 		} else if aln_read[i] != '-' && aln_ref[i] == '-' {
@@ -855,6 +901,12 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 			q = append(q, aln_qual[i-1])
 			for j = i; j < len(aln_read) && aln_read[j] == '-'; j++ {
 				v = append(v, aln_ref[j])
+				if aln_ref[j] != '*' && aln_ref[j] != '+' {
+					var_pos2 = append(var_pos2, ref_pos_map[ref_ori_pos+j-i])
+					var_base2 = append(var_base2, []byte{aln_ref[j], '|', aln_read[j]})
+					var_qual2 = append(var_qual2, []byte{aln_qual[j]})
+					var_type2 = append(var_type2, 2)
+				}
 			}
 			if j < len(aln_read)-1 && read_ori_pos < M-1 && read_ori_pos > M-m+1 {
 				var_pos = append(var_pos, ref_pos_map[ref_ori_pos-1])
@@ -872,11 +924,18 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
-					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
+					if _, is_var = VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
 						var_base = append(var_base, []byte{aln_ref[i], '|', aln_read[i]})
 						var_qual = append(var_qual, []byte{aln_qual[i]})
 						var_type = append(var_type, 0)
+					} else {
+						if aln_ref[i] != '*' && aln_ref[i] != '+' {
+							var_pos2 = append(var_pos2, ref_pos_map[ref_ori_pos])
+							var_base2 = append(var_base2, []byte{aln_ref[i], '|', aln_read[i]})
+							var_qual2 = append(var_qual2, []byte{aln_qual[i]})
+							var_type2 = append(var_type2, 0)
+						}
 					}
 				}
 			}
@@ -885,5 +944,5 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 			i++
 		}
 	}
-	return var_pos, var_base, var_qual, var_type
+	return var_pos, var_base, var_qual, var_type, var_pos2, var_base2, var_qual2, var_type2
 }

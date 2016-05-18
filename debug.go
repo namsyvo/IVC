@@ -70,9 +70,9 @@ func PrintLoopTraceInfo(loop_num int, mess string) {
 	}
 }
 
-func PrintSeedTraceInfo(mess string, e_pos, s_pos int, read []byte) {
+func PrintSeedTraceInfo(mess string, s_pos, e_pos int, read []byte) {
 	if PRINT_ALIGN_TRACE_INFO {
-		fmt.Println(mess+" has seed\t", e_pos, "\t", s_pos, "\t", string(read[e_pos:s_pos+1]))
+		fmt.Println(mess+" has seed\t", s_pos, "\t", e_pos, "\t", string(read[s_pos:e_pos+1]))
 	}
 }
 
@@ -106,6 +106,12 @@ func PrintMatchTraceInfo(pos, left_most_pos int, dis float64, left_var_pos []int
 //--------------------------------------------------------------------------------------------------
 //Printing variant calling info
 //--------------------------------------------------------------------------------------------------
+
+func PrintSeedPos(mess string, m_pos, s_pos, e_pos int) {
+	if PRINT_VAR_CALL_INFO {
+		fmt.Println(mess+" seed pos\t", m_pos, "\t", s_pos, "\t", "\t", e_pos)
+	}
+}
 
 func PrintComparedReadRef(l_read_flank, l_ref_flank, r_read_flank, r_ref_flank []byte) {
 	if PRINT_VAR_CALL_INFO {
