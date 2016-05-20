@@ -16,6 +16,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"path"
 	"runtime/pprof"
 	"sort"
 	"strconv"
@@ -265,6 +266,10 @@ func (VC *VarCallIndex) CallVariants() {
 	for i := 0; i < PARA.Proc_num; i++ {
 		var_info[i] = make(chan *VarInfo)
 	}
+	var_record := make([]chan *VarInfo, PARA.Proc_num)
+	for i := 0; i < PARA.Proc_num; i++ {
+		var_record[i] = make(chan *VarInfo)
+	}
 	uar_info := make(chan *UnAlnReadInfo)
 
 	// Read input reads
@@ -274,10 +279,38 @@ func (VC *VarCallIndex) CallVariants() {
 	// Search for variants
 	for i := 0; i < PARA.Proc_num; i++ {
 		wg.Add(1)
-		go VC.SearchVariants(read_data, read_signal, var_info, uar_info, &wg)
+		go VC.SearchVariants(read_data, read_signal, var_info, var_record, uar_info, &wg)
 	}
 
-	//Collect variants from results channel and update variant probabilities
+	//Collect non-variant bases from var_record channel and write them to file
+	vr_dir := path.Join(path.Dir(PARA.Var_call_file), "var_record")
+	if _, e := os.Stat(vr_dir); e != nil {
+		if os.IsNotExist(e) {
+			if e = os.Mkdir(vr_dir, 0777); e != nil {
+				log.Panicf("Error: %s", e)
+			}
+		} else {
+			log.Panicf("Error: %s", e)
+		}
+	}
+	for i := 0; i < PARA.Proc_num; i++ {
+		go func(i int) {
+			f, e := os.Create(path.Join(vr_dir, "var_record_"+strconv.Itoa(i)))
+			if e != nil {
+				log.Printf("Error: Create output file %s", e)
+				os.Exit(1)
+			}
+			defer f.Close()
+			w := bufio.NewWriter(f)
+
+			for vr := range var_record[i] {
+				w.WriteString(strconv.Itoa(int(vr.Pos)) + "\t" + string(vr.Bases) + "\t" + string(vr.BQual) + "\n")
+			}
+			w.Flush()
+		}(i)
+	}
+
+	//Collect variants from var_info channel and update the variant profile
 	for i := 0; i < PARA.Proc_num; i++ {
 		go func(i int) {
 			for vi := range var_info[i] {
@@ -290,6 +323,7 @@ func (VC *VarCallIndex) CallVariants() {
 		wg.Wait()
 		for i := 0; i < PARA.Proc_num; i++ {
 			close(var_info[i])
+			close(var_record[i])
 		}
 		close(uar_info)
 	}()
@@ -303,14 +337,34 @@ func (VC *VarCallIndex) CallVariants() {
 		}
 	}
 	log.Printf("Number of un-aligned reads:\t%d", i)
-	//Phase2: collect non-variant aligned bases from phase 1 and update variant probabilities
-	for _, vi := range VarRecord {
-		rid := PARA.Proc_num * int(vi.Pos) / VC.SeqLen
-		if _, var_call_exist := VarCall[rid].VarProb[vi.Pos]; var_call_exist {
-			VC.UpdateVariantProb(vi)
+
+	// Phase2: collect non-variant aligned bases from phase 1 and update variant probabilities
+	for i := 0; i < PARA.Proc_num; i++ {
+		f, e := os.Open(path.Join(vr_dir, "var_record_"+strconv.Itoa(i)))
+		if e != nil {
+			log.Printf("Error: Open variant profile file %s", e)
+			os.Exit(1)
+		}
+		defer f.Close()
+		//defer os.Remove(path.Join(vr_dir, "var_record_"+strconv.Itoa(i)))
+		scanner := bufio.NewScanner(f)
+
+		var k, rid int
+		var vr *VarInfo
+		var str_arr []string
+		for scanner.Scan() {
+			vr = new(VarInfo)
+			str_arr = strings.Split(scanner.Text(), "\t")
+			k, _ = strconv.Atoi(str_arr[0])
+			vr.Pos = uint32(k)
+			vr.Bases = []byte(str_arr[1])
+			vr.BQual = []byte(str_arr[2])
+			rid = k * PARA.Proc_num / VC.SeqLen
+			if _, var_call_exist := VarCall[rid].VarProb[vr.Pos]; var_call_exist {
+				VC.UpdateVariantProb(vr)
+			}
 		}
 	}
-
 	if PARA.Debug_mode {
 		ProcessNoAlignReadInfo()
 		PrintMemStats("Memstats after calling variants")
@@ -383,7 +437,7 @@ func (VC *VarCallIndex) ReadReads(read_data chan *ReadInfo, read_signal chan boo
 // SearchVariants takes data from data channel, searches for variants and put them into results channel.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal chan bool,
-	var_info []chan *VarInfo, uar_info chan *UnAlnReadInfo, wg *sync.WaitGroup) {
+	var_info, var_record []chan *VarInfo, uar_info chan *UnAlnReadInfo, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
@@ -414,7 +468,7 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 		RevComp(read_info.Read1, read_info.Qual1, read_info.Rev_comp_read1, read_info.Rev_qual1)
 		RevComp(read_info.Read2, read_info.Qual2, read_info.Rev_comp_read2, read_info.Rev_qual2)
 
-		VC.SearchVariantsPE(read_info, edit_aln_info_1, edit_aln_info_2, seed_pos, rand_gen, var_info, uar_info)
+		VC.SearchVariantsPE(read_info, edit_aln_info_1, edit_aln_info_2, seed_pos, rand_gen, var_info, var_record, uar_info)
 	}
 }
 
@@ -423,7 +477,7 @@ func (VC *VarCallIndex) SearchVariants(read_data chan *ReadInfo, read_signal cha
 // It uses seed-and-extend strategy and looks for the best alignment candidates through several iterations.
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, edit_aln_info_2 *EditAlnInfo, seed_pos [][]int,
-	rand_gen *rand.Rand, var_info []chan *VarInfo, uar_info chan *UnAlnReadInfo) {
+	rand_gen *rand.Rand, var_info, var_record []chan *VarInfo, uar_info chan *UnAlnReadInfo) {
 
 	//-----------------------------------------------------------------------------------------------
 	// in case of simulated reads, get info with specific format of testing dataset
@@ -559,6 +613,7 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 		if PARA.Debug_mode {
 			PrintGetVariants("Final_var", paired_dist, aln_dist1, aln_dist2, vars_get1, vars_get2)
 		}
+		//Get variants to update variant profile
 		for _, var1 := range vars_get1 {
 			var1.MProb = map_qual
 			rid = PARA.Proc_num * int(var1.Pos) / VC.SeqLen
@@ -569,17 +624,17 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 			rid = PARA.Proc_num * int(var2.Pos) / VC.SeqLen
 			var_info[rid] <- var2
 		}
-		MUT.Lock()
-		//Record non-variant aligned based for phase 2
+		//Record non-variant aligned bases for phase 2
 		for _, var1_2 := range vars_get1_2 {
 			var1_2.MProb = map_qual
-			VarRecord = append(VarRecord, var1_2)
+			rid = PARA.Proc_num * int(var1_2.Pos) / VC.SeqLen
+			var_record[rid] <- var1_2
 		}
 		for _, var2_2 := range vars_get2_2 {
 			var2_2.MProb = map_qual
-			VarRecord = append(VarRecord, var2_2)
+			rid = PARA.Proc_num * int(var2_2.Pos) / VC.SeqLen
+			var_record[rid] <- var2_2
 		}
-		MUT.Unlock()
 		return
 	}
 	// Get unaligned paired-end reads

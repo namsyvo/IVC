@@ -219,11 +219,11 @@ func SetupPara(input_para *ParaInfo) *ParaInfo {
 		log.Printf("No or invalid input for maximum number of paired-seeds, use default value (%d).", para.Max_psnum)
 	}
 	if input_para.Min_slen == 0 {
-		para.Min_slen = 15
+		para.Min_slen = 10
 		log.Printf("No or invalid input for minimum length of seeds, use default value (%d).", para.Min_slen)
 	}
 	if input_para.Max_slen == 0 {
-		para.Max_slen = 25
+		para.Max_slen = 20
 		log.Printf("No or invalid input for maximum length of seeds, use default value (%d).", para.Max_slen)
 	}
 	if input_para.Sub_cost == 0 {
