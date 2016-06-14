@@ -15,15 +15,12 @@ import (
 // AlignCostKnownLoci calculates cost of alignment between a read and the reference at known loci.
 //-------------------------------------------------------------------------------------------------
 func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
-	p := 0.0
-	for i := 0; i < len(read); i++ {
-		if read[i] != ref[i] {
-			return math.MaxFloat64
-		} else {
-			p = p + 0.0 //Q2C[qual[i]]
-		}
+	//do not consider qual at this time
+	if string(read) == string(ref) {
+		return -0.1 * math.Log10(prob)
+	} else {
+		return -math.Log10(INDEL_ERR_RATE)
 	}
-	return p
 }
 
 //-------------------------------------------------------------------------------------------------

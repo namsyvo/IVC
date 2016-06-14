@@ -53,8 +53,15 @@ func BuildMultiGenome(genome_file, var_prof_file string, debug_mode bool) (chr_p
 	for i, pos := range chr_pos {
 		contig_name = string(chr_name[i])
 		if _, name_check = var_prof[contig_name]; name_check {
-			for key, _ := range var_prof[contig_name] {
-				seq[pos+key] = '*'
+			var_pos := make([]int, 0)
+			for p, _ := range var_prof[contig_name] {
+				var_pos = append(var_pos, p)
+			}
+			sort.Ints(var_pos)
+			for j, p := range var_pos {
+				if j < len(var_pos)-1 && p+len(var_prof[contig_name][p].Variant[0]) <= var_pos[j+1] {
+					seq[pos+p] = '*'
+				}
 			}
 		} else {
 			log.Println("Warning: Contig or chromosome " + contig_name + " in the reference genome is not exist in the variant profile.")
