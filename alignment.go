@@ -19,7 +19,7 @@ func AlignCostKnownLoci(read, ref, qual []byte, prob float64) float64 {
 	if string(read) == string(ref) {
 		return -0.1 * math.Log10(prob)
 	} else {
-		return -math.Log10(INDEL_ERR_RATE)
+		return PARA.Gap_open + float64(len(read)-1)*PARA.Gap_ext
 	}
 }
 

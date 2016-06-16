@@ -138,13 +138,13 @@ func NewVariantCaller() *VarCallIndex {
 	var var_len int
 	for var_pos, var_bases := range VC.Variants {
 		var_len = len(var_bases[0])
-		same_len_flag, del_flag = true, true
+		same_len_flag, del_flag = true, false
 		for _, val := range var_bases[1:] {
 			if var_len != len(val) {
 				same_len_flag = false
 			}
-			if var_len <= len(val) {
-				del_flag = false
+			if var_len > len(val) {
+				del_flag = true
 			}
 		}
 		if same_len_flag {
