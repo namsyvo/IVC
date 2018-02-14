@@ -8,7 +8,7 @@ IVC is a tool for calling genomic variants from next-generation sequencing data.
 IVC is written in Go programming language (see https://golang.org). It currently supports Illumina paired-end reads. Other data formats will be supported soon.
 
 
-## 2. Install IVC
+## 2. Installation
 
 ### 2.1 Download and run IVC with Go
 First you need to install Go and setup its environment as guided in https://golang.org/doc/install   
@@ -46,7 +46,7 @@ You can also make binary executable files for IVC by compiling IVC source code i
 go build main/ivc-index.go 
 go build main/ivc.go
 ```
-And then run IVC using the following commands:
+And then run IVC using the following commands:   
 ```
 ./ivc-index ...
 ./ivc ...
@@ -59,7 +59,11 @@ git clone https://github.com/namsyvo/IVC.git
 cd IVC
 ```
 Or you can download IVC without Git from its releases at https://github.com/namsyvo/IVC/releases   
-Then you can run IVC using its pre-compiled binary executable files on several platforms (currently Linux, MacOS and Windows). The binary files can be found in directory binaries/ in IVC root directory.
+Then you can run IVC using its pre-compiled binary executable files on several platforms (currently Linux, MacOS and Windows). The binary files can be found in directory binaries/ in IVC root directory.   
+```
+./binaries/ivc-index ...
+./binaries/ivc ...
+```
 
 ## 3. Usage
 
@@ -113,7 +117,7 @@ Options:
 	-lmax: maximum length of seeds for each end (default: 30).  
 	-debug: debug mode (boolean, default: false)
 
-## 4. Preparing data and performing experiments
+## 4. Data preparation
 
 ### 4.1 Simulated data
 IVC comes with a simulator which simulates mutant genomes based on the reference genome and its associated variant profile. Reads are then can be generated from the mutant genome using other simulators, such as DWGSIM.
