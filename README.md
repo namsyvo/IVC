@@ -48,8 +48,8 @@ go build main/ivc.go
 ```
 And then run IVC using the following commands:   
 ```
-./ivc-index ...
-./ivc ...
+./ivc-index
+./ivc
 ```
 
 ### 2.2 Download and run IVC without Go
@@ -61,8 +61,8 @@ cd IVC
 Or you can download IVC without Git from its releases at https://github.com/namsyvo/IVC/releases   
 Then you can run IVC using its pre-compiled binary executable files on several platforms (currently Linux, MacOS and Windows). The binary files can be found in directory binaries/ in IVC root directory.   
 ```
-./binaries/ivc-index ...
-./binaries/ivc ...
+./binaries/ivc-index_macos-amd64
+./binaries/ivc_macos-amd64
 ```
 
 ## 3. Usage
