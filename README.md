@@ -86,7 +86,7 @@ The command "go run main/ivc.go" can be replaced by the command "./ivc" of you h
 
 ### 3.2 Commands and options
 
-####3.2.1. Creating and indexing reference genomes with variant profile:
+#### 3.2.1. Creating and indexing reference genomes with variant profile:
 Required:   
 	-R: reference genome (FASTA format).  
 	-V: known variant profile (VCF format).  
@@ -106,8 +106,8 @@ Options:
 	-t: maximum number of CPUs to run (integer, default: number of CPU of running computer).  
 	-r: maximum number of iterations for random searching (int, default: determined by the program).  
 	-s: substitution cost (float, default: 4). 
-	-o: gap open cost (float, default: 4.1). 
-	-e: gap extension cost (float, default: 1.0). 
+	-o: gap open cost (float, default: 4.1).   
+	-e: gap extension cost (float, default: 1.0).   
 	-mode: searching mode for finding seeds (1: random (default), 2: deterministic).  
 	-start: starting position on reads for finding seeds (integer, default: 0).  
 	-step: step for searching in deterministic mode (integer, default: 5).  
