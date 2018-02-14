@@ -20,18 +20,19 @@ export GOPATH=$HOME/gocode
 ```
 
 Conventionally, one often creates 3 following sub directories in the Go workspace directory ($HOME/gocode in above example) and then put the source code into to the sub directory src/:
-$GOPATH/
-    bin/
-    pkg/
+
+$GOPATH/   
+    bin/   
+    pkg/   
     src/
-    
+
 Get IVC source code:
 
 ```
 go get github.com/namsyvo/IVC
 ```
 
-After these steps, IVC source code should be in the directory $GOPATH/github.com/namsyvo/IVC   
+After these steps, IVC source code should be in the directory $GOPATH/src/github.com/namsyvo/IVC   
 Then go to the IVC directory, from which IVC can be run as a Go program:
 
 ```
