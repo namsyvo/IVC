@@ -26,29 +26,31 @@ Then you can go to the IVC directory, from which IVC can be run as a Go program:
 cd $GOPATH/src/github.com/namsyvo/IVC
 ```
 Conventionally, one often creates 3 following sub directories in the Go workspace directory ($HOME/gocode in above example) and then put the source code into to the sub directory src/ (if you use "go get", it might create such directories for you):   
-    ```
-    $GOPATH/   
-        bin/   
-        pkg/   
-        src/
-    ```
-Then you can run IVC directly from source code using commands:
-    ```
-    go run main/ivc-index.go ...
-    go run main/ivc.go ...
-    ```
+```
+$GOPATH/   
+    bin/   
+    pkg/   
+    src/
+```
+
+Then you can run IVC directly from source code using commands:   
+```
+go run main/ivc-index.go ...
+go run main/ivc.go ...
+```
+
 A detail description of these commands will be described in section 3.1.
 
 You can also make binary executable files for IVC by compiling IVC source code in Go:   
-    ```
-    go build main/ivc-index.go 
-    go build main/ivc.go
-    ```
+```
+go build main/ivc-index.go 
+go build main/ivc.go
+```
 And then run IVC using the following commands:
-    ```
-    ./ivc-index ...
-    ./ivc
-    ```
+```
+./ivc-index ...
+./ivc ...
+```
 
 ### 2.2 Download and run IVC without Go
 You can also get IVC without Go using Git:   
