@@ -2,68 +2,89 @@ IVC - An Integrated Variant Caller
 ==================================
 
 
-1. Overview
------------
+## 1. Overview
 
 IVC is a tool for calling genomic variants from next-generation sequencing data. The tool is developed based on a novel approach to variant calling which leverages existing genetic variants to improve the accuracy of called variants, including new variants and hard-to-detect INDELs. By design, IVC integrates read alignment, alignment sorting, and variant calling into a unified process. The simplified workflow eliminates many intermediate steps and consequently reduces human intervention and errors.
 
 IVC is written in Go programming language (see https://golang.org). It currently supports Illumina paired-end reads. Other data formats will be supported soon.
 
 
-2. Install IVC
---------------
+## 2. Install IVC
 
 ### 2.1 Download IVC source code with Go
 Pre-requirement: Go environment is already set up properly.
+Assuming that you have installed Go and created a workspace directory, e.g., $HOME/gocode, for which you will download IVC source code to, then you can run the following command to add the path to source code to $GOPATH:
 
+```
+export GOPATH=$HOME/gocode
+```
+
+Conventionally, one often creates 3 following sub directories in the Go workspace directory ($HOME/gocode in above example) and then put the source code into to the sub directory src/:
+$GOPATH/
+    bin/
+    pkg/
+    src/
+    
 Get IVC source code:
+
 ```
 go get github.com/namsyvo/IVC
 ```
+
 After these steps, IVC source code should be in the directory $GOPATH/github.com/namsyvo/IVC   
 Then go to the IVC directory, from which IVC can be run as a Go program:
+
 ```
 cd $GOPATH/src/github.com/namsyvo/IVC
 ```
 
 ### 2.2 Download IVC source code without Go
-Get IVC source code with pre-compiled binary executable files of IVC (compiled on GNU/Linux 3.2.0-4-amd64 #1 SMP Debian 3.2.68-1+deb7u3 x86_64):
+Get IVC source code with git:
+
 ```
 git clone https://github.com/namsyvo/IVC.git
 cd IVC
 ```
-Those binary executable files were obtained by compiling source code with Go:
+
+Then users can run IVC directly from source code using commands such as "go run main/ivc-index.go" and "go run main/ivc.go" as described in section 3.1.
+
+The source code can be also downloaded from releases of IVC at https://github.com/namsyvo/IVC/releases
+   
+Users can run IVC using pre-compiled binary executable files of IVC on several platforms (currently Linux, MacOS and Windows). The binary files can be found in directory binaries/ in IVC root directory. This will help users avoid installing Go as well as setting up its environment.
+
+These binary executable files can be obtained by compiling source code in Go:
+
 ```
 go build main/ivc-index.go 
 go build main/ivc.go
 ```
-The source code can be also downloaded from releases of IVC at https://github.com/namsyvo/IVC/releases
 
-
-3. Usage
---------
+## 3. Usage
 
 ### 3.1 Example command
 IVC comes with a test dataset which includes the following directories:   
 ./test_data/refs: includes a reference genome and a corresponding variant profile for NC_007194.1 (Aspergillus fumigatus Af293 chromosome 1, whole genome shotgun sequence, see http://www.ncbi.nlm.nih.gov/nuccore/AAHF00000000)   
 ./test_data/reads: includes a set of 10.000 simulated paired-end reads generated with DWGSIM (see https://github.com/nh13/DWGSIM).
 
-3.1.1. Creating and indexing reference genomes with variant profile:
+#### 3.1.1. Creating and indexing reference genomes with variant profile:
+
 ```
 go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
 ```
+
 The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index.go".
 
-3.1.2. Calling variants from reads and the reference
+#### 3.1.2. Calling variants from reads and the reference
 
 ```
 go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf
 ```
+
 The command "go run main/ivc.go" can be replaced by the command "./ivc.go".
 
 ### 3.2 Commands and options
 
-3.2.1. Creating and indexing reference genomes with variant profile:
+####3.2.1. Creating and indexing reference genomes with variant profile:
 
 Required:
 
@@ -71,10 +92,8 @@ Required:
 	-V: known variant profile (VCF format).  
 	-I: directory for storing index.  
 
-Options:
 
-
-3.2.2. Calling Variants:
+#### 3.2.2. Calling Variants:
 
 Required:
 
@@ -103,8 +122,7 @@ Options:
 	-debug: debug mode (boolean, default: false)
 
 
-4. Preparing data and performing experiments
---------------------------------------------
+## 4. Preparing data and performing experiments
 
 ### 4.1 Simulated data
 
@@ -127,8 +145,8 @@ Then follow the instructions to generate simulated mutant genomes and evaluate t
 * Human (and other species) sequence reads can be downloaded at http://sra.dnanexus.com
 
 
-5. Contact
-----------
+## 5. Contact
 
-Nam Sy Vo  
-nsvo1@memphis.edu
+Nam Sy Vo
+namsyvo@uchicago.edu
+vosynam@gmail.com
