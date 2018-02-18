@@ -73,85 +73,85 @@ IVC comes with a test dataset which includes the following directories:
 ./test_data/reads: includes a set of 10.000 simulated paired-end reads generated with DWGSIM (see how to install DWGSIM and generate simulated reads at https://github.com/nh13/DWGSIM).
 
 #### 3.1.1. Indexing reference genomes with known variant profiles
-Run the following command to index the test reference genome with the test known variant profile and you should see the following output. The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index" if you have the binary file ivc-index (with or without Go). The resulted index will be stored in directory "test_data/indexes".   
+Run the following command to index the reference genome with the associated variant profile in our test data and you should see the following output. The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index" if you have the binary file ivc-index (with or without Go). The resulted index will be stored in directory "test_data/indexes".   
 ```
-    cd $GOPATH/src/github.com/namsyvo/IVC   
-    go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes   
-    2018/02/18 02:43:16 IVC - Integrated Variant Caller using next-generation sequencing data.   
-    2018/02/18 02:43:16 IVC-index: Indexing reference genomes and variant profiles.   
-    2018/02/18 02:43:16 ----------------------------------------------------------------------------------------   
-    2018/02/18 02:43:16 Creating multi-sequence and variant profile index...   
-    2018/02/18 02:43:16 Multi-sequence file: test_data/indexes/chr1_ref.fasta.mgf   
-    2018/02/18 02:43:16 Variant profile index file: test_data/indexes/chr1_variant_prof.vcf.idx   
-    2018/02/18 02:43:16 Time for creating multi-sequence and variant profile index: 304.72818ms   
-    2018/02/18 02:43:16 Finish creating multi-sequence and variant profile index.   
-    2018/02/18 02:43:16 ----------------------------------------------------------------------------------------   
-    2018/02/18 02:43:16 Indexing multi-sequence...   
-    2018/02/18 02:43:16 Building suffix array...   
-    2018/02/18 02:43:20 Finish building suffix array.   
-    2018/02/18 02:43:20 Building bwt and fm-index...   
-    2018/02/18 02:43:26 Finish building bwt and fm-index.   
-    2018/02/18 02:43:26 Time for indexing multi-sequence:   10.602177628s   
-    2018/02/18 02:43:26 Index directory for multi-sequence: test_data/indexes/chr1_ref.fasta.rev.mgf.index/   
-    2018/02/18 02:43:26 Finish indexing multi-sequence.   
+cd $GOPATH/src/github.com/namsyvo/IVC   
+go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes   
+2018/02/18 02:43:16 IVC - Integrated Variant Caller using next-generation sequencing data.   
+2018/02/18 02:43:16 IVC-index: Indexing reference genomes and variant profiles.   
+2018/02/18 02:43:16 ----------------------------------------------------------------------------------------   
+2018/02/18 02:43:16 Creating multi-sequence and variant profile index...   
+2018/02/18 02:43:16 Multi-sequence file: test_data/indexes/chr1_ref.fasta.mgf   
+2018/02/18 02:43:16 Variant profile index file: test_data/indexes/chr1_variant_prof.vcf.idx   
+2018/02/18 02:43:16 Time for creating multi-sequence and variant profile index: 304.72818ms   
+2018/02/18 02:43:16 Finish creating multi-sequence and variant profile index.   
+2018/02/18 02:43:16 ----------------------------------------------------------------------------------------   
+2018/02/18 02:43:16 Indexing multi-sequence...   
+2018/02/18 02:43:16 Building suffix array...   
+2018/02/18 02:43:20 Finish building suffix array.   
+2018/02/18 02:43:20 Building bwt and fm-index...   
+2018/02/18 02:43:26 Finish building bwt and fm-index.   
+2018/02/18 02:43:26 Time for indexing multi-sequence:   10.602177628s   
+2018/02/18 02:43:26 Index directory for multi-sequence: test_data/indexes/chr1_ref.fasta.rev.mgf.index/   
+2018/02/18 02:43:26 Finish indexing multi-sequence.   
 ```
 
 #### 3.1.2. Calling variants from reads and the reference
-Run the following command to call variants from the test data using the index created above and you should see the following output. The command "go run main/ivc.go" can be replaced by the command "./ivc" of you have the binary file ivc (with or without Go). The resulted variant calls will be stored in file "test_data/results/chr1_variant_calls.vcf".   
+Run the following command to call variants from simulated reads in our test data using the index created above and you should see the following output. The command "go run main/ivc.go" can be replaced by the command "./ivc" of you have the binary file ivc (with or without Go). The resulted variant calls will be stored in file "test_data/results/chr1_variant_calls.vcf".   
 ```
-    cd $GOPATH/src/github.com/namsyvo/IVC   
-    go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf   
-    2018/02/18 02:46:29 IVC - Integrated Variant Caller using next-generation sequencing data.   
-    2018/02/18 02:46:29 IVC-main: Calling variants based on alignment between reads and reference multi-genomes.   
-    2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
-    2018/02/18 02:46:29 Checking input information and seting up parameters...   
-    2018/02/18 02:46:29 No or invalid input for searching mode, use default strategy (randomizaion).   
-    2018/02/18 02:46:29 No or invalid input for maximum number of seeds, use default value (4096).   
+cd $GOPATH/src/github.com/namsyvo/IVC   
+go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf   
+2018/02/18 02:46:29 IVC - Integrated Variant Caller using next-generation sequencing data.   
+2018/02/18 02:46:29 IVC-main: Calling variants based on alignment between reads and reference multi-genomes.   
+2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
+2018/02/18 02:46:29 Checking input information and seting up parameters...   
+2018/02/18 02:46:29 No or invalid input for searching mode, use default strategy (randomizaion).   
+2018/02/18 02:46:29 No or invalid input for maximum number of seeds, use default value (4096).   
     ...   
-    2018/02/18 02:46:29 No or invalid input for number of threads, use maximum number of CPUs of the current machine (32).   
-    2018/02/18 02:46:29 Input files:    Genome_file: test_data/indexes/chr1_ref.fasta.mgf, Var_file: test_data/indexes/chr1_variant_prof.vcf.idx, Index_file=test_data/indexes/chr1_ref.fasta.rev.mgf.index/, Read_file_1=test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq, Read_file_2=test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq, Var_call_file=test_data/results/chr1_variant_calls.vcf   
-    2018/02/18 02:46:29 Input paras:    Search_mode=1, Start_pos=0, Search_step=0, Max_snum=4096, Max_psnum=128, Min_slen=15, Max_slen=25, Dist_thres=36.0, Iter_num=12, Sub_cost=4.0, Gap_open=4.1, Gap_ext=1.0, Proc_num=32, Debug_mode=false   
-    2018/02/18 02:46:29 Prog paras: Max_ins=1500, Max_err=0.00150, Mut_rate=0.01000, Err_var_factor=4, Mut_var_factor=2, Iter_num_factor=2, Read_len=100, Info_len=62, Seed_backup=10, Ham_backup=15, Indel_backup=30   
-    2018/02/18 02:46:29 Finish checking input information and seting up parameters.   
-    2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
-    2018/02/18 02:46:29 Initializing the variant caller...   
-    2018/02/18 02:46:29 Loading FM-index of the reference...   
-    2018/02/18 02:46:29 Finish loading 10 % of index file occ.A   
-    2018/02/18 02:46:29 Finish loading 10 % of index file occ.G   
-    2018/02/18 02:46:29 Finish loading 10 % of index file sa   
+2018/02/18 02:46:29 No or invalid input for number of threads, use maximum number of CPUs of the current machine (32).   
+2018/02/18 02:46:29 Input files:    Genome_file: test_data/indexes/chr1_ref.fasta.mgf, Var_file: test_data/indexes/chr1_variant_prof.vcf.idx, Index_file=test_data/indexes/chr1_ref.fasta.rev.mgf.index/, Read_file_1=test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq, Read_file_2=test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq, Var_call_file=test_data/results/chr1_variant_calls.vcf   
+2018/02/18 02:46:29 Input paras:    Search_mode=1, Start_pos=0, Search_step=0, Max_snum=4096, Max_psnum=128, Min_slen=15, Max_slen=25, Dist_thres=36.0, Iter_num=12, Sub_cost=4.0, Gap_open=4.1, Gap_ext=1.0, Proc_num=32, Debug_mode=false   
+2018/02/18 02:46:29 Prog paras: Max_ins=1500, Max_err=0.00150, Mut_rate=0.01000, Err_var_factor=4, Mut_var_factor=2, Iter_num_factor=2, Read_len=100, Info_len=62, Seed_backup=10, Ham_backup=15, Indel_backup=30   
+2018/02/18 02:46:29 Finish checking input information and seting up parameters.   
+2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
+2018/02/18 02:46:29 Initializing the variant caller...   
+2018/02/18 02:46:29 Loading FM-index of the reference...   
+2018/02/18 02:46:29 Finish loading 10 % of index file occ.A   
+2018/02/18 02:46:29 Finish loading 10 % of index file occ.G   
+2018/02/18 02:46:29 Finish loading 10 % of index file sa   
     ...   
-    2018/02/18 02:46:29 Finish loading 100 % of index file occ.G   
-    2018/02/18 02:46:29 Finish loading 90 % of index file occ.T   
-    2018/02/18 02:46:29 Finish loading 100 % of index file occ.T   
-    2018/02/18 02:46:29 Finish loading FM-index of the reference.   
-    2018/02/18 02:46:29 Loading the reference...   
-    2018/02/18 02:46:29 Finish loading the reference.   
-    2018/02/18 02:46:29 Loading the variant profile...   
-    2018/02/18 02:46:29 Finish loading the variant profile.   
-    2018/02/18 02:46:29 Creating auxiliary data structures...   
-    2018/02/18 02:46:29 Finish creating auxiliary data structures.   
-    2018/02/18 02:46:29 Initializing variant call data structure...   
-    2018/02/18 02:46:29 Finish initializing 10 % of variant call data structure.   
-    2018/02/18 02:46:29 Finish initializing 20 % of variant call data structure.   
+2018/02/18 02:46:29 Finish loading 100 % of index file occ.G   
+2018/02/18 02:46:29 Finish loading 90 % of index file occ.T   
+2018/02/18 02:46:29 Finish loading 100 % of index file occ.T   
+2018/02/18 02:46:29 Finish loading FM-index of the reference.   
+2018/02/18 02:46:29 Loading the reference...   
+2018/02/18 02:46:29 Finish loading the reference.   
+2018/02/18 02:46:29 Loading the variant profile...   
+2018/02/18 02:46:29 Finish loading the variant profile.   
+2018/02/18 02:46:29 Creating auxiliary data structures...   
+2018/02/18 02:46:29 Finish creating auxiliary data structures.   
+2018/02/18 02:46:29 Initializing variant call data structure...   
+2018/02/18 02:46:29 Finish initializing 10 % of variant call data structure.   
+2018/02/18 02:46:29 Finish initializing 20 % of variant call data structure.   
     ...   
-    2018/02/18 02:46:29 Finish initializing 100 % of variant call data structure.   
-    2018/02/18 02:46:29 Finish initializing variant call data structure.   
-    2018/02/18 02:46:29 Time for initializing the variant caller:   835.573557ms   
-    2018/02/18 02:46:29 Finish initializing the variant caller.   
-    2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
-    2018/02/18 02:46:29 Calling variants...   
-    2018/02/18 02:49:26 Processed 100000 reads.   
-    2018/02/18 02:49:26 Number of reads:    100000   
-    2018/02/18 02:49:26 Number of un-aligned reads: 4994   
-    2018/02/18 02:49:26 Time for calling variants:  2m56.917841744s   
-    2018/02/18 02:49:26 Finish calling variants.   
-    2018/02/18 02:49:26 ----------------------------------------------------------------------------------------   
-    2018/02/18 02:49:26 Outputing variant calls...   
-    2018/02/18 02:49:27 Time for outputing variant calls:   627.28324ms   
-    2018/02/18 02:49:27 Finish outputing variant calls.   
-    2018/02/18 02:49:27 ------------------------------------------------------   
-    2018/02/18 02:49:27 Check results in the file: test_data/results/chr1_variant_calls.vcf   
-    2018/02/18 02:49:27 Finish whole variant calling process.   
+2018/02/18 02:46:29 Finish initializing 100 % of variant call data structure.   
+2018/02/18 02:46:29 Finish initializing variant call data structure.   
+2018/02/18 02:46:29 Time for initializing the variant caller:   835.573557ms   
+2018/02/18 02:46:29 Finish initializing the variant caller.   
+2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
+2018/02/18 02:46:29 Calling variants...   
+2018/02/18 02:49:26 Processed 100000 reads.   
+2018/02/18 02:49:26 Number of reads:    100000   
+2018/02/18 02:49:26 Number of un-aligned reads: 4994   
+2018/02/18 02:49:26 Time for calling variants:  2m56.917841744s   
+2018/02/18 02:49:26 Finish calling variants.   
+2018/02/18 02:49:26 ----------------------------------------------------------------------------------------   
+2018/02/18 02:49:26 Outputing variant calls...   
+2018/02/18 02:49:27 Time for outputing variant calls:   627.28324ms   
+2018/02/18 02:49:27 Finish outputing variant calls.   
+2018/02/18 02:49:27 ------------------------------------------------------   
+2018/02/18 02:49:27 Check results in the file: test_data/results/chr1_variant_calls.vcf   
+2018/02/18 02:49:27 Finish whole variant calling process.   
 ```
 
 ### 3.2 Commands and options
@@ -192,13 +192,13 @@ Options:
 ### 4.1 Simulated data
 IVC comes with a simulator which simulates mutant genomes based on the reference genome and its associated variant profile. Reads are then can be generated from the mutant genome using other simulators, such as DWGSIM (https://github.com/nh13/DWGSIM).
 
-To get the mutant genome simulator:   
+You can run the following commands to get that simulator:   
 ```
     cd $GOPATH/src/github.com/namsyvo   
     git clone https://github.com/namsyvo/varcall-tools.git
     cd varcall-tools/ivc-tools/genome-simulator
 ```
-Then run the following command to generate a simulated mutant genome and you should see the following output:   
+Then you can run the following commands to generate a simulated mutant genome from the reference and its associated variant profile in our test data and you should see the following output:   
 ```
     go run gen_af_sid_mutant.go $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_ref.fasta $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_variant_prof.vcf simulated_data
     Reading reference...
@@ -210,7 +210,7 @@ Then run the following command to generate a simulated mutant genome and you sho
     Saving mutant gennome and its variant profile...
     Done!
 ```
-The resulted genome (simulated_genomes/mutant_genome.fasta) can be used by a simulator (such as DWGSIM) to generate simulated reads without mutation introduced. For example the following command was used to generate our simualted data:
+The resulted genome (simulated_genomes/mutant_genome.fasta) can be used by a simulator (such as DWGSIM) to generate simulated reads without mutation introduced. For example you can run the following commands to get DWGSIM and to generate simualted reads and you should see the following output:   
 ```
 cd $GOPATH/src/github.com   
 mkdir nh13; cd nh13   
@@ -219,22 +219,19 @@ cd DWGSIM
 make   
 cd $GOPATH/src/github.com/namsyvo/varcall-tools/ivc-tools/genome-simulator   
 DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_data/mutant_genome.fasta simulated_data/dwgsims   
-```
-You should see the following output:   
-```
 [dwgsim_core] 1 length: 4918980   
 [dwgsim_core] 1 sequences, total length: 4918980   
 [dwgsim_core] Currently on:   
 [dwgsim_core] 100000   
 [dwgsim_core] Complete!   
 ```
-Then you should find two fastq files which can be used as input for IVC (and BWA as well) "dwgsims.bwa.read1.fastq.gz" and "dwgsims.bwa.read2.fastq.gz" (please unzip them before using with IVC). You should also find two mutation files "dwgsims.mutations.txt" and "dwgsims.mutations.vcf" and in our simulation there should no mutations there (since the mutations are already introduced to the mutant genome "simulated_data/mutant_genome.fasta" previously by the IVC genome simulator).
+Then you should find two fastq files which can be used as input for IVC (and BWA as well) "dwgsims.bwa.read1.fastq.gz" and "dwgsims.bwa.read2.fastq.gz" (please unzip them before using with IVC). You should also find two mutation files "dwgsims.mutations.txt" and "dwgsims.mutations.vcf" and in our simulation there should be no mutations there (the mutations are already introduced to the mutant genome "simulated_data/mutant_genome.fasta" previously by the IVC genome simulator and we are generating reads from that mutant genome without mutations). More instructions about simulating reads with DWGSIM can be found at https://github.com/nh13/DWGSIM/wiki
 
 ### 4.2 Real data
 * Human (and other species) reference genomes and variant profiles (1000 Genomes, dbSNP, dbVar...) can be downloaded at http://www.ncbi.nlm.nih.gov   
-	* Human reference genome: http://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.25   
-	* Human variant profile: http://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes   
-* Human (and other species) sequence reads can be downloaded at http://sra.dnanexus.com
+	* Human reference genome (GRCh37): http://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.25   
+	* Human variant profile (1000 Genomes data): http://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes   
+* Human (and other species) sequencing reads can be downloaded at http://sra.dnanexus.com
 
 
 ## 5. Contact
