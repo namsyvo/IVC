@@ -76,6 +76,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				n += backup_num
 				break
 			}
+			mapMutex.RLock()
 			if _, is_var = VarCall[PARA.Proc_num*ref_pos_map[n-1]/VC.SeqLen].VarType[uint32(ref_pos_map[n-1])]; is_var {
 				var_pos_trace[n-1] = true
 				var_pos = append(var_pos, ref_pos_map[n-1])
@@ -83,6 +84,7 @@ func (VC *VarCallIndex) LeftAlign(read, qual, ref []byte, pos int, D, IS, IT [][
 				var_qual = append(var_qual, []byte{qual[m-1]})
 				var_type = append(var_type, 0)
 			}
+			mapMutex.RUnlock()
 			m--
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[n-1]]; is_same_len_var {
@@ -433,12 +435,14 @@ func (VC *VarCallIndex) LeftAlignEditTraceBack(read, qual, ref []byte, m, n int,
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
+					mapMutex.RLock()
 					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
 						var_base = append(var_base, []byte{aln_ref[i], '|', aln_read[i]})
 						var_qual = append(var_qual, []byte{aln_qual[i]})
 						var_type = append(var_type, 0)
 					}
+					mapMutex.RUnlock()
 				}
 			}
 			ref_ori_pos++
@@ -502,6 +506,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				n += backup_num
 				break
 			}
+			mapMutex.RLock()
 			if _, is_var = VarCall[PARA.Proc_num*ref_pos_map[N-n]/VC.SeqLen].VarType[uint32(ref_pos_map[N-n])]; is_var {
 				var_pos_trace[N-n] = true
 				var_pos = append(var_pos, ref_pos_map[N-n])
@@ -509,6 +514,7 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 				var_qual = append(var_qual, []byte{qual[M-m]})
 				var_type = append(var_type, 0)
 			}
+			mapMutex.RUnlock()
 			m--
 			n--
 		} else if var_len, is_same_len_var = VC.SameLenVar[ref_pos_map[N-n]]; is_same_len_var {
@@ -599,6 +605,12 @@ func (VC *VarCallIndex) RightAlign(read, qual, ref []byte, pos int, D, IS, IT []
 	for i = 1; i <= m; i++ {
 		mis_i = PARA.Sub_cost // + Q2C[qual[M-i]]
 		for j = 1; j <= n; j++ {
+			if N-j < 0 || N-j >= len(ref_pos_map) {
+				panic("ref_pos_map index problem")
+			}
+			if ref_pos_map[N-j] < 0 || ref_pos_map[N-j] > len(VC.Seq) {
+				panic("VC.Seq index problem")
+			}
 			if VC.Seq[ref_pos_map[N-j]] != '*' {
 				if read[M-i] == ref[N-j] {
 					sub_i = 0.0
@@ -872,12 +884,14 @@ func (VC *VarCallIndex) RightAlignEditTraceBack(read, qual, ref []byte, m, n int
 		} else {
 			if aln_read[i] == aln_ref[i] && i+1 < len(aln_read) && aln_read[i+1] != '-' && aln_ref[i+1] != '-' {
 				if ref_pos_map != nil {
+					mapMutex.RLock()
 					if _, is_prof_new_var := VarCall[PARA.Proc_num*ref_pos_map[ref_ori_pos]/VC.SeqLen].VarType[uint32(ref_pos_map[ref_ori_pos])]; is_prof_new_var {
 						var_pos = append(var_pos, ref_pos_map[ref_ori_pos])
 						var_base = append(var_base, []byte{aln_ref[i], '|', aln_read[i]})
 						var_qual = append(var_qual, []byte{aln_qual[i]})
 						var_type = append(var_type, 0)
 					}
+					mapMutex.RUnlock()
 				}
 			}
 			ref_ori_pos++

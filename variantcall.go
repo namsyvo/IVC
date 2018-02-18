@@ -22,7 +22,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 )
+
+var mapMutex = sync.RWMutex{}
 
 //---------------------------------------------------------------------------------------------------
 // VarCallIndex represents preprocessed information of the reference genome and variant profile,
@@ -96,6 +99,12 @@ type UnAlnReadInfo struct {
 // Set of variant calls, each element cover a certain region on the multigenome.
 //---------------------------------------------------------------------------------------------------
 var VarCall []*VarProf // number of elements will be set equal to number of cores to run parallel updates
+
+func recoverName() {
+	if r := recover(); r!= nil {
+		fmt.Println("recovered from ", r)
+	}
+}
 
 //---------------------------------------------------------------------------------------------------
 // NewVariantCaller creates an instance of VarCallIndex and sets up its variables.
@@ -563,6 +572,8 @@ func (VC *VarCallIndex) SearchVariantsPE(read_info *ReadInfo, edit_aln_info_1, e
 //---------------------------------------------------------------------------------------------------
 func (VC *VarCallIndex) ExtendSeeds(s_pos, e_pos, m_pos int, read, qual []byte, edit_aln_info_1, edit_aln_info_2 *EditAlnInfo) ([]*VarInfo, int, int, float64) {
 
+	defer recoverName()
+
 	var i, j, del_len int
 	var is_var, is_del bool
 
@@ -763,6 +774,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 			VarCall[rid].VarProb[pos][vbase[0]+"|"+vbase[1]] = NEW_INDEL_RATE
 			VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = 1 - 1.5*NEW_INDEL_RATE
 		}
+		mapMutex.Lock()
 		VarCall[rid].VarType[pos] = make(map[string]int)
 		if len(vbase[0]) == len(vbase[1]) { //SUB
 			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[0]] = 0
@@ -777,6 +789,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 			VarCall[rid].VarType[pos][vbase[0]+"|"+vbase[1]] = 2
 			VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 0
 		}
+		mapMutex.Unlock()
 		if PARA.Debug_mode {
 			VarCall[rid].ChrDis[pos] = make(map[string][]int)
 			VarCall[rid].ChrDiff[pos] = make(map[string][]int)
@@ -808,6 +821,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 					min_prob = VarCall[rid].VarProb[pos][b]
 				}
 			}
+			mapMutex.Lock()
 			if len(vbase[0]) == len(vbase[1]) {
 				for b, _ = range VarCall[rid].VarProb[pos] {
 					VarCall[rid].VarProb[pos][b] = VarCall[rid].VarProb[pos][b] - (l1/l2)*min_prob*NEW_SNP_RATE
@@ -837,6 +851,7 @@ func (VC *VarCallIndex) UpdateVariantProb(var_info *VarInfo) {
 				VarCall[rid].VarProb[pos][vbase[1]+"|"+vbase[1]] = min_prob * NEW_INDEL_RATE
 				VarCall[rid].VarType[pos][vbase[1]+"|"+vbase[1]] = 2
 			}
+			mapMutex.Unlock()
 		}
 	}
 	if _, var_num_exist := VarCall[rid].VarRNum[pos]; !var_num_exist {
