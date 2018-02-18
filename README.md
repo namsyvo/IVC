@@ -73,10 +73,13 @@ IVC comes with a test dataset which includes the following directories:
 ./test_data/reads: includes a set of 10.000 simulated paired-end reads generated with DWGSIM (see how to install DWGSIM and generate simulated reads at https://github.com/nh13/DWGSIM).
 
 #### 3.1.1. Indexing reference genomes with known variant profiles
-Run the following command to index the reference genome with the associated variant profile in our test data and you should see the following output. The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index" if you have the binary file ivc-index (with or without Go). The resulted index will be stored in directory "test_data/indexes".   
+Run the following command to index the reference genome with the associated variant profile in our test data.   
 ```
 cd $GOPATH/src/github.com/namsyvo/IVC   
-go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes   
+go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
+```
+The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index" if you have the binary file ivc-index (with or without Go). Then you should see the following output:
+```
 2018/02/18 02:43:16 IVC - Integrated Variant Caller using next-generation sequencing data.   
 2018/02/18 02:43:16 IVC-index: Indexing reference genomes and variant profiles.   
 2018/02/18 02:43:16 ----------------------------------------------------------------------------------------   
@@ -95,12 +98,16 @@ go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1
 2018/02/18 02:43:26 Index directory for multi-sequence: test_data/indexes/chr1_ref.fasta.rev.mgf.index/   
 2018/02/18 02:43:26 Finish indexing multi-sequence.   
 ```
+The resulted index will be stored in directory "test_data/indexes".
 
 #### 3.1.2. Calling variants from reads and the reference
-Run the following command to call variants from simulated reads in our test data using the index created above and you should see the following output. The command "go run main/ivc.go" can be replaced by the command "./ivc" of you have the binary file ivc (with or without Go). The resulted variant calls will be stored in file "test_data/results/chr1_variant_calls.vcf".   
+Run the following command to call variants from simulated reads in our test data using the index created above.   
 ```
 cd $GOPATH/src/github.com/namsyvo/IVC   
 go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf   
+```
+The command "go run main/ivc.go" can be replaced by the command "./ivc" of you have the binary file ivc (with or without Go). Then you should see the following output:   
+```
 2018/02/18 02:46:29 IVC - Integrated Variant Caller using next-generation sequencing data.   
 2018/02/18 02:46:29 IVC-main: Calling variants based on alignment between reads and reference multi-genomes.   
 2018/02/18 02:46:29 ----------------------------------------------------------------------------------------   
@@ -153,6 +160,7 @@ go run main/ivc.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_varia
 2018/02/18 02:49:27 Check results in the file: test_data/results/chr1_variant_calls.vcf   
 2018/02/18 02:49:27 Finish whole variant calling process.   
 ```
+The resulted variant calls will be stored in file "test_data/results/chr1_variant_calls.vcf".   
 
 ### 3.2 Commands and options
 
