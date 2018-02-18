@@ -194,21 +194,21 @@ IVC comes with a simulator which simulates mutant genomes based on the reference
 
 You can run the following commands to get that simulator:   
 ```
-    cd $GOPATH/src/github.com/namsyvo   
-    git clone https://github.com/namsyvo/varcall-tools.git
-    cd varcall-tools/ivc-tools/genome-simulator
+cd $GOPATH/src/github.com/namsyvo   
+git clone https://github.com/namsyvo/varcall-tools.git
+cd varcall-tools/ivc-tools/genome-simulator
 ```
 Then you can run the following commands to generate a simulated mutant genome from the reference and its associated variant profile in our test data and you should see the following output:   
 ```
-    go run gen_af_sid_mutant.go $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_ref.fasta $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_variant_prof.vcf simulated_data
-    Reading reference...
-    Reading variant profile...
-    Generating mutant genome and corresponding variant profile...
-    Total number of variants: 16272
-    Total, sub_diff_ref, ins_diff_ref, del_diff_ref, sub_same_ref, ins_same_ref, del_same_ref, SV, OL_VAR:
-    16272 8117 1 0 8153 0 0 0 0
-    Saving mutant gennome and its variant profile...
-    Done!
+go run gen_af_sid_mutant.go $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_ref.fasta $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_variant_prof.vcf simulated_data
+Reading reference...
+Reading variant profile...
+Generating mutant genome and corresponding variant profile...
+Total number of variants: 16272
+Total, sub_diff_ref, ins_diff_ref, del_diff_ref, sub_same_ref, ins_same_ref, del_same_ref, SV, OL_VAR:
+16272 8117 1 0 8153 0 0 0 0
+Saving mutant gennome and its variant profile...
+Done!
 ```
 The resulted genome (simulated_genomes/mutant_genome.fasta) can be used by a simulator (such as DWGSIM) to generate simulated reads without mutation introduced. For example you can run the following commands to get DWGSIM and to generate simualted reads and you should see the following output:   
 ```
@@ -216,7 +216,14 @@ cd $GOPATH/src/github.com
 mkdir nh13; cd nh13   
 git clone --recursive https://github.com/nh13/DWGSIM.git   
 cd DWGSIM   
-make   
+make
+make[1]: Entering directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM/samtools'
+make[2]: Entering directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM/samtools'
+gcc -c -g -Wall -O3  -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_USE_KNETFILE -DPACKAGE_VERSION="0.1.11" -DBGZF_CACHE -I. bgzf.c -o bgzf.o
+        ...
+gcc -g -Wall -O3  -o dwgsim_eval src/dwgsim_eval.o samtools/knetfile.o samtools/bgzf.o samtools/kstring.o samtools/bam_aux.o samtools/bam.o samtools/bam_import.o samtools/sam.o samtools/bam_index.o samtools/bam_pileup.o samtools/bam_lpileup.o samtools/bam_md.o samtools/razf.o samtools/faidx.o samtools/bedidx.o samtools/bam_sort.o samtools/sam_header.o samtools/bam_reheader.o samtools/kprobaln.o samtools/bam_cat.o -Lsamtools -lm -lz -lpthread
+make[1]: Leaving directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM'
+
 cd $GOPATH/src/github.com/namsyvo/varcall-tools/ivc-tools/genome-simulator   
 DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_data/mutant_genome.fasta simulated_data/dwgsims   
 [dwgsim_core] 1 length: 4918980   
@@ -225,6 +232,7 @@ DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_dat
 [dwgsim_core] 100000   
 [dwgsim_core] Complete!   
 ```
+
 Then you should find two fastq files which can be used as input for IVC (and BWA as well) "dwgsims.bwa.read1.fastq.gz" and "dwgsims.bwa.read2.fastq.gz" (please unzip them before using with IVC). You should also find two mutation files "dwgsims.mutations.txt" and "dwgsims.mutations.vcf" and in our simulation there should be no mutations there (the mutations are already introduced to the mutant genome "simulated_data/mutant_genome.fasta" previously by the IVC genome simulator and we are generating reads from that mutant genome without mutations). More instructions about simulating reads with DWGSIM can be found at https://github.com/nh13/DWGSIM/wiki
 
 ### 4.2 Real data
