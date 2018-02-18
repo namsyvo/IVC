@@ -200,7 +200,7 @@ cd varcall-tools/ivc-tools/genome-simulator
 ```
 Then you can run the following commands to generate a simulated mutant genome from the reference and its associated variant profile in our test data and you should see the following output:   
 ```
-go run gen_af_sid_mutant.go $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_ref.fasta $GOPATH/src/github.com/namsyvo/IVC/test_data/refs/chr1_variant_prof.vcf simulated_data
+go run gen_af_sid_mutant.go ../../../IVC/test_data/refs/chr1_ref.fasta ../../../IVC/test_data/refs/chr1_variant_prof.vcf simulated_data
 Reading reference...
 Reading variant profile...
 Generating mutant genome and corresponding variant profile...
@@ -224,8 +224,8 @@ gcc -c -g -Wall -O3  -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_USE_KNETFIL
 gcc -g -Wall -O3  -o dwgsim_eval src/dwgsim_eval.o samtools/knetfile.o samtools/bgzf.o samtools/kstring.o samtools/bam_aux.o samtools/bam.o samtools/bam_import.o samtools/sam.o samtools/bam_index.o samtools/bam_pileup.o samtools/bam_lpileup.o samtools/bam_md.o samtools/razf.o samtools/faidx.o samtools/bedidx.o samtools/bam_sort.o samtools/sam_header.o samtools/bam_reheader.o samtools/kprobaln.o samtools/bam_cat.o -Lsamtools -lm -lz -lpthread
 make[1]: Leaving directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM'
 
-cd $GOPATH/src/github.com/namsyvo/varcall-tools/ivc-tools/genome-simulator   
-DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_data/mutant_genome.fasta simulated_data/dwgsims   
+cd ../../namsyvo/varcall-tools/ivc-tools/genome-simulator   
+$GOPATH/src/github.com/nh13/DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_data/mutant_genome.fasta simulated_data/dwgsims   
 [dwgsim_core] 1 length: 4918980   
 [dwgsim_core] 1 sequences, total length: 4918980   
 [dwgsim_core] Currently on:   
