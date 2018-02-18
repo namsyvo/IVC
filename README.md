@@ -78,7 +78,7 @@ Run the following command to index the reference genome with the associated vari
 cd $GOPATH/src/github.com/namsyvo/IVC   
 go run main/ivc-index.go -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes
 ```
-The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index" if you have the binary file ivc-index (with or without Go). Then you should see the following output:
+The command "go run main/ivc-index.go" can be replaced by the command "./ivc-index" if you have the binary file ivc-index (with or without Go). Then you should see the following output:   
 ```
 2018/02/18 02:43:16 IVC - Integrated Variant Caller using next-generation sequencing data.   
 2018/02/18 02:43:16 IVC-index: Indexing reference genomes and variant profiles.   
@@ -206,9 +206,12 @@ cd $GOPATH/src/github.com/namsyvo
 git clone https://github.com/namsyvo/varcall-tools.git
 cd varcall-tools/ivc-tools/genome-simulator
 ```
-Then you can run the following commands to generate a simulated mutant genome from the reference and its associated variant profile in our test data and you should see the following output:   
+Then you can run the following commands to generate a simulated mutant genome from the reference and its associated variant profile in our test data.   
 ```
 go run gen_af_sid_mutant.go ../../../IVC/test_data/refs/chr1_ref.fasta ../../../IVC/test_data/refs/chr1_variant_prof.vcf simulated_data
+```
+Then you should see the following output:       
+```
 Reading reference...
 Reading variant profile...
 Generating mutant genome and corresponding variant profile...
@@ -225,15 +228,12 @@ mkdir nh13; cd nh13
 git clone --recursive https://github.com/nh13/DWGSIM.git   
 cd DWGSIM   
 make
-make[1]: Entering directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM/samtools'
-make[2]: Entering directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM/samtools'
-gcc -c -g -Wall -O3  -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_USE_KNETFILE -DPACKAGE_VERSION="0.1.11" -DBGZF_CACHE -I. bgzf.c -o bgzf.o
-        ...
-gcc -g -Wall -O3  -o dwgsim_eval src/dwgsim_eval.o samtools/knetfile.o samtools/bgzf.o samtools/kstring.o samtools/bam_aux.o samtools/bam.o samtools/bam_import.o samtools/sam.o samtools/bam_index.o samtools/bam_pileup.o samtools/bam_lpileup.o samtools/bam_md.o samtools/razf.o samtools/faidx.o samtools/bedidx.o samtools/bam_sort.o samtools/sam_header.o samtools/bam_reheader.o samtools/kprobaln.o samtools/bam_cat.o -Lsamtools -lm -lz -lpthread
-make[1]: Leaving directory '/home/nsvo/workspace/goprojects/src/github.com/DWGSIM'
-
+    ...
 cd ../../namsyvo/varcall-tools/ivc-tools/genome-simulator   
-$GOPATH/src/github.com/nh13/DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_data/mutant_genome.fasta simulated_data/dwgsims   
+$GOPATH/src/github.com/nh13/DWGSIM/dwgsim -e 0.001 -E 0.01 -N 100000 -1 100 -2 100 -r 0.0 -o 1 simulated_data/mutant_genome.fasta simulated_data/dwgsims
+```
+Then you should see the following output:   
+```
 [dwgsim_core] 1 length: 4918980   
 [dwgsim_core] 1 sequences, total length: 4918980   
 [dwgsim_core] Currently on:   
