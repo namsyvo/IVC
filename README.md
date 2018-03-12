@@ -3,7 +3,7 @@
 
 ## 1. Overview
 
-IVC is a tool for calling genomic variants from next-generation sequencing data. The tool is developed based on a novel approach to variant calling which leverages existing genetic variants to improve the accuracy of called variants, including new variants and hard-to-detect INDELs. By design, IVC integrates read alignment, alignment sorting, and variant calling into a unified process. The simplified workflow eliminates many intermediate steps and consequently reduces human intervention and errors.
+IVC is a tool for calling genomic variants from next-generation sequencing data. The tool is developed based on a novel approach which leverages existing genomic variants to improve detection of variants (currently SNPs and Indels), including close-by Indels. By design, IVC integrates read alignment, alignment sorting, and variant calling into a unified process. The simplified workflow eliminates many intermediate steps and consequently reduces human intervention and errors.
 
 IVC is written in Go programming language (see https://golang.org). It currently supports Illumina paired-end reads. Other data formats will be supported soon.
 
@@ -35,11 +35,11 @@ $GOPATH/
 
 Then you can run IVC directly from source code using commands:   
 ```
-go run main/ivc-index.go ...
-go run main/ivc.go ...
+go run main/ivc-index.go
+go run main/ivc.go
 ```
 
-A detail description of these commands will be described in section 3.1.
+A detail description of IVC commands and parameters will be described in section 3.1.
 
 You can also make binary executable files for IVC by compiling IVC source code in Go:   
 ```
@@ -61,8 +61,13 @@ cd IVC
 Or you can download IVC without Git from its releases at https://github.com/namsyvo/IVC/releases   
 Then you can run IVC using its pre-compiled binary executable files on several platforms (currently Linux, MacOS and Windows). The binary files can be found in directory binaries/ in IVC root directory.   
 ```
+./binaries/ivc-index_linux-amd64
 ./binaries/ivc-index_macos-amd64
+./binaries/ivc-index_windows-amd64.exe
+./binaries/ivc_linux-amd64
 ./binaries/ivc_macos-amd64
+./binaries/ivc_windows-amd64.exe
+    
 ```
 
 ## 3. Usage
@@ -160,7 +165,34 @@ The command "go run main/ivc.go" can be replaced by the command "./ivc" of you h
 2018/02/18 02:49:27 Check results in the file: test_data/results/chr1_variant_calls.vcf   
 2018/02/18 02:49:27 Finish whole variant calling process.   
 ```
-The resulted variant calls will be stored in file "test_data/results/chr1_variant_calls.vcf".   
+The resulted variant calls will be stored in file "test_data/results/chr1_variant_calls.vcf". You should see the following file (with some difference which depend on your paths of input/output files):   
+```
+##fileformat=VCFv4.2
+##INFO=<ID=KV,Number=0,Type=Flag,Description="Known variants (from input)">
+##INFO=<ID=VP,Number=0,Type=Flag,Description="Probability of variants">
+##INFO=<ID=MP,Number=0,Type=Flag,Description="Probablility of mapping">
+##INFO=<ID=CP,Number=0,Type=Flag,Description="Combination probability of mapping and variants">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth">
+##IVCCommandLine=<binaries/ivc_linux-amd64 -R test_data/refs/chr1_ref.fasta -V test_data/refs/chr1_variant_prof.vcf -I test_data/indexes -1 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq -2 test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq -O test_data/results/chr1_variant_calls.vcf>
+##IVCFullParameters=<Ref_file=/home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/indexes/chr1_ref.fasta.mgf, Var_prof_file=/home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/indexes/chr1_variant_prof.vcf.idx, Index_dir=/home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/indexes/chr1_ref.fasta.rev.mgf.index, Read_file_1=/home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read1.fastq, Read_file_2=/home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/reads/chr1_dwgsim_100_0.001-0.01.bwa.read2.fastq, Var_call_file=/home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/results/chr1_variant_calls.vcf, Dist_thres=36.0, Proc_num=32, Iter_num=12, Sub_cost=4.0, Gap_open=4.1, Gap_ext=1.0, Search_mode=1, Start_pos=0, Search_step=0, Max_snum=4096, Max_psnum=128, Min_slen=15, Max_slen=25, Debug_mode=false>
+##reference=file:///home/nsvo/workspace/goprojects/src/github.com/namsyvo/IVC/test_data/indexes/chr1_ref.fasta.mgf
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  chr1_variant_calls
+1       147     .       A       AC      6.98053 .       KV;VP=0.79957719792408843418;MP=1.00000000000000000000;CP=0.79957719792408843418        GT:GQ:AD:DP     1/1:6.98053:2:2
+1       350     .       C       T       9.52053 .       KV;VP=0.88832720390926134257;MP=1.00000000000000000000;CP=0.88832720390926134257        GT:GQ:AD:DP     1/1:9.52053:3:3
+1       453     .       A       C       4.74815 .       KV;VP=0.66489209553201200631;MP=1.00000000000000000000;CP=0.66489209553201200631        GT:GQ:AD:DP     1/1:4.74815:1:1
+1       552     .       C       G       9.51616 .       KV;VP=0.88821479359148547417;MP=1.00000000000000000000;CP=0.88821479359148547417        GT:GQ:AD:DP     1/1:9.51616:3:3
+1       634     .       T       C       6.97942 .       KV;VP=0.79952590787323674082;MP=1.00000000000000000000;CP=0.79952590787323674082        GT:GQ:AD:DP     1/1:6.97942:2:2
+    ...
+
+1       4917600 .       G       A       4.75291 .       KV;VP=0.66525861643692951741;MP=1.00000000000000000000;CP=0.66525861643692951741        GT:GQ:AD:DP     1/1:4.75291:1:1
+1       4917614 .       C       T       4.74216 .       KV;VP=0.66442953020134232212;MP=1.00000000000000000000;CP=0.66442953020134232212        GT:GQ:AD:DP     1/1:4.74216:1:1
+1       4917623 .       A       G       4.75291 .       KV;VP=0.66525861643692951741;MP=1.00000000000000000000;CP=0.66525861643692951741        GT:GQ:AD:DP     1/1:4.75291:1:1
+1       4917700 .       T       C       9.50847 .       KV;VP=0.88801681702463652890;MP=1.00000000000000000000;CP=0.88801681702463652890        GT:GQ:AD:DP     1/1:9.50847:3:3
+1       4917701 .       A       G       9.53267 .       KV;VP=0.88863909923232964339;MP=1.00000000000000000000;CP=0.88863909923232964339        GT:GQ:AD:DP     1/1:9.53267:3:3
+```
 
 ### 3.2 Commands and options
 
@@ -183,7 +215,7 @@ Options:
 	-d: threshold of alignment distances (float, default: determined by the program).  
 	-t: maximum number of CPUs to run (integer, default: number of CPU of running computer).  
 	-r: maximum number of iterations for random searching (int, default: determined by the program).  
-	-s: substitution cost (float, default: 4). 
+	-s: substitution cost (float, default: 4).  
 	-o: gap open cost (float, default: 4.1).   
 	-e: gap extension cost (float, default: 1.0).   
 	-mode: searching mode for finding seeds (1: random (default), 2: deterministic).  
@@ -247,8 +279,8 @@ Then you should find two fastq files which can be used as input for IVC (and BWA
 * Human (and other species) reference genomes and variant profiles (1000 Genomes, dbSNP, dbVar...) can be downloaded at http://www.ncbi.nlm.nih.gov   
 	* Human reference genome (GRCh37): http://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.25   
 	* Human variant profile (1000 Genomes data): http://hgdownload.cse.ucsc.edu/gbdb/hg19/1000Genomes   
-* Human (and other species) sequencing reads can be downloaded at http://sra.dnanexus.com
-
+* Human (and other species) sequencing reads can be downloaded at https://www.ncbi.nlm.nih.gov/sra
+    
 
 ## 5. Contact
 
