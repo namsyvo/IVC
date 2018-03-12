@@ -12,8 +12,11 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -132,17 +135,36 @@ func Setup(input_para *ParaInfo) {
 			log.Panicf("Error: %s", e)
 		}
 	}
-	if f, e = os.Create(PARA.Var_call_file); e != nil {
+    if f, e = os.Create(PARA.Var_call_file); e != nil {
 		log.Panicf("Error: %s", e)
 	}
 	w := bufio.NewWriter(f)
+	w.WriteString("##fileformat=VCFv4.2\n")
+	w.WriteString("##INFO=<ID=KV,Number=0,Type=Flag,Description=\"Known variants (from input)\">\n")
+	w.WriteString("##INFO=<ID=VP,Number=0,Type=Flag,Description=\"Probability of variants\">\n")
+	w.WriteString("##INFO=<ID=MP,Number=0,Type=Flag,Description=\"Probablility of mapping\">\n")
+	w.WriteString("##INFO=<ID=CP,Number=0,Type=Flag,Description=\"Combination probability of mapping and variants\">\n")
+	w.WriteString("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n")
+	w.WriteString("##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">\n")
+	w.WriteString("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Allelic depths for the ref and alt alleles in the order listed\">\n")
+	w.WriteString("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Approximate read depth\">\n")
+	w.WriteString("##IVCCommandLine=<" + strings.Join(os.Args, " ") + ">\n")
+	ref_file, _ := filepath.Abs(PARA.Ref_file)
+	var_prof_file, _ := filepath.Abs(PARA.Var_prof_file)
+	index_file, _ := filepath.Abs(PARA.Rev_index_file)
+	read_file_1, _ := filepath.Abs(PARA.Read_file_1)
+	read_file_2, _ := filepath.Abs(PARA.Read_file_2)
+	var_call_file, _ := filepath.Abs(PARA.Var_call_file)
+	w.WriteString("##IVCFullParameters=<Ref_file=" + ref_file + ", Var_prof_file=" + var_prof_file + ", Index_dir=" + index_file + ", Read_file_1=" + read_file_1 + ", Read_file_2=" + read_file_2 + ", Var_call_file=" + var_call_file + ", Dist_thres=" + strconv.FormatFloat(PARA.Dist_thres, 'f', 1, 64) + ", Proc_num=" + strconv.Itoa(PARA.Proc_num) + ", Iter_num=" + strconv.Itoa(PARA.Iter_num) + ", Sub_cost=" + strconv.FormatFloat(PARA.Sub_cost, 'f', 1, 64) + ", Gap_open=" + strconv.FormatFloat(PARA.Gap_open, 'f', 1, 64) + ", Gap_ext=" + strconv.FormatFloat(PARA.Gap_ext, 'f', 1, 64) + ", Search_mode=" + strconv.Itoa(PARA.Search_mode) + ", Start_pos=" + strconv.Itoa(PARA.Start_pos) + ", Search_step=" + strconv.Itoa(PARA.Search_step) + ", Max_snum=" + strconv.Itoa(PARA.Max_snum) + ", Max_psnum=" + strconv.Itoa(PARA.Max_psnum) + ", Min_slen=" + strconv.Itoa(PARA.Min_slen) + ", Max_slen=" + strconv.Itoa(PARA.Max_slen) + ", Debug_mode=" + strconv.FormatBool(PARA.Debug_mode) + ">\n")
+	w.WriteString("##reference=file://" + ref_file + "\n")
+	
+	base_file_name := path.Base(PARA.Var_call_file)
+	sample := strings.TrimSuffix(base_file_name, path.Ext(base_file_name))
 	if PARA.Debug_mode == false {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
-			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\n")
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample + "\n")
 	} else {
-		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" +
-			"VAR_PROB\tMAP_PROB\tCOM_QUAL\tVAR_NUM\tREAD_NUM\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\t" +
-			"ALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\n")
+		w.WriteString("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample  +
+			"\tBASE_QUAL\tCHR_DIS\tCHR_DIFF\tMAP_PROB\tALN_PROB\tPAIR_PROB\tS_POS1\tBRANCH1\tS_POS2\tBRANCH2\tREAD_HEADER\tALN_BASE\tBASE_NUM\n")
 	}
 	w.Flush()
 	f.Close()

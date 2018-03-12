@@ -948,8 +948,8 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		log.Panicf("Error: %s", e)
 	}
 	defer f.Close()
-
 	w := bufio.NewWriter(f)
+
 	var var_pos uint32
 	Var_Pos := make([]int, 0)
 	for i := 0; i < PARA.Proc_num; i++ {
@@ -958,10 +958,10 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		}
 	}
 	sort.Ints(Var_Pos)
-	var var_base, var_call, str_qual, str_aln string
+	var var_base, var_call, str_aln, str_qual, str_info, str_format string
 	var var_arr, hap_arr []string
 	var line_aln, line_base, line_ivc []string
-	var p, var_prob, var_call_prob, map_prob float64
+	var p, var_prob, var_call_prob, map_prob, comb_prob float64
 	var i, chr_id, var_num, var_depth, read_depth int
 	var is_known_var, is_known_del bool
 	for _, pos := range Var_Pos {
@@ -997,15 +997,15 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				if hap_arr[0] == string(VC.Variants[pos][0][0]) && hap_arr[1] == string(VC.Variants[pos][0][0]) {
 					continue
 				}
-				line_aln = append(line_aln, var_call)
-				line_aln = append(line_aln, string(VC.Variants[pos][1]))
+				line_aln = append(line_aln, hap_arr[0])
+				line_aln = append(line_aln, hap_arr[1])
 			} else {
 				//Do not report known variants which are identical with the reference
 				if hap_arr[0] == string(VC.Variants[pos][0]) && hap_arr[1] == string(VC.Variants[pos][0]) {
 					continue
 				}
 				line_aln = append(line_aln, string(VC.Variants[pos][0]))
-				line_aln = append(line_aln, var_call)
+				line_aln = append(line_aln, hap_arr[1])
 			}
 		} else {
 			//Do not report variants which are identical with the reference
@@ -1014,11 +1014,11 @@ func (VC *VarCallIndex) OutputVarCalls() {
 			}
 			if VarCall[rid].VarType[var_pos][var_call] >= 0 {
 				if VarCall[rid].VarType[var_pos][var_call] == 2 { //DEL
-					line_aln = append(line_aln, var_call)
-					line_aln = append(line_aln, string(VC.Seq[pos]))
+					line_aln = append(line_aln, hap_arr[0])
+					line_aln = append(line_aln, hap_arr[1])
 				} else { //SUB or INS
 					line_aln = append(line_aln, string(VC.Seq[pos]))
-					line_aln = append(line_aln, var_call)
+					line_aln = append(line_aln, hap_arr[1])
 				}
 			} else {
 				continue
@@ -1034,26 +1034,20 @@ func (VC *VarCallIndex) OutputVarCalls() {
 		// FILTER
 		line_aln = append(line_aln, ".")
 		// INFO
+		str_info = ""
 		if _, is_known_var = VC.Variants[pos]; is_known_var {
-			line_aln = append(line_aln, "Known variants")
-		} else {
-			line_aln = append(line_aln, ".")
+			str_info += "KV;"
 		}
-		// FORMAT
-		line_aln = append(line_aln, ".")
-		// IVC-INFO
-		line_aln = append(line_aln, strconv.FormatFloat(var_call_prob, 'f', 20, 64))
+		str_info += "VP=" + strconv.FormatFloat(var_call_prob, 'f', 20, 64) + ";"
 		map_prob = 1.0
 		for _, p = range VarCall[rid].MapProb[var_pos][var_call] {
 			map_prob *= p
 		}
-		line_aln = append(line_aln, strconv.FormatFloat(map_prob, 'f', 20, 64))
-		str_qual = strconv.FormatFloat(-10*math.Log10(1-var_call_prob*map_prob), 'f', 5, 64)
-		if str_qual != "+Inf" {
-			line_aln = append(line_aln, str_qual)
-		} else {
-			line_aln = append(line_aln, "1000")
-		}
+		str_info += "MP=" + strconv.FormatFloat(map_prob, 'f', 20, 64) + ";"
+		comb_prob = var_call_prob*map_prob
+		str_info += "CP=" + strconv.FormatFloat(comb_prob, 'f', 20, 64)
+		line_aln = append(line_aln, str_info)
+		// FORMAT
 		read_depth = 0
 		var_depth = math.MaxInt64
 		for var_base, var_num = range VarCall[rid].VarRNum[var_pos] {
@@ -1073,8 +1067,23 @@ func (VC *VarCallIndex) OutputVarCalls() {
 				}
 			}
 		}
-		line_aln = append(line_aln, strconv.Itoa(var_depth))
-		line_aln = append(line_aln, strconv.Itoa(read_depth))
+		line_aln = append(line_aln, "GT:GQ:AD:DP")
+		str_format = ""
+		if hap_arr[0] == hap_arr[1] {
+			str_format += "1/1:"
+		} else {
+			str_format += "0/1:"
+		}
+		str_qual = strconv.FormatFloat(-10*math.Log10(1-comb_prob), 'f', 5, 64)
+		if str_qual != "+Inf" {
+			str_format += str_qual + ":"
+		} else {
+			str_format += "1000:"
+		}
+		str_format += strconv.Itoa(var_depth) + ":"
+		str_format += strconv.Itoa(read_depth)
+		line_aln = append(line_aln, str_format)
+
 		str_aln = strings.Join(line_aln, "\t")
 		if !PARA.Debug_mode {
 			w.WriteString(str_aln + "\n")
