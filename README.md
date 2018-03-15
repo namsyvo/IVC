@@ -200,7 +200,9 @@ The resulted variant calls will be stored in file "test_data/results/chr1_varian
 Required:   
 	-R: reference genome (FASTA format).  
 	-V: known variant profile (VCF format).  
-	-I: directory for storing index.
+	-I: directory for storing index.   
+Options:   
+	-debug: debug mode (boolean, default: false)   
 
 #### 3.2.2. Calling Variants:
 Required:   
