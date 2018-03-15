@@ -3,7 +3,7 @@
 
 ## 1. Overview
 
-IVC is a tool for calling genomic variants from next-generation sequencing data. The tool is developed based on a novel approach which leverages existing genomic variants to improve detection of variants (currently SNPs and Indels), including close-by Indels. By design, IVC integrates read alignment, alignment sorting, and variant calling into a unified process. The simplified workflow eliminates many intermediate steps and consequently reduces human intervention and errors.
+IVC is a tool for calling genomic variants from next-generation sequencing data. The tool is developed based on a novel approach which leverages existing genomic variants to improve detection of variants (currently SNPs and Indels), including close-by Indels. By design, IVC integrates read alignment, alignment sorting, and variant calling into a unified process. This simplified workflow eliminates many intermediate steps and consequently reduces human intervention and errors.
 
 IVC is written in Go programming language (see https://golang.org). It currently supports Illumina paired-end reads. Other data formats will be supported soon.
 
@@ -201,6 +201,7 @@ Required:
 	-R: reference genome (FASTA format).  
 	-V: known variant profile (VCF format).  
 	-I: directory for storing index.   
+
 Options:   
 	-debug: debug mode (boolean, default: false)   
 
